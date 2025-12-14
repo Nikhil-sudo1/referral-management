@@ -59,8 +59,8 @@ export const analyticsAPI = {
     start_date?: string;
     end_date?: string;
   }): Promise<AnalyticsResponse> => {
-    const response = await apiClient.get<AnalyticsResponse>('/analytics/dashboard', { params });
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: AnalyticsResponse }>('/analytics/dashboard', { params });
+    return response.data.data;
   },
 
   // Get referral analytics
@@ -69,8 +69,8 @@ export const analyticsAPI = {
     end_date?: string;
     university_id?: string;
   }): Promise<AnalyticsResponse> => {
-    const response = await apiClient.get<AnalyticsResponse>('/analytics/referrals', { params });
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: AnalyticsResponse }>('/analytics/referrals', { params });
+    return response.data.data;
   },
 
   // Get my analytics (referrer)
@@ -78,8 +78,8 @@ export const analyticsAPI = {
     start_date?: string;
     end_date?: string;
   }): Promise<MyAnalyticsResponse> => {
-    const response = await apiClient.get<MyAnalyticsResponse>('/analytics/my-analytics', { params });
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: MyAnalyticsResponse }>('/analytics/my-analytics', { params });
+    return response.data.data;
   },
 };
 

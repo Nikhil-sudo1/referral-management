@@ -51,10 +51,10 @@ const Universities = () => {
       const [universitiesData, referralsData] = await Promise.all([
         universitiesAPI.getUniversities({ 
           page: 1, 
-          page_size: 100,
+          limit: 100,
           status: statusFilter === 'all' ? undefined : statusFilter 
         }),
-        referralsAPI.getReferrals({ page: 1, page_size: 1000 })
+        referralsAPI.getReferrals({ page: 1, limit: 1000 })
       ]);
 
       setUniversities(universitiesData.items);

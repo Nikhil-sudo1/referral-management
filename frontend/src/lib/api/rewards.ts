@@ -55,59 +55,59 @@ export const rewardsAPI = {
   // Get all rewards
   getRewards: async (params?: {
     page?: number;
-    page_size?: number;
+    limit?: number;
     status?: string;
     user_id?: string;
     reward_type?: string;
   }): Promise<PaginatedResponse<Reward>> => {
-    const response = await apiClient.get<PaginatedResponse<Reward>>('/rewards', { params });
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<Reward> }>('/rewards', { params });
+    return response.data.data;
   },
 
   // Get reward by ID
   getReward: async (id: string): Promise<Reward> => {
-    const response = await apiClient.get<Reward>(`/rewards/${id}`);
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: Reward }>(`/rewards/${id}`);
+    return response.data.data;
   },
 
   // Create reward
   createReward: async (data: RewardCreateRequest): Promise<Reward> => {
-    const response = await apiClient.post<Reward>('/rewards', data);
-    return response.data;
+    const response = await apiClient.post<{ success: boolean; data: Reward }>('/rewards', data);
+    return response.data.data;
   },
 
   // Get my rewards (referrer)
   getMyRewards: async (params?: {
     page?: number;
-    page_size?: number;
+    limit?: number;
     status?: string;
   }): Promise<PaginatedResponse<Reward>> => {
-    const response = await apiClient.get<PaginatedResponse<Reward>>('/rewards/my-rewards', { params });
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<Reward> }>('/rewards/my-rewards', { params });
+    return response.data.data;
   },
 
   // Get reward tiers
   getRewardTiers: async (): Promise<RewardTier[]> => {
-    const response = await apiClient.get<RewardTier[]>('/rewards/tiers');
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: RewardTier[] }>('/rewards/tiers');
+    return response.data.data;
   },
 
   // Approve reward
   approveReward: async (id: string): Promise<Reward> => {
-    const response = await apiClient.patch<Reward>(`/rewards/${id}/approve`);
-    return response.data;
+    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/approve`);
+    return response.data.data;
   },
 
   // Disburse reward
   disburseReward: async (id: string): Promise<Reward> => {
-    const response = await apiClient.patch<Reward>(`/rewards/${id}/disburse`);
-    return response.data;
+    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/disburse`);
+    return response.data.data;
   },
 
   // Cancel reward
   cancelReward: async (id: string): Promise<Reward> => {
-    const response = await apiClient.patch<Reward>(`/rewards/${id}/cancel`);
-    return response.data;
+    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/cancel`);
+    return response.data.data;
   },
 };
 

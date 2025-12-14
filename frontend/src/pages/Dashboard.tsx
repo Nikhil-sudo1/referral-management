@@ -47,7 +47,7 @@ const Dashboard = () => {
           analyticsAPI.getDashboardAnalytics(),
           leaderboardAPI.getReferrerLeaderboard({ limit: 5 }),
           leaderboardAPI.getCounselorLeaderboard({ limit: 5 }),
-          referralsAPI.getReferrals({ page: 1, page_size: 5 }),
+          referralsAPI.getReferrals({ page: 1, limit: 5 }),
         ]);
 
         setDashboardData(analytics);

@@ -57,17 +57,17 @@ const Referrals = () => {
       const [referralsData, universitiesData, counselorsData] = await Promise.all([
         referralsAPI.getReferrals({ 
           page: 1, 
-          page_size: 100,
+          limit: 100,
           status: statusFilter === 'all' ? undefined : statusFilter 
         }),
-        universitiesAPI.getUniversities({ page: 1, page_size: 100 }),
-        usersAPI.getCounselors({ page: 1, page_size: 100 })
+        universitiesAPI.getUniversities({ page: 1, limit: 100 }),
+        usersAPI.getCounselors({ page: 1, limit: 100 })
       ]);
 
-      setReferrals(referralsData.items);
-      setUniversities(universitiesData.items);
-      setCounselors(counselorsData.items);
-      setTotalReferrals(referralsData.total);
+      setReferrals(referralsData.items || []);
+      setUniversities(universitiesData.items || []);
+      setCounselors(counselorsData.items || []);
+      setTotalReferrals(referralsData.total || 0);
 
       // Calculate stats
       const pending = referralsData.items.filter((r: any) => r.status === 'submitted').length;
@@ -252,8 +252,8 @@ const Referrals = () => {
                 </TableRow>
               ) : (
                 filteredReferrals.map((referral) => {
-                  const university = universities.find((u) => u.id === referral.university_id);
-                  const counselor = counselors.find((c) => c.id === referral.counselor_id);
+                  const university = universities?.find((u) => u.id === referral.university_id);
+                  const counselor = counselors?.find((c) => c.id === referral.counselor_id);
                   const status = statusConfig[referral.status as ReferralStatus] || statusConfig.submitted;
 
                   return (

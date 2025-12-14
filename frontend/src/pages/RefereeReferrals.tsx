@@ -1,21 +1,80 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { referrals, universities, programs, counselors } from '@/data/mockData';
-import { ArrowLeft, Building2, BookOpen, Calendar, User, CheckCircle, FileText, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, Building2, BookOpen, Calendar, CheckCircle, FileText, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ReferralStatus } from '@/types/referral';
+import { referralsAPI, universitiesAPI, programsAPI, usersAPI } from '@/lib/api';
+import { toast } from '@/hooks/use-toast';
 
 const RefereeReferrals = () => {
   const { email } = useParams<{ email: string }>();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+  const [refereeReferrals, setRefereeReferrals] = useState<any[]>([]);
+  const [universities, setUniversities] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [counselors, setCounselors] = useState<any[]>([]);
 
-  // Find all referrals for this referee
-  const refereeReferrals = referrals.filter(
-    (r) => r.refereeEmail.toLowerCase() === decodeURIComponent(email || '').toLowerCase()
-  );
+  useEffect(() => {
+    fetchData();
+  }, [email]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const decodedEmail = decodeURIComponent(email || '');
+      
+      // Fetch all data in parallel
+      const [referralsData, universitiesData, counselorsData] = await Promise.all([
+        referralsAPI.getReferrals({ page: 1, limit: 1000 }),
+        universitiesAPI.getUniversities({ page: 1, limit: 100 }),
+        usersAPI.getCounselors({ page: 1, limit: 100 })
+      ]);
+
+      // Filter referrals for this referee
+      const filtered = (referralsData.items || []).filter(
+        (r: any) => r.referee_email?.toLowerCase() === decodedEmail.toLowerCase()
+      );
+
+      setRefereeReferrals(filtered);
+      setUniversities(universitiesData.items || []);
+      setCounselors(counselorsData.items || []);
+
+      // Fetch programs for universities
+      const allPrograms: any[] = [];
+      for (const uni of universitiesData.items || []) {
+        try {
+          const uniPrograms = await universitiesAPI.getUniversityPrograms(uni.id);
+          allPrograms.push(...uniPrograms);
+        } catch (error) {
+          console.error(`Error fetching programs for ${uni.name}:`, error);
+        }
+      }
+      setPrograms(allPrograms);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load referral data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (refereeReferrals.length === 0) {
     return (
@@ -34,7 +93,7 @@ const RefereeReferrals = () => {
   const totalReferrals = refereeReferrals.length;
   const admittedCount = refereeReferrals.filter((r) => r.status === 'admitted').length;
 
-  const statusStyles: Record<ReferralStatus, string> = {
+  const statusStyles: Record<string, string> = {
     submitted: 'bg-info/10 text-info border-info/20',
     assigned: 'bg-warning/10 text-warning border-warning/20',
     contacted: 'bg-accent/10 text-accent border-accent/20',
@@ -45,7 +104,7 @@ const RefereeReferrals = () => {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Enhanced Header */}
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button
@@ -61,8 +120,8 @@ const RefereeReferrals = () => {
                 <FileText className="w-6 h-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-foreground bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
-                  {referee.refereeName}
+                <h1 className="text-3xl md:text-4xl font-extrabold text-foreground">
+                  {referee.referee_name}
                 </h1>
                 <p className="text-muted-foreground mt-1 font-medium">
                   All referrals for this referee ({totalReferrals} total, {admittedCount} admitted)
@@ -71,110 +130,117 @@ const RefereeReferrals = () => {
             </div>
           </div>
           <div className="flex gap-3">
-            <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10 border-2 border-primary/20 hover:border-primary/40 hover:shadow-xl transition-all">
+            <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-2">
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
                   <FileText className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium">Total</p>
-                  <p className="text-2xl font-extrabold text-foreground">{totalReferrals}</p>
+                  <p className="text-2xl font-bold text-card-foreground">{totalReferrals}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-gradient-to-br from-success/10 via-success/5 to-emerald-500/10 border-2 border-success/20 hover:border-success/40 hover:shadow-xl transition-all">
+            <Card className="bg-gradient-to-br from-success/10 to-emerald-500/10 border-2">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg gradient-success flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-success-foreground" />
+                <div className="w-10 h-10 rounded-lg bg-success/20 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-success" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground font-medium">Admitted</p>
-                  <p className="text-2xl font-extrabold text-success">{admittedCount}</p>
+                  <p className="text-2xl font-bold text-card-foreground">{admittedCount}</p>
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Referrals Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Referrals List */}
+        <div className="grid gap-4">
           {refereeReferrals.map((referral) => {
-            const university = universities.find((u) => u.id === referral.universityId);
-            const program = programs.find((p) => p.id === referral.programId);
-            const counselor = counselors.find((c) => c.id === referral.counselorId);
+            const university = universities?.find((u) => u.id === referral.university_id);
+            const program = programs?.find((p) => p.id === referral.program_id);
+            const counselor = counselors?.find((c) => c.id === referral.counselor_id);
 
             return (
-              <Card key={referral.id} className="hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/30 group">
-                <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-transparent border-b-2">
+              <Card key={referral.id} className="border-2 hover:shadow-lg transition-all">
+                <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-accent/5">
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">{university?.name}</CardTitle>
-                      <Badge variant="outline" className={`border-2 font-semibold ${statusStyles[referral.status]}`}>
-                        {referral.status}
-                      </Badge>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground font-medium">Code</p>
-                      <p className="text-sm font-mono text-primary font-bold bg-primary/10 px-2 py-1 rounded">{referral.referralCode}</p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Enhanced Program Info */}
-                  <div className="p-4 rounded-lg bg-gradient-to-br from-primary/5 to-accent/5 border-2 border-primary/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                        <BookOpen className="w-4 h-4 text-primary-foreground" />
-                      </div>
-                      <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Program</p>
-                    </div>
-                    <p className="font-bold text-card-foreground text-lg">{program?.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1 font-medium">{program?.duration}</p>
-                  </div>
-
-                  {/* Timeline */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Submitted:</span>
-                      <span className="font-medium text-card-foreground">
-                        {format(referral.submissionDate, 'MMM d, yyyy')}
-                      </span>
-                    </div>
-                    {referral.admissionDate && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <CheckCircle className="w-4 h-4 text-success" />
-                        <span className="text-muted-foreground">Admitted:</span>
-                        <span className="font-medium text-success">
-                          {format(referral.admissionDate, 'MMM d, yyyy')}
+                      <CardTitle className="text-xl font-bold">
+                        {university?.name || 'Unknown University'}
+                      </CardTitle>
+                      <div className="flex items-center gap-2 mt-2">
+                        <BookOpen className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          {program?.name || 'Unknown Program'}
                         </span>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Counselor */}
-                  {counselor && (
-                    <div className="pt-3 border-t border-border">
-                      <div className="flex items-center gap-2 mb-1">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <p className="text-xs text-muted-foreground">Assigned Counselor</p>
-                      </div>
-                      <p className="font-medium text-card-foreground">{counselor.name}</p>
                     </div>
-                  )}
-
-                  {/* Referrer Info */}
-                  <div className="pt-3 border-t border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Referred by</p>
-                    <div className="space-y-1">
-                      <p className="font-medium text-card-foreground">{referral.referrerName}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="w-3 h-3" />
-                        <span>{referral.referrerPhone}</span>
+                    <Badge variant="outline" className={`border-2 font-semibold ${statusStyles[referral.status] || statusStyles.submitted}`}>
+                      {referral.status}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Submission Details */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-sm text-muted-foreground uppercase">Submission</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="w-4 h-4 text-primary" />
+                          <span className="text-card-foreground">
+                            {format(new Date(referral.created_at), 'MMM dd, yyyy')}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <FileText className="w-4 h-4 text-primary" />
+                          <span className="text-card-foreground font-mono">
+                            {referral.referral_code || 'N/A'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Mail className="w-3 h-3" />
-                        <span>{referral.referrerEmail}</span>
+                    </div>
+
+                    {/* Counselor */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-sm text-muted-foreground uppercase">Assigned Counselor</h4>
+                      <div>
+                        {counselor ? (
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold text-sm">
+                              {counselor.name?.split(' ').map((n: string) => n[0]).join('') || '??'}
+                            </div>
+                            <div>
+                              <p className="font-medium text-card-foreground">{counselor.name}</p>
+                              <p className="text-xs text-muted-foreground">{counselor.email}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">Not assigned yet</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Additional Info */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold text-sm text-muted-foreground uppercase">Additional Info</h4>
+                      <div className="space-y-2 text-sm">
+                        {referral.notes && (
+                          <p className="text-card-foreground">{referral.notes}</p>
+                        )}
+                        {referral.admission_date && (
+                          <div>
+                            <span className="text-muted-foreground">Admission Date: </span>
+                            <span className="text-card-foreground">
+                              {format(new Date(referral.admission_date), 'MMM dd, yyyy')}
+                            </span>
+                          </div>
+                        )}
+                        {!referral.notes && !referral.admission_date && (
+                          <p className="text-muted-foreground italic">No additional information</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -183,24 +249,9 @@ const RefereeReferrals = () => {
             );
           })}
         </div>
-
-        {/* Back Button */}
-        <div className="flex gap-3">
-          <Button onClick={() => navigate('/counselors')} variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Referees
-          </Button>
-          <Button
-            onClick={() => navigate(`/counselors/profile/${encodeURIComponent(email || '')}`)}
-            variant="outline"
-          >
-            View Profile
-          </Button>
-        </div>
       </div>
     </DashboardLayout>
   );
 };
 
 export default RefereeReferrals;
-
