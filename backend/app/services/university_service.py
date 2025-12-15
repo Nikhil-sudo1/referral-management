@@ -68,10 +68,60 @@ class UniversityService:
         offset = (page - 1) * limit
         universities = query.offset(offset).limit(limit).all()
         
-        # Get stats for each university
+        # Get all university IDs for bulk stats query
+        university_ids = [uni.id for uni in universities]
+        
+        # Bulk query for programs count
+        programs_count = dict(
+            self.db.query(
+                Program.university_id,
+                func.count(Program.id)
+            ).filter(Program.university_id.in_(university_ids))
+            .group_by(Program.university_id)
+            .all()
+        ) if university_ids else {}
+        
+        # Bulk query for referrals count
+        referrals_count = dict(
+            self.db.query(
+                Referral.university_id,
+                func.count(Referral.id)
+            ).filter(Referral.university_id.in_(university_ids))
+            .group_by(Referral.university_id)
+            .all()
+        ) if university_ids else {}
+        
+        # Bulk query for admissions count
+        admissions_count = dict(
+            self.db.query(
+                Referral.university_id,
+                func.count(Referral.id)
+            ).filter(
+                Referral.university_id.in_(university_ids),
+                Referral.status == "admitted"
+            )
+            .group_by(Referral.university_id)
+            .all()
+        ) if university_ids else {}
+        
+        # Build response items with stats
         items = []
         for uni in universities:
-            stats = self._get_university_stats(uni.id)
+            program_count = programs_count.get(uni.id, 0)
+            referral_count = referrals_count.get(uni.id, 0)
+            admission_count = admissions_count.get(uni.id, 0)
+            
+            conversion_rate = 0.0
+            if referral_count > 0:
+                conversion_rate = round((admission_count / referral_count) * 100, 1)
+            
+            stats = UniversityStats(
+                total_programs=program_count,
+                total_referrals=referral_count,
+                total_admissions=admission_count,
+                conversion_rate=conversion_rate,
+            )
+            
             items.append(UniversityListItem(
                 id=uni.id,
                 name=uni.name,

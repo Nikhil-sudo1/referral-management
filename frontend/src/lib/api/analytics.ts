@@ -54,12 +54,23 @@ export interface MyAnalyticsResponse {
 }
 
 export const analyticsAPI = {
-  // Get dashboard analytics (admin)
+  // Get basic dashboard stats (fast, for dashboard page)
+  getDashboardStats: async (): Promise<DashboardStats> => {
+    const response = await apiClient.get<{ success: boolean; data: DashboardStats }>('/analytics/dashboard');
+    return response.data.data;
+  },
+
+  // Get full dashboard analytics (slower, includes time series, etc.)
   getDashboardAnalytics: async (params?: {
     start_date?: string;
     end_date?: string;
   }): Promise<AnalyticsResponse> => {
-    const response = await apiClient.get<{ success: boolean; data: AnalyticsResponse }>('/analytics/dashboard', { params });
+    const response = await apiClient.get<{ success: boolean; data: AnalyticsResponse }>('/analytics/referrals', { params });
+    console.log('🔍 Raw API Response:', response.data);
+    console.log('🔍 Extracted data:', response.data.data);
+    console.log('🔍 Dashboard stats:', response.data.data.dashboard_stats);
+    console.log('🔍 total_referrals value:', response.data.data.dashboard_stats.total_referrals, 'type:', typeof response.data.data.dashboard_stats.total_referrals);
+    console.log('🔍 total_admissions value:', response.data.data.dashboard_stats.total_admissions, 'type:', typeof response.data.data.dashboard_stats.total_admissions);
     return response.data.data;
   },
 

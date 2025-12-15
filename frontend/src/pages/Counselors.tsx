@@ -38,10 +38,15 @@ const Counselors = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching referees data...');
       const [referralsData, universitiesData] = await Promise.all([
-        referralsAPI.getReferrals({ page: 1, limit: 1000 }),
-        universitiesAPI.getUniversities({ page: 1, limit: 100 })
+        referralsAPI.getReferrals({ page: 1, limit: 20 }),
+        universitiesAPI.getUniversities({ page: 1, limit: 20 })
       ]);
+
+      console.log('Referrals data received:', referralsData);
+      console.log('Total referrals:', referralsData.total);
+      console.log('Referral items:', referralsData.items?.length);
 
       setUniversities(universitiesData.items || []);
       
@@ -49,13 +54,19 @@ const Counselors = () => {
       const refereeMap = new Map<string, RefereeInfo>();
       
       (referralsData.items || []).forEach((referral: any) => {
+        // Check if referee email exists
+        if (!referral.referee_email) {
+          console.warn('Referral without referee email:', referral);
+          return;
+        }
+        
         const key = referral.referee_email.toLowerCase();
         
         if (!refereeMap.has(key)) {
           refereeMap.set(key, {
-            name: referral.referee_name,
+            name: referral.referee_name || 'Unknown',
             email: referral.referee_email,
-            phone: referral.referee_phone,
+            phone: referral.referee_phone || 'N/A',
             totalReferrals: 0,
             admitted: 0,
             conversionRate: 0,
@@ -84,7 +95,11 @@ const Counselors = () => {
           : 0;
       });
       
-      setReferees(Array.from(refereeMap.values()));
+      const refereesArray = Array.from(refereeMap.values());
+      console.log('Unique referees extracted:', refereesArray.length);
+      console.log('Referees:', refereesArray);
+      
+      setReferees(refereesArray);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -296,7 +311,7 @@ const Counselors = () => {
                   <Card
                     key={referee.email}
                     className="cursor-pointer hover:shadow-lg transition-all border-2 hover:border-primary/20"
-                    onClick={() => navigate(`/counselors/profile/${encodeURIComponent(referee.email)}`)}
+                    onClick={() => navigate(`/referees/profile/${encodeURIComponent(referee.email)}`)}
                   >
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between">

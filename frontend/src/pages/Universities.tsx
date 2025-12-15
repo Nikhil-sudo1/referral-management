@@ -48,29 +48,39 @@ const Universities = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching universities data...');
       const [universitiesData, referralsData] = await Promise.all([
         universitiesAPI.getUniversities({ 
           page: 1, 
-          limit: 100,
+          limit: 20,
           status: statusFilter === 'all' ? undefined : statusFilter 
         }),
-        referralsAPI.getReferrals({ page: 1, limit: 1000 })
+        referralsAPI.getReferrals({ page: 1, limit: 20 })
       ]);
 
-      setUniversities(universitiesData.items);
-      setReferrals(referralsData.items);
+      console.log('Universities data received:', universitiesData);
+      console.log('Total universities:', universitiesData.total);
+      console.log('Universities items:', universitiesData.items?.length);
+      console.log('Referrals data received:', referralsData);
+      console.log('Total referrals:', referralsData.total);
 
+      setUniversities(universitiesData.items || []);
+      setReferrals(referralsData.items || []);
+      
       // Fetch programs for all universities
       const allPrograms: any[] = [];
-      for (const uni of universitiesData.items) {
+      for (const uni of universitiesData.items || []) {
         try {
           const uniPrograms = await universitiesAPI.getUniversityPrograms(uni.id);
-          allPrograms.push(...uniPrograms);
-        } catch (error) {
-          console.error(`Error fetching programs for ${uni.name}:`, error);
+          // API returns array directly, not {items: [...]}
+          const programsArray = Array.isArray(uniPrograms) ? uniPrograms : (uniPrograms.items || []);
+          allPrograms.push(...programsArray);
+        } catch (err) {
+          console.warn(`Failed to fetch programs for ${uni.name}:`, err);
         }
       }
       setPrograms(allPrograms);
+      console.log('Total programs loaded:', allPrograms.length);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -120,23 +130,23 @@ const Universities = () => {
   const filteredAndSortedUniversities = universities
     .filter((uni) => {
       const matchesSearch =
-        uni.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        uni.code.toLowerCase().includes(searchQuery.toLowerCase());
+        uni.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        uni.code?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || uni.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
       switch (sortBy) {
         case 'name':
-          return a.name.localeCompare(b.name);
+          return (a.name || '').localeCompare(b.name || '');
         case 'code':
-          return a.code.localeCompare(b.code);
+          return (a.code || '').localeCompare(b.code || '');
         case 'referrals':
           return getUniversityStats(b.id).totalReferrals - getUniversityStats(a.id).totalReferrals;
         case 'admissions':
           return getUniversityStats(b.id).admissions - getUniversityStats(a.id).admissions;
         case 'date':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
         default:
           return 0;
       }

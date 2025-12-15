@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, TrendingUp, Medal, Crown, Star, Loader2 } from 'lucide-react';
@@ -10,7 +9,6 @@ import { leaderboardAPI, type LeaderboardEntry } from '@/lib/api';
 
 const Leaderboard = () => {
   const [referrerLeaderboard, setReferrerLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [counselorLeaderboard, setCounselorLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -20,20 +18,25 @@ const Leaderboard = () => {
   const fetchLeaderboards = async () => {
     setIsLoading(true);
     try {
-      const [referrerData, counselorData] = await Promise.all([
-        leaderboardAPI.getReferrerLeaderboard({ limit: 50 }),
-        leaderboardAPI.getCounselorLeaderboard({ limit: 50 }),
-      ]);
+      console.log('Fetching referrer leaderboard data...');
+      const referrerData = await leaderboardAPI.getReferrerLeaderboard({ limit: 50 });
+
+      console.log('Referrer leaderboard data received:', referrerData);
+      console.log('Referrer entries count:', referrerData.entries?.length || 0);
 
       setReferrerLeaderboard(referrerData.entries || []);
-      setCounselorLeaderboard(counselorData.entries || []);
+
+      console.log('Referrer leaderboard loaded successfully');
+      console.log('Referrers:', referrerData.entries?.length || 0, 'entries');
     } catch (error) {
-      console.error('Error fetching leaderboards:', error);
+      console.error('Error fetching leaderboard:', error);
       toast({
         title: 'Error',
         description: 'Failed to load leaderboard data',
         variant: 'destructive',
       });
+      // Set empty array on error to show empty state
+      setReferrerLeaderboard([]);
     } finally {
       setIsLoading(false);
     }
@@ -65,29 +68,30 @@ const Leaderboard = () => {
       );
     }
 
-    // Get top 3 for podium (with safe array access)
+    // Get top 3 for podium - arrange as: 2nd (left), 1st (center, elevated), 3rd (right)
     const topThree = entries.length >= 3 
       ? [entries[1], entries[0], entries[2]] // Podium order: 2nd, 1st, 3rd
-      : entries.slice(0, 3); // If less than 3, just show what we have
+      : entries.slice(0, 3);
 
     return (
       <div className="space-y-4">
         {/* Top 3 Podium */}
         {entries.length >= 3 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 items-end">
             {topThree.map((entry, idx) => {
-              const position = idx === 1 ? 1 : idx === 0 ? 2 : 3;
+              const rank = entry.rank; // Use actual rank from backend
+              const isFirst = rank === 1;
               return (
                 <Card
                   key={entry?.user_id || idx}
                   className={cn(
                     'border-2 transition-all hover:shadow-lg',
-                    getRankBg(position),
-                    position === 1 && 'md:order-2 md:scale-105'
+                    getRankBg(rank),
+                    isFirst && 'md:scale-110 md:-translate-y-4' // Make #1 bigger and elevated
                   )}
                 >
                   <CardContent className="p-6 text-center">
-                    <div className="mb-4 flex justify-center">{getRankIcon(position)}</div>
+                    <div className="mb-4 flex justify-center">{getRankIcon(rank)}</div>
                     <h3 className="text-xl font-bold text-card-foreground mb-1">
                       {entry?.user_name || 'Unknown'}
                     </h3>
@@ -103,7 +107,7 @@ const Leaderboard = () => {
                       </div>
                       <div>
                         <p className="text-2xl font-bold text-success">
-                          {entry?.successful_referrals || 0}
+                          {entry?.total_admissions || 0}
                         </p>
                         <p className="text-xs text-muted-foreground">Success</p>
                       </div>
@@ -166,7 +170,7 @@ const Leaderboard = () => {
                     <div className="text-right">
                       <p className="text-sm text-muted-foreground">Success</p>
                       <p className="text-lg font-bold text-success">
-                        {entry.successful_referrals}
+                        {entry.total_admissions}
                       </p>
                     </div>
                     <div className="text-right">
@@ -207,32 +211,24 @@ const Leaderboard = () => {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Leaderboard</h1>
-          <p className="text-muted-foreground mt-1">Top performers based on successful referrals</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-lg">
+            <Trophy className="w-6 h-6 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Leaderboard</h1>
+            <p className="text-muted-foreground mt-1">Top performers based on successful referrals</p>
+          </div>
         </div>
 
-        {/* Tabs for different leaderboards */}
-        <Tabs defaultValue="referrers" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="referrers" className="flex items-center gap-2">
-              <Star className="w-4 h-4" />
-              Referrers
-            </TabsTrigger>
-            <TabsTrigger value="counselors" className="flex items-center gap-2">
-              <Trophy className="w-4 h-4" />
-              Counselors
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="referrers" className="mt-6">
-            <LeaderboardList entries={referrerLeaderboard} />
-          </TabsContent>
-
-          <TabsContent value="counselors" className="mt-6">
-            <LeaderboardList entries={counselorLeaderboard} />
-          </TabsContent>
-        </Tabs>
+        {/* Loading State */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <LeaderboardList entries={referrerLeaderboard} />
+        )}
       </div>
     </DashboardLayout>
   );

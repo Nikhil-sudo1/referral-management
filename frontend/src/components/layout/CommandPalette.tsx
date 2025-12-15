@@ -79,7 +79,7 @@ export const CommandPalette = () => {
               <FileText className="mr-2 h-4 w-4" />
               <span>Referrals</span>
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => navigate('/counselors'))}>
+            <CommandItem onSelect={() => runCommand(() => navigate('/referees'))}>
               <Users className="mr-2 h-4 w-4" />
               <span>Referees</span>
             </CommandItem>
@@ -108,7 +108,7 @@ export const CommandPalette = () => {
           <CommandSeparator />
           
           <CommandGroup heading="Quick Actions">
-            <CommandItem onSelect={() => runCommand(() => navigate('/counselors/add'))}>
+            <CommandItem onSelect={() => runCommand(() => navigate('/referees/add'))}>
               <Plus className="mr-2 h-4 w-4" />
               <span>Add New Referee</span>
             </CommandItem>

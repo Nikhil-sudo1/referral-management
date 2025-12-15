@@ -5,16 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Building2 } from 'lucide-react';
+import { ArrowLeft, Building2, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { universitiesAPI } from '@/lib/api';
 
 const AddUniversity = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    logoUrl: '',
+    logo_url: '',
+    website: '',
+    description: '',
+    contact_email: '',
+    contact_phone: '',
+    address: '',
     status: 'active' as 'active' | 'inactive',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,11 +36,13 @@ const AddUniversity = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form submitted with data:', formData);
+    
     // Validation
     if (!formData.name || !formData.code) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in all required fields',
+        description: 'Please fill in university name and code',
         variant: 'destructive',
       });
       return;
@@ -50,23 +59,10 @@ const AddUniversity = () => {
       return;
     }
 
-    // Check for duplicate code
-    const duplicateCode = universities.find(
-      (u) => u.code.toUpperCase() === formData.code.toUpperCase()
-    );
-    if (duplicateCode) {
-      toast({
-        title: 'Validation Error',
-        description: 'A university with this code already exists. Please use a different code.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     // URL validation if provided
-    if (formData.logoUrl && formData.logoUrl.trim() !== '') {
+    if (formData.logo_url && formData.logo_url.trim() !== '') {
       try {
-        new URL(formData.logoUrl);
+        new URL(formData.logo_url);
       } catch {
         toast({
           title: 'Validation Error',
@@ -77,32 +73,72 @@ const AddUniversity = () => {
       }
     }
 
+    if (formData.website && formData.website.trim() !== '') {
+      try {
+        new URL(formData.website);
+      } catch {
+        toast({
+          title: 'Validation Error',
+          description: 'Please enter a valid URL for the website',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    // Email validation if provided
+    if (formData.contact_email && formData.contact_email.trim() !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.contact_email)) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please enter a valid email address',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you would make an API call here
-      // For now, we'll just show a success message
+    try {
+      console.log('Calling API to create university...');
+      
+      // Call backend API to create university
+      const newUniversity = await universitiesAPI.createUniversity({
+        name: formData.name,
+        code: formData.code.toUpperCase(),
+        logo_url: formData.logo_url || undefined,
+        website: formData.website || undefined,
+        description: formData.description || undefined,
+        contact_email: formData.contact_email || undefined,
+        contact_phone: formData.contact_phone || undefined,
+        address: formData.address || undefined,
+        status: formData.status,
+      });
+
+      console.log('University created:', newUniversity);
+      
       toast({
-        title: 'University Added',
-        description: `${formData.name} has been successfully added`,
+        title: 'Success!',
+        description: `${formData.name} has been successfully added to the system`,
       });
       
-      // Reset form
-      setFormData({
-        name: '',
-        code: '',
-        logoUrl: '',
-        status: 'active',
-      });
-      
-      setIsSubmitting(false);
-      
-      // Navigate back to universities page after a short delay
+      // Navigate back to universities list
       setTimeout(() => {
         navigate('/universities');
-      }, 1500);
-    }, 1000);
+      }, 500);
+      
+    } catch (error: any) {
+      console.error('Error creating university:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to add university. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -129,7 +165,7 @@ const AddUniversity = () => {
           <CardHeader>
             <CardTitle>University Information</CardTitle>
             <CardDescription>
-              Enter the details for the new university. Name and code are required.
+              Enter the details for the new university. Fields marked with * are required.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -141,7 +177,7 @@ const AddUniversity = () => {
                 </Label>
                 <Input
                   id="name"
-                  placeholder="Massachusetts Institute of Technology"
+                  placeholder="e.g., Harvard University"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   required
@@ -155,7 +191,7 @@ const AddUniversity = () => {
                 </Label>
                 <Input
                   id="code"
-                  placeholder="MIT"
+                  placeholder="e.g., HARV"
                   value={formData.code}
                   onChange={(e) => handleInputChange('code', e.target.value.toUpperCase())}
                   required
@@ -167,21 +203,76 @@ const AddUniversity = () => {
                 </p>
               </div>
 
+              {/* Website */}
+              <div className="space-y-2">
+                <Label htmlFor="website">Website</Label>
+                <Input
+                  id="website"
+                  type="url"
+                  placeholder="https://university.edu"
+                  value={formData.website}
+                  onChange={(e) => handleInputChange('website', e.target.value)}
+                />
+              </div>
+
               {/* Logo URL */}
               <div className="space-y-2">
-                <Label htmlFor="logoUrl">
-                  Logo URL <span className="text-muted-foreground text-xs">(Optional)</span>
-                </Label>
+                <Label htmlFor="logo_url">Logo URL</Label>
                 <Input
-                  id="logoUrl"
+                  id="logo_url"
                   type="url"
                   placeholder="https://example.com/logo.png"
-                  value={formData.logoUrl}
-                  onChange={(e) => handleInputChange('logoUrl', e.target.value)}
+                  value={formData.logo_url}
+                  onChange={(e) => handleInputChange('logo_url', e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
-                  URL to the university logo image
-                </p>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Brief description of the university..."
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              {/* Contact Email */}
+              <div className="space-y-2">
+                <Label htmlFor="contact_email">Contact Email</Label>
+                <Input
+                  id="contact_email"
+                  type="email"
+                  placeholder="admissions@university.edu"
+                  value={formData.contact_email}
+                  onChange={(e) => handleInputChange('contact_email', e.target.value)}
+                />
+              </div>
+
+              {/* Contact Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="contact_phone">Contact Phone</Label>
+                <Input
+                  id="contact_phone"
+                  type="tel"
+                  placeholder="+1 234 567 8900"
+                  value={formData.contact_phone}
+                  onChange={(e) => handleInputChange('contact_phone', e.target.value)}
+                />
+              </div>
+
+              {/* Address */}
+              <div className="space-y-2">
+                <Label htmlFor="address">Address</Label>
+                <Textarea
+                  id="address"
+                  placeholder="University address..."
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  rows={2}
+                />
               </div>
 
               {/* Status */}
@@ -214,6 +305,7 @@ const AddUniversity = () => {
                   variant="outline"
                   onClick={() => navigate('/universities')}
                   className="flex-1"
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
@@ -223,7 +315,10 @@ const AddUniversity = () => {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    'Adding...'
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
                   ) : (
                     <>
                       <Building2 className="w-4 h-4 mr-2" />
@@ -241,4 +336,3 @@ const AddUniversity = () => {
 };
 
 export default AddUniversity;
-

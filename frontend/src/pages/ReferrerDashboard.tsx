@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReferrerLayout } from '@/components/layout/ReferrerLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,37 +8,12 @@ import { Input } from '@/components/ui/input';
 import { 
   Users, Gift, TrendingUp, FileText, Clock, CheckCircle, 
   ArrowRight, Plus, Search, Copy, Share2, ChevronRight, 
-  Wallet, Target, Star, Award, XCircle, Phone
+  Wallet, Target, Star, Award, XCircle, Phone, Loader2
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-
-// Mock data for the referrer
-const referrerData = {
-  name: 'John Smith',
-  email: 'john@email.com',
-  phone: '+91 9876543210',
-  referralCode: 'JOHN-REF-2024',
-  totalReferrals: 15,
-  successfulAdmissions: 8,
-  pendingReferrals: 5,
-  rejectedReferrals: 2,
-  totalEarnings: 85000,
-  pendingEarnings: 25000,
-  withdrawnEarnings: 60000,
-  conversionRate: 53.3,
-  rank: 12,
-  tier: 'Gold',
-};
-
-const myReferrals = [
-  { id: '1', name: 'Alice Johnson', email: 'alice@email.com', phone: '+91 9999999991', university: 'MIT', program: 'MBA', status: 'admitted', date: '2024-10-01', reward: 15000, rewardStatus: 'paid' },
-  { id: '2', name: 'Bob Williams', email: 'bob@email.com', phone: '+91 9999999992', university: 'MIT', program: 'MS CS', status: 'contacted', date: '2024-10-15', reward: 12000, rewardStatus: 'pending' },
-  { id: '3', name: 'Charlie Brown', email: 'charlie@email.com', phone: '+91 9999999993', university: 'Stanford', program: 'EMBA', status: 'assigned', date: '2024-11-01', reward: 18000, rewardStatus: 'pending' },
-  { id: '4', name: 'Diana Prince', email: 'diana@email.com', phone: '+91 9999999994', university: 'Harvard', program: 'MBA', status: 'submitted', date: '2024-11-20', reward: 20000, rewardStatus: 'pending' },
-  { id: '5', name: 'Eve Wilson', email: 'eve@email.com', phone: '+91 9999999995', university: 'MIT', program: 'MBA', status: 'admitted', date: '2024-09-15', reward: 15000, rewardStatus: 'paid' },
-  { id: '6', name: 'Frank Moore', email: 'frank@email.com', phone: '+91 9999999996', university: 'Oxford', program: 'MS Finance', status: 'rejected', date: '2024-08-20', reward: 0, rewardStatus: 'na' },
-];
+import { analyticsAPI, referralsAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusConfig = {
   submitted: { label: 'Submitted', color: 'bg-info/10 text-info', icon: FileText },
@@ -51,6 +26,112 @@ const statusConfig = {
 const ReferrerDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [myReferrals, setMyReferrals] = useState<any[]>([]);
+  const [referrerData, setReferrerData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    referralCode: '',
+    totalReferrals: 0,
+    successfulAdmissions: 0,
+    pendingReferrals: 0,
+    rejectedReferrals: 0,
+    totalEarnings: 0,
+    pendingEarnings: 0,
+    withdrawnEarnings: 0,
+    conversionRate: 0,
+    rank: 0,
+    tier: 'Bronze',
+  });
+  
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Fetch data from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        console.log('Fetching referrer dashboard data...');
+        
+        // Fetch analytics and referrals in parallel
+        const [analyticsData, referralsData] = await Promise.all([
+          analyticsAPI.getMyAnalytics().catch(err => {
+            console.error('Error fetching my analytics:', err);
+            return null;
+          }),
+          referralsAPI.getMyReferrals({ page: 1, limit: 20 }).catch(err => {
+            console.error('Error fetching my referrals:', err);
+            return { items: [] };
+          }),
+        ]);
+        
+        console.log('My analytics:', analyticsData);
+        console.log('My referrals:', referralsData);
+        
+        // Update referrer data from analytics
+        if (analyticsData) {
+          setReferrerData({
+            name: user?.name || 'Referrer',
+            email: user?.email || '',
+            phone: user?.phone || '',
+            referralCode: user?.referral_code || user?.referralCode || 'REF-CODE',
+            totalReferrals: analyticsData.total_referrals || 0,
+            successfulAdmissions: analyticsData.successful_admissions || 0,
+            pendingReferrals: analyticsData.pending_referrals || 0,
+            rejectedReferrals: analyticsData.rejected_referrals || 0,
+            totalEarnings: Number(analyticsData.total_earnings) || 0,
+            pendingEarnings: Number(analyticsData.pending_earnings) || 0,
+            withdrawnEarnings: Number(analyticsData.withdrawn_earnings) || 0,
+            conversionRate: analyticsData.conversion_rate || 0,
+            rank: analyticsData.rank || 0,
+            tier: analyticsData.tier || 'Bronze',
+          });
+        } else if (user) {
+          // Fallback to user data
+          setReferrerData(prev => ({
+            ...prev,
+            name: user.name || 'Referrer',
+            email: user.email || '',
+            phone: user.phone || '',
+            referralCode: user.referral_code || user.referralCode || 'REF-CODE',
+            tier: user.tier || 'Bronze',
+          }));
+        }
+        
+        // Update referrals list
+        if (referralsData?.items) {
+          const formattedReferrals = referralsData.items.map((r: any) => ({
+            id: r.id,
+            name: r.referee_name || r.refereeName || 'Unknown',
+            email: r.referee_email || r.refereeEmail || '',
+            phone: r.referee_phone || r.refereePhone || '',
+            university: r.university?.name || r.universityName || 'Unknown',
+            program: r.program?.name || r.programName || 'Unknown',
+            status: r.status || 'submitted',
+            date: r.created_at || r.createdAt || new Date().toISOString(),
+            reward: r.expected_reward || r.expectedReward || 0,
+            rewardStatus: r.status === 'admitted' ? 'paid' : 'pending',
+          }));
+          setMyReferrals(formattedReferrals);
+        }
+        
+        console.log('Referrer dashboard data loaded');
+      } catch (error) {
+        console.error('Error fetching referrer dashboard:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load dashboard data',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
 
   const filteredReferrals = myReferrals.filter(r => {
     const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -70,7 +151,15 @@ const ReferrerDashboard = () => {
     toast({ title: 'Link Copied!', description: 'Share this link with students' });
   };
 
-  const navigate = useNavigate();
+  if (isLoading) {
+    return (
+      <ReferrerLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </ReferrerLayout>
+    );
+  }
 
   return (
     <ReferrerLayout>

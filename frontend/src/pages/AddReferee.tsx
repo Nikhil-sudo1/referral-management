@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { universities, programs } from '@/data/mockData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, UserPlus, Users, Building2 } from 'lucide-react';
+import { ArrowLeft, UserPlus, Users, Building2, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { universitiesAPI, referralsAPI } from '@/lib/api';
 
 const AddReferee = () => {
   const navigate = useNavigate();
+  const [universities, setUniversities] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [isLoadingUniversities, setIsLoadingUniversities] = useState(true);
   const [formData, setFormData] = useState({
     refereeName: '',
     refereeEmail: '',
@@ -24,9 +27,43 @@ const AddReferee = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter programs based on selected university
+  // Fetch universities on mount
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await universitiesAPI.getUniversities({ status: 'active', limit: 100 });
+        setUniversities(response.items || []);
+      } catch (error) {
+        console.error('Error fetching universities:', error);
+        toast({ title: 'Error', description: 'Failed to load universities', variant: 'destructive' });
+      } finally {
+        setIsLoadingUniversities(false);
+      }
+    };
+    fetchUniversities();
+  }, []);
+
+  // Fetch programs when university changes
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      if (!formData.universityId) {
+        setPrograms([]);
+        return;
+      }
+      try {
+        const programsList = await universitiesAPI.getUniversityPrograms(formData.universityId);
+        setPrograms(programsList || []);
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+        setPrograms([]);
+      }
+    };
+    fetchPrograms();
+  }, [formData.universityId]);
+
+  // Filter active programs
   const availablePrograms = programs.filter(
-    (p) => p.universityId === formData.universityId && p.status === 'active'
+    (p: any) => p.status === 'active'
   );
 
   const handleInputChange = (field: string, value: string) => {
@@ -78,10 +115,19 @@ const AddReferee = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you would make an API call here
-      // For now, we'll just show a success message
+    try {
+      // Submit referral to backend
+      await referralsAPI.createReferral({
+        referee_name: formData.refereeName,
+        referee_email: formData.refereeEmail,
+        referee_phone: formData.refereePhone,
+        referrer_name: formData.referrerName,
+        referrer_email: formData.referrerEmail,
+        referrer_phone: formData.referrerPhone,
+        university_id: formData.universityId,
+        program_id: formData.programId,
+      });
+      
       toast({
         title: 'Referee Added',
         description: `${formData.refereeName} has been successfully added as a referee`,
@@ -99,13 +145,20 @@ const AddReferee = () => {
         programId: '',
       });
       
-      setIsSubmitting(false);
-      
-      // Navigate back to counselors page after a short delay
+      // Navigate back to referees page after a short delay
       setTimeout(() => {
-        navigate('/counselors');
+        navigate('/referees');
       }, 1500);
-    }, 1000);
+    } catch (error) {
+      console.error('Error adding referee:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add referee. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -116,7 +169,7 @@ const AddReferee = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/counselors')}
+            onClick={() => navigate('/referees')}
             className="hover:bg-muted border-2"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -306,12 +359,12 @@ const AddReferee = () => {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {availablePrograms.map((program) => (
+                      {availablePrograms.map((program: any) => (
                         <SelectItem key={program.id} value={program.id}>
                           <div className="flex items-center justify-between w-full">
                             <span>{program.name} ({program.code})</span>
                             <span className="ml-4 text-xs font-semibold text-success">
-                              💰 ₹{program.rewardAmount.toLocaleString()} reward
+                              💰 ₹{(program.reward_amount || program.rewardAmount || 0).toLocaleString()} reward
                             </span>
                           </div>
                         </SelectItem>
@@ -326,7 +379,7 @@ const AddReferee = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate('/counselors')}
+                  onClick={() => navigate('/referees')}
                   className="flex-1 border-2 hover:border-primary/40 hover:bg-primary/5 transition-all font-semibold"
                   size="lg"
                 >

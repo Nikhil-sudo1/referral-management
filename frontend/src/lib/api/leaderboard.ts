@@ -38,8 +38,8 @@ export const leaderboardAPI = {
     period?: 'all_time' | 'monthly' | 'weekly';
     limit?: number;
   }): Promise<LeaderboardResponse> => {
-    const response = await apiClient.get<LeaderboardResponse>('/leaderboard/referrers', { params });
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: LeaderboardResponse }>('/leaderboard/referrers', { params });
+    return response.data.data;
   },
 
   // Get counselor leaderboard
@@ -47,16 +47,16 @@ export const leaderboardAPI = {
     period?: 'all_time' | 'monthly' | 'weekly';
     limit?: number;
   }): Promise<LeaderboardResponse> => {
-    const response = await apiClient.get<LeaderboardResponse>('/leaderboard/counselors', { params });
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: LeaderboardResponse }>('/leaderboard/counselors', { params });
+    return response.data.data;
   },
 
   // Get my rank
   getMyRank: async (type: 'referrer' | 'counselor' = 'referrer'): Promise<MyRankResponse> => {
-    const response = await apiClient.get<MyRankResponse>('/leaderboard/my-rank', {
+    const response = await apiClient.get<{ success: boolean; data: MyRankResponse }>('/leaderboard/my-rank', {
       params: { type },
     });
-    return response.data;
+    return response.data.data;
   },
 };
 

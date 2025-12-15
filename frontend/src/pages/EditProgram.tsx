@@ -7,14 +7,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, BookOpen, Loader2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Loader2, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { universitiesAPI } from '@/lib/api';
+import { programsAPI, universitiesAPI } from '@/lib/api';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
-const AddProgram = () => {
+const EditProgram = () => {
   const navigate = useNavigate();
-  const { universityId } = useParams<{ universityId?: string }>();
+  const { universityId, programId } = useParams<{ universityId?: string; programId?: string }>();
   const [university, setUniversity] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -23,33 +34,52 @@ const AddProgram = () => {
     description: '',
     duration: '',
     fee_structure: '',
-    commission_rate: '3.0',
+    commission_rate: '',
     reward_amount: '',
     reward_tier: 'gold' as 'bronze' | 'silver' | 'gold' | 'platinum',
     eligibility_criteria: '',
     status: 'active' as 'active' | 'inactive',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    if (universityId) {
-      fetchUniversity();
-    } else {
-      setIsLoading(false);
+    if (programId && universityId) {
+      fetchData();
     }
-  }, [universityId]);
+  }, [programId, universityId]);
 
-  const fetchUniversity = async () => {
+  const fetchData = async () => {
+    setIsLoading(true);
     try {
-      const data = await universitiesAPI.getUniversity(universityId!);
-      setUniversity(data);
-    } catch (error) {
-      console.error('Error fetching university:', error);
+      const [programData, universityData] = await Promise.all([
+        programsAPI.getProgram(programId!),
+        universitiesAPI.getUniversity(universityId!)
+      ]);
+
+      console.log('Program data loaded:', programData);
+      
+      setUniversity(universityData);
+      setFormData({
+        name: programData.name || '',
+        code: programData.code || '',
+        description: programData.description || '',
+        duration: programData.duration || '',
+        fee_structure: programData.fee_structure?.toString() || '',
+        commission_rate: programData.commission_rate?.toString() || '',
+        reward_amount: programData.reward_amount?.toString() || '',
+        reward_tier: programData.reward_tier || 'gold',
+        eligibility_criteria: programData.eligibility_criteria || '',
+        status: programData.status || 'active',
+      });
+    } catch (error: any) {
+      console.error('Error fetching program:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load university details',
+        description: 'Failed to load program details',
         variant: 'destructive',
       });
+      navigate(`/universities/${universityId}`);
     } finally {
       setIsLoading(false);
     }
@@ -79,21 +109,10 @@ const AddProgram = () => {
     console.log('Form submitted with data:', formData);
     
     // Validation
-    if (!formData.name || !formData.code || !formData.fee_structure || !universityId) {
+    if (!formData.name || !formData.code || !formData.fee_structure) {
       toast({
         title: 'Validation Error',
         description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Code validation
-    const codeRegex = /^[A-Z0-9]+$/;
-    if (!codeRegex.test(formData.code.toUpperCase())) {
-      toast({
-        title: 'Validation Error',
-        description: 'Program code must contain only uppercase letters and numbers',
         variant: 'destructive',
       });
       return;
@@ -132,13 +151,11 @@ const AddProgram = () => {
     setIsSubmitting(true);
 
     try {
-      console.log('Calling API to create program...');
+      console.log('Calling API to update program...');
       
-      // Call backend API to create program
-      const newProgram = await universitiesAPI.createUniversityProgram(universityId, {
-        university_id: universityId,
+      // Call backend API to update program
+      const updatedProgram = await programsAPI.updateProgram(programId!, {
         name: formData.name,
-        code: formData.code.toUpperCase(),
         description: formData.description || undefined,
         duration: formData.duration || undefined,
         fee_structure: fee,
@@ -149,11 +166,11 @@ const AddProgram = () => {
         status: formData.status,
       });
 
-      console.log('Program created:', newProgram);
+      console.log('Program updated:', updatedProgram);
       
       toast({
         title: 'Success!',
-        description: `${formData.name} has been added with ₹${rewardAmount.toLocaleString()} referral reward`,
+        description: `${formData.name} has been updated successfully`,
       });
       
       // Navigate back to university details
@@ -162,14 +179,35 @@ const AddProgram = () => {
       }, 500);
       
     } catch (error: any) {
-      console.error('Error creating program:', error);
+      console.error('Error updating program:', error);
       toast({
         title: 'Error',
-        description: error.response?.data?.message || 'Failed to add program. Please try again.',
+        description: error.response?.data?.message || 'Failed to update program. Please try again.',
         variant: 'destructive',
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await programsAPI.deleteProgram(programId!);
+      toast({
+        title: 'Success!',
+        description: 'Program has been deleted',
+      });
+      navigate(`/universities/${universityId}`);
+    } catch (error: any) {
+      console.error('Error deleting program:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to delete program. It may have associated referrals.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -179,7 +217,7 @@ const AddProgram = () => {
         <div className="flex items-center justify-center h-[60vh]">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground">Loading program details...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -190,21 +228,46 @@ const AddProgram = () => {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate(universityId ? `/universities/${universityId}` : '/universities')}
-            className="hover:bg-muted"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Add Program</h1>
-            <p className="text-muted-foreground mt-1">
-              {university ? `Create a new program for ${university.name}` : 'Create a new program'}
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/universities/${universityId}`)}
+              className="hover:bg-muted"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Edit Program</h1>
+              <p className="text-muted-foreground mt-1">
+                {university ? `Update program for ${university.name}` : 'Update program details'}
+              </p>
+            </div>
           </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={isDeleting}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Program
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the program "{formData.name}". This action cannot be undone.
+                  {' '}Programs with existing referrals cannot be deleted.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         {/* Form Card */}
@@ -212,7 +275,7 @@ const AddProgram = () => {
           <CardHeader>
             <CardTitle>Program Information</CardTitle>
             <CardDescription>
-              Enter the details for the new program. Fields marked with * are required.
+              Update the program details. Fields marked with * are required.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -231,22 +294,19 @@ const AddProgram = () => {
                 />
               </div>
 
-              {/* Program Code */}
+              {/* Program Code (Read-only) */}
               <div className="space-y-2">
                 <Label htmlFor="code">
                   Program Code <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="code"
-                  placeholder="e.g., MBA"
                   value={formData.code}
-                  onChange={(e) => handleInputChange('code', e.target.value.toUpperCase())}
-                  required
-                  maxLength={10}
-                  className="font-mono"
+                  disabled
+                  className="font-mono bg-muted"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Code will be automatically converted to uppercase (max 10 characters)
+                  Program code cannot be changed after creation
                 </p>
               </div>
 
@@ -431,7 +491,7 @@ const AddProgram = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate(universityId ? `/universities/${universityId}` : '/universities')}
+                  onClick={() => navigate(`/universities/${universityId}`)}
                   className="flex-1"
                   disabled={isSubmitting}
                 >
@@ -445,12 +505,12 @@ const AddProgram = () => {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Adding...
+                      Updating...
                     </>
                   ) : (
                     <>
                       <BookOpen className="w-4 h-4 mr-2" />
-                      Add Program
+                      Update Program
                     </>
                   )}
                 </Button>
@@ -463,4 +523,5 @@ const AddProgram = () => {
   );
 };
 
-export default AddProgram;
+export default EditProgram;
+

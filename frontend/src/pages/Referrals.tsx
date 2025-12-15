@@ -57,11 +57,11 @@ const Referrals = () => {
       const [referralsData, universitiesData, counselorsData] = await Promise.all([
         referralsAPI.getReferrals({ 
           page: 1, 
-          limit: 100,
+          limit: 20,
           status: statusFilter === 'all' ? undefined : statusFilter 
         }),
-        universitiesAPI.getUniversities({ page: 1, limit: 100 }),
-        usersAPI.getCounselors({ page: 1, limit: 100 })
+        universitiesAPI.getUniversities({ page: 1, limit: 20 }),
+        usersAPI.getCounselors({ page: 1, limit: 20 })
       ]);
 
       setReferrals(referralsData.items || []);

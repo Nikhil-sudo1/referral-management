@@ -29,6 +29,7 @@ export interface UniversityCreateRequest {
   contact_email?: string;
   contact_phone?: string;
   address?: string;
+  status?: string;
 }
 
 export interface UniversityUpdateRequest {

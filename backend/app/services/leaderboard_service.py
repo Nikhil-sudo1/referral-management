@@ -92,8 +92,8 @@ class LeaderboardService:
                 "total_rewards": total_rewards,
             })
         
-        # Sort by admissions (primary) and referrals (secondary)
-        entries.sort(key=lambda x: (-x["total_admissions"], -x["total_referrals"]))
+        # Sort by conversion rate (primary), then admissions (secondary), then referrals (tertiary)
+        entries.sort(key=lambda x: (-x["conversion_rate"], -x["total_admissions"], -x["total_referrals"]))
         
         # Assign ranks and calculate growth
         leaderboard_entries = []
@@ -181,7 +181,8 @@ class LeaderboardService:
                 "total_rewards": total_rewards,
             })
         
-        entries.sort(key=lambda x: (-x["total_admissions"], -x["total_referrals"]))
+        # Sort by conversion rate (primary), then admissions (secondary), then referrals (tertiary)
+        entries.sort(key=lambda x: (-x["conversion_rate"], -x["total_admissions"], -x["total_referrals"]))
         
         leaderboard_entries = []
         for i, entry in enumerate(entries[:limit], 1):

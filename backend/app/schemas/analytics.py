@@ -9,11 +9,20 @@ from pydantic import BaseModel
 class DashboardStats(BaseModel):
     """Dashboard statistics"""
     total_referrals: int
-    pending_assignment: int
     total_admissions: int
+    total_referrers: int = 0
+    total_counselors: int = 0
+    total_rewards: float
     conversion_rate: float
-    total_rewards: Decimal
-    active_universities: int
+    pending_referrals: int
+    monthly_referrals: int
+    monthly_admissions: int
+    monthly_rewards: float
+    
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
 
 
 class TimeSeriesData(BaseModel):
@@ -42,13 +51,14 @@ class ConversionFunnel(BaseModel):
 
 class AnalyticsResponse(BaseModel):
     """Analytics response"""
+    dashboard_stats: DashboardStats
     time_series: List[TimeSeriesData]
-    by_university: List[UniversityPerformance]
-    by_status: Dict[str, int]
-    conversion_funnel: ConversionFunnel
-    avg_conversion_time_days: int
-    peak_month: str
-    top_program: str
+    university_performance: List[UniversityPerformance]
+    conversion_funnel: List[Dict]
+    by_status: Optional[Dict[str, int]] = None
+    avg_conversion_time_days: Optional[int] = None
+    peak_month: Optional[str] = None
+    top_program: Optional[str] = None
 
 
 class MyAnalyticsResponse(BaseModel):

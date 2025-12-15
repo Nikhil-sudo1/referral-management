@@ -18,26 +18,107 @@ import {
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationBell } from './NotificationBell';
+import { useAuth } from '@/contexts/AuthContext';
 
+// Define menu items with role access
+// Roles: super_admin (all access), manager (manage referees), referrer (only own referrals)
 const menuItems = [
-  { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { label: 'Referrals', icon: FileText, path: '/referrals' },
-  { label: 'Referrers', icon: Users, path: '/counselors' },
-  { label: 'Universities', icon: Building2, path: '/universities' },
-  { label: 'Leaderboard', icon: Trophy, path: '/leaderboard' },
-  { label: 'Rewards', icon: Award, path: '/rewards' },
-  { label: 'Analytics', icon: TrendingUp, path: '/analytics' },
-  { label: 'Settings', icon: Settings, path: '/settings' },
+  { 
+    label: 'Dashboard', 
+    icon: LayoutDashboard, 
+    path: '/dashboard',
+    roles: ['super_admin', 'manager'] // Super admin and manager can see dashboard
+  },
+  { 
+    label: 'Referrals', 
+    icon: FileText, 
+    path: '/referrals',
+    roles: ['super_admin'] // Only super admin can see all referrals
+  },
+  { 
+    label: 'Referees', 
+    icon: Users, 
+    path: '/referees',
+    roles: ['super_admin', 'manager'] // Super admin and manager can manage referees
+  },
+  { 
+    label: 'Universities', 
+    icon: Building2, 
+    path: '/universities',
+    roles: ['super_admin'] // Only super admin can manage universities
+  },
+  { 
+    label: 'Leaderboard', 
+    icon: Trophy, 
+    path: '/leaderboard',
+    roles: ['super_admin'] // Only super admin can see leaderboard
+  },
+  { 
+    label: 'Rewards', 
+    icon: Award, 
+    path: '/rewards',
+    roles: ['super_admin'] // Only super admin can manage rewards
+  },
+  { 
+    label: 'Analytics', 
+    icon: TrendingUp, 
+    path: '/analytics',
+    roles: ['super_admin'] // Only super admin can see analytics
+  },
+  { 
+    label: 'My Referrals', 
+    icon: FileText, 
+    path: '/referrer/referrals',
+    roles: ['referrer'] // Only referrer can see their own referrals
+  },
+  { 
+    label: 'Add Referral', 
+    icon: Users, 
+    path: '/referrer/add',
+    roles: ['referrer'] // Only referrer can add referrals
+  },
+  { 
+    label: 'Settings', 
+    icon: Settings, 
+    path: '/settings',
+    roles: ['super_admin', 'manager', 'referrer'] // All roles can access settings
+  },
 ];
 
 export const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  // Filter menu items based on user role
+  const userRole = user?.role || 'referrer';
+  const filteredMenuItems = menuItems.filter(item => 
+    item.roles.includes(userRole)
+  );
 
   const handleLogout = () => {
-    navigate('/');
+    logout();
+    navigate('/login');
   };
+
+  // Get user display name and role label
+  const getUserInfo = () => {
+    const name = user?.name || 'User';
+    const roleLabels: Record<string, string> = {
+      super_admin: 'Super Admin',
+      manager: 'Manager',
+      counselor: 'Counselor',
+      referrer: 'Referrer'
+    };
+    return {
+      name,
+      role: roleLabels[userRole] || userRole,
+      initials: name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    };
+  };
+
+  const userInfo = getUserInfo();
 
   return (
     <aside
@@ -77,7 +158,7 @@ export const Sidebar = () => {
             Main Menu
           </span>
         </div>
-        {menuItems.map((item, index) => {
+        {filteredMenuItems.map((item, index) => {
           const isActive = location.pathname === item.path || 
             (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
           
@@ -133,15 +214,15 @@ export const Sidebar = () => {
         )}>
           <div className="relative">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center text-white font-bold shadow-lg">
-              AU
+              {userInfo.initials}
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-success rounded-full border-2 border-sidebar-background"></div>
           </div>
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">Admin User</p>
-                <p className="text-xs text-sidebar-foreground/60 truncate">Super Admin</p>
+                <p className="text-sm font-semibold text-white truncate">{userInfo.name}</p>
+                <p className="text-xs text-sidebar-foreground/60 truncate">{userInfo.role}</p>
               </div>
               <button 
                 onClick={handleLogout}

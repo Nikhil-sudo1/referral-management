@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { universities, programs } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,8 +14,11 @@ import {
   ChevronDown, Play, Award, Heart
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { universitiesAPI, referralsAPI } from '@/lib/api';
 
 const PublicPortal = () => {
+  const [universities, setUniversities] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
   const [formStep, setFormStep] = useState(1);
   const [selectedUniversity, setSelectedUniversity] = useState('');
   const [trackingCode, setTrackingCode] = useState('');
@@ -26,7 +28,38 @@ const PublicPortal = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  const filteredPrograms = programs.filter((p) => p.universityId === selectedUniversity);
+  // Fetch universities on mount
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await universitiesAPI.getUniversities({ status: 'active', limit: 100 });
+        setUniversities(response.items || []);
+      } catch (error) {
+        console.error('Error fetching universities:', error);
+      }
+    };
+    fetchUniversities();
+  }, []);
+
+  // Fetch programs when university changes
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      if (!selectedUniversity) {
+        setPrograms([]);
+        return;
+      }
+      try {
+        const programsList = await universitiesAPI.getUniversityPrograms(selectedUniversity);
+        setPrograms(programsList || []);
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+        setPrograms([]);
+      }
+    };
+    fetchPrograms();
+  }, [selectedUniversity]);
+
+  const filteredPrograms = programs.filter((p: any) => p.status === 'active');
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -75,12 +108,39 @@ const PublicPortal = () => {
       return;
     }
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    const code = generateCode();
-    setSubmittedCode(code);
-    setFormStep(4);
-    setIsSubmitting(false);
-    toast({ title: 'Referral Submitted!', description: `Code: ${code}` });
+    
+    try {
+      // Get form values
+      const referrerName = (document.getElementById('referrerName') as HTMLInputElement)?.value;
+      const referrerEmail = (document.getElementById('referrerEmail') as HTMLInputElement)?.value;
+      const referrerPhone = (document.getElementById('referrerPhone') as HTMLInputElement)?.value;
+      const refereeName = (document.getElementById('refereeName') as HTMLInputElement)?.value;
+      const refereeEmail = (document.getElementById('refereeEmail') as HTMLInputElement)?.value;
+      const refereePhone = (document.getElementById('refereePhone') as HTMLInputElement)?.value;
+      const programId = (document.getElementById('program') as HTMLSelectElement)?.value;
+      
+      // Submit to backend
+      const response = await referralsAPI.createReferral({
+        referrer_name: referrerName,
+        referrer_email: referrerEmail,
+        referrer_phone: referrerPhone,
+        referee_name: refereeName,
+        referee_email: refereeEmail,
+        referee_phone: refereePhone,
+        university_id: selectedUniversity,
+        program_id: programId || undefined,
+      });
+      
+      const code = response.referral_code || generateCode();
+      setSubmittedCode(code);
+      setFormStep(4);
+      toast({ title: 'Referral Submitted!', description: `Code: ${code}` });
+    } catch (error) {
+      console.error('Error submitting referral:', error);
+      toast({ title: 'Error', description: 'Failed to submit referral. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const scrollToSection = (id: string) => {

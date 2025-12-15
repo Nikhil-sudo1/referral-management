@@ -21,8 +21,14 @@ const Analytics = () => {
   const fetchAnalytics = async () => {
     setIsLoading(true);
     try {
+      console.log('Fetching analytics data...');
       const data = await analyticsAPI.getDashboardAnalytics();
+      console.log('Analytics data received:', data);
+      console.log('Dashboard stats:', data?.dashboard_stats);
+      console.log('Time series data points:', data?.time_series?.length || 0);
+      console.log('University performance:', data?.university_performance?.length || 0);
       setAnalyticsData(data);
+      console.log('Analytics loaded successfully');
     } catch (error) {
       console.error('Error fetching analytics:', error);
       toast({
@@ -30,6 +36,7 @@ const Analytics = () => {
         description: 'Failed to load analytics data',
         variant: 'destructive',
       });
+      setAnalyticsData(null);
     } finally {
       setIsLoading(false);
     }

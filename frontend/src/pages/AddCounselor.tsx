@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { universities } from '@/data/mockData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,9 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, UserPlus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { universitiesAPI, usersAPI } from '@/lib/api';
 
 const AddCounselor = () => {
   const navigate = useNavigate();
+  const [universities, setUniversities] = useState<any[]>([]);
+  const [isLoadingUniversities, setIsLoadingUniversities] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,6 +21,22 @@ const AddCounselor = () => {
     universityId: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch universities on mount
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await universitiesAPI.getUniversities({ status: 'active', limit: 100 });
+        setUniversities(response.items || []);
+      } catch (error) {
+        console.error('Error fetching universities:', error);
+        toast({ title: 'Error', description: 'Failed to load universities', variant: 'destructive' });
+      } finally {
+        setIsLoadingUniversities(false);
+      }
+    };
+    fetchUniversities();
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -53,10 +71,17 @@ const AddCounselor = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you would make an API call here
-      // For now, we'll just show a success message
+    try {
+      // Create counselor user via API
+      await usersAPI.createUser({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        role: 'counselor',
+        university_id: formData.universityId,
+        password: 'password123', // Default password - user should change it
+      });
+      
       toast({
         title: 'Counselor Added',
         description: `${formData.name} has been successfully added as a counselor`,
@@ -70,13 +95,20 @@ const AddCounselor = () => {
         universityId: '',
       });
       
-      setIsSubmitting(false);
-      
-      // Navigate back to counselors page after a short delay
+      // Navigate back to referees page after a short delay
       setTimeout(() => {
-        navigate('/counselors');
+        navigate('/referees');
       }, 1500);
-    }, 1000);
+    } catch (error) {
+      console.error('Error adding counselor:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add counselor. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -87,7 +119,7 @@ const AddCounselor = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/counselors')}
+            onClick={() => navigate('/referees')}
             className="hover:bg-muted"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -182,7 +214,7 @@ const AddCounselor = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate('/counselors')}
+                  onClick={() => navigate('/referees')}
                   className="flex-1"
                 >
                   Cancel

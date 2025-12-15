@@ -36,9 +36,8 @@ class AnalyticsService:
         """
         total_referrals = self.db.query(Referral).count()
         
-        pending_assignment = self.db.query(Referral).filter(
-            Referral.status == "submitted",
-            Referral.counselor_id.is_(None)
+        pending_referrals = self.db.query(Referral).filter(
+            Referral.status.in_(["submitted", "assigned", "contacted"])
         ).count()
         
         total_admissions = self.db.query(Referral).filter(
@@ -49,21 +48,44 @@ class AnalyticsService:
         if total_referrals > 0:
             conversion_rate = round((total_admissions / total_referrals) * 100, 1)
         
-        total_rewards = self.db.query(func.sum(Reward.amount)).filter(
+        total_rewards_raw = self.db.query(func.sum(Reward.amount)).filter(
             Reward.status == "disbursed"
-        ).scalar() or Decimal("0")
+        ).scalar()
+        total_rewards = float(total_rewards_raw) if total_rewards_raw else 0.0
         
-        active_universities = self.db.query(University).filter(
-            University.status == "active"
+        # Count users by role
+        total_referrers = self.db.query(User).filter(User.role == "referrer").count()
+        total_counselors = self.db.query(User).filter(User.role == "counselor").count()
+        
+        # Monthly stats (current month)
+        month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        monthly_referrals = self.db.query(Referral).filter(
+            Referral.created_at >= month_start
         ).count()
+        
+        monthly_admissions = self.db.query(Referral).filter(
+            Referral.status == "admitted",
+            Referral.created_at >= month_start
+        ).count()
+        
+        monthly_rewards_raw = self.db.query(func.sum(Reward.amount)).filter(
+            Reward.status == "disbursed",
+            Reward.created_at >= month_start
+        ).scalar()
+        monthly_rewards = float(monthly_rewards_raw) if monthly_rewards_raw else 0.0
         
         return DashboardStats(
             total_referrals=total_referrals,
-            pending_assignment=pending_assignment,
             total_admissions=total_admissions,
-            conversion_rate=conversion_rate,
+            total_referrers=total_referrers,
+            total_counselors=total_counselors,
             total_rewards=total_rewards,
-            active_universities=active_universities,
+            conversion_rate=conversion_rate,
+            pending_referrals=pending_referrals,
+            monthly_referrals=monthly_referrals,
+            monthly_admissions=monthly_admissions,
+            monthly_rewards=monthly_rewards,
         )
     
     def get_referral_analytics(
@@ -81,11 +103,14 @@ class AnalyticsService:
         if not date_from:
             date_from = date_to - timedelta(days=180)
         
+        # Get dashboard stats first
+        dashboard_stats = self.get_dashboard_stats()
+        
         # Time series data
         time_series = self._get_time_series(date_from, date_to, group_by)
         
         # By university
-        by_university = self._get_university_performance()
+        university_performance = self._get_university_performance()
         
         # By status
         by_status = {}
@@ -93,20 +118,41 @@ class AnalyticsService:
             count = self.db.query(Referral).filter(Referral.status == status).count()
             by_status[status] = count
         
-        # Conversion funnel
+        # Conversion funnel - convert to list of dicts
         total = self.db.query(Referral).count()
-        funnel = ConversionFunnel(
-            submitted=total,
-            assigned=self.db.query(Referral).filter(
-                Referral.status.in_(["assigned", "contacted", "admitted", "rejected"])
-            ).count(),
-            contacted=self.db.query(Referral).filter(
-                Referral.status.in_(["contacted", "admitted", "rejected"])
-            ).count(),
-            admitted=self.db.query(Referral).filter(
-                Referral.status == "admitted"
-            ).count(),
-        )
+        submitted_count = total
+        assigned_count = self.db.query(Referral).filter(
+            Referral.status.in_(["assigned", "contacted", "admitted", "rejected"])
+        ).count()
+        contacted_count = self.db.query(Referral).filter(
+            Referral.status.in_(["contacted", "admitted", "rejected"])
+        ).count()
+        admitted_count = self.db.query(Referral).filter(
+            Referral.status == "admitted"
+        ).count()
+        
+        conversion_funnel = [
+            {
+                "stage": "submitted",
+                "count": submitted_count,
+                "percentage": 100.0
+            },
+            {
+                "stage": "assigned",
+                "count": assigned_count,
+                "percentage": round((assigned_count / submitted_count * 100) if submitted_count > 0 else 0, 1)
+            },
+            {
+                "stage": "contacted",
+                "count": contacted_count,
+                "percentage": round((contacted_count / submitted_count * 100) if submitted_count > 0 else 0, 1)
+            },
+            {
+                "stage": "admitted",
+                "count": admitted_count,
+                "percentage": round((admitted_count / submitted_count * 100) if submitted_count > 0 else 0, 1)
+            }
+        ]
         
         # Average conversion time
         avg_time = self._calculate_avg_conversion_time()
@@ -118,10 +164,11 @@ class AnalyticsService:
         top_program = self._get_top_program()
         
         return AnalyticsResponse(
+            dashboard_stats=dashboard_stats,
             time_series=time_series,
-            by_university=by_university,
+            university_performance=university_performance,
+            conversion_funnel=conversion_funnel,
             by_status=by_status,
-            conversion_funnel=funnel,
             avg_conversion_time_days=avg_time,
             peak_month=peak_month,
             top_program=top_program,

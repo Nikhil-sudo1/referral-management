@@ -29,9 +29,9 @@ const RefereeReferrals = () => {
       
       // Fetch all data in parallel
       const [referralsData, universitiesData, counselorsData] = await Promise.all([
-        referralsAPI.getReferrals({ page: 1, limit: 1000 }),
-        universitiesAPI.getUniversities({ page: 1, limit: 100 }),
-        usersAPI.getCounselors({ page: 1, limit: 100 })
+        referralsAPI.getReferrals({ page: 1, limit: 200 }),
+        universitiesAPI.getUniversities({ page: 1, limit: 20 }),
+        usersAPI.getCounselors({ page: 1, limit: 20 })
       ]);
 
       // Filter referrals for this referee
@@ -43,17 +43,8 @@ const RefereeReferrals = () => {
       setUniversities(universitiesData.items || []);
       setCounselors(counselorsData.items || []);
 
-      // Fetch programs for universities
-      const allPrograms: any[] = [];
-      for (const uni of universitiesData.items || []) {
-        try {
-          const uniPrograms = await universitiesAPI.getUniversityPrograms(uni.id);
-          allPrograms.push(...uniPrograms);
-        } catch (error) {
-          console.error(`Error fetching programs for ${uni.name}:`, error);
-        }
-      }
-      setPrograms(allPrograms);
+      // Programs are not needed for referrals list - removed N+1 query loop
+      setPrograms([]);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
@@ -81,7 +72,7 @@ const RefereeReferrals = () => {
       <DashboardLayout>
         <div className="text-center py-12">
           <p className="text-muted-foreground">No referrals found for this referee</p>
-          <Button onClick={() => navigate('/counselors')} className="mt-4">
+          <Button onClick={() => navigate('/referees')} className="mt-4">
             Back to Referees
           </Button>
         </div>
@@ -110,7 +101,7 @@ const RefereeReferrals = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/counselors/profile/${encodeURIComponent(email || '')}`)}
+              onClick={() => navigate(`/referees/profile/${encodeURIComponent(email || '')}`)}
               className="hover:bg-muted border-2"
             >
               <ArrowLeft className="w-4 h-4" />

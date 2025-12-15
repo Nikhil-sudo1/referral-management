@@ -1,17 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReferrerLayout } from '@/components/layout/ReferrerLayout';
-import { universities, programs } from '@/data/mockData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, UserPlus, Users, Building2, GraduationCap, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, UserPlus, Users, Building2, GraduationCap, Mail, Phone, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { universitiesAPI, referralsAPI } from '@/lib/api';
 
 const ReferrerAddReferral = () => {
   const navigate = useNavigate();
+  const [universities, setUniversities] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [formData, setFormData] = useState({
     refereeName: '',
     refereeEmail: '',
@@ -21,9 +24,43 @@ const ReferrerAddReferral = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter programs based on selected university
+  // Fetch universities on mount
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await universitiesAPI.getUniversities({ status: 'active', limit: 100 });
+        setUniversities(response.items || []);
+      } catch (error) {
+        console.error('Error fetching universities:', error);
+        toast({ title: 'Error', description: 'Failed to load universities', variant: 'destructive' });
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+    fetchUniversities();
+  }, []);
+
+  // Fetch programs when university changes
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      if (!formData.universityId) {
+        setPrograms([]);
+        return;
+      }
+      try {
+        const programsList = await universitiesAPI.getUniversityPrograms(formData.universityId);
+        setPrograms(programsList || []);
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+        setPrograms([]);
+      }
+    };
+    fetchPrograms();
+  }, [formData.universityId]);
+
+  // Filter active programs
   const availablePrograms = programs.filter(
-    (p) => p.universityId === formData.universityId && p.status === 'active'
+    (p: any) => p.status === 'active'
   );
 
   const handleInputChange = (field: string, value: string) => {
@@ -71,13 +108,21 @@ const ReferrerAddReferral = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Submit referral to backend
+      await referralsAPI.createReferral({
+        referee_name: formData.refereeName,
+        referee_email: formData.refereeEmail,
+        referee_phone: formData.refereePhone,
+        university_id: formData.universityId,
+        program_id: formData.programId,
+      });
+      
       toast({ 
         title: 'Referral Submitted!', 
         description: 'Your referral has been submitted successfully. The student will be contacted soon.' 
       });
-      setIsSubmitting(false);
+      
       // Reset form
       setFormData({
         refereeName: '',
@@ -90,7 +135,16 @@ const ReferrerAddReferral = () => {
       setTimeout(() => {
         navigate('/referrer/referrals');
       }, 1500);
-    }, 1500);
+    } catch (error) {
+      console.error('Error submitting referral:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to submit referral. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

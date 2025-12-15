@@ -60,7 +60,7 @@ export const LeaderboardCard = ({ title, entries, showRewards = true }: Leaderbo
       <CardContent className="p-4 space-y-2">
         {entries.slice(0, 5).map((entry, index) => (
           <div
-            key={entry.userId}
+            key={entry.userId || entry.user_id || index}
             className="group flex items-center gap-4 p-3 rounded-xl hover:bg-muted/50 transition-all duration-300 cursor-pointer"
             onClick={() => navigate('/leaderboard')}
             style={{ animationDelay: `${index * 50}ms` }}
@@ -78,12 +78,12 @@ export const LeaderboardCard = ({ title, entries, showRewards = true }: Leaderbo
             {/* User Info */}
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                {entry.userName}
+                {entry.userName || entry.name || 'Unknown'}
               </p>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                <span className="font-medium">{entry.totalReferrals} referrals</span>
+                <span className="font-medium">{entry.totalReferrals || 0} referrals</span>
                 <span className="w-1 h-1 rounded-full bg-border" />
-                <span className="font-medium">{entry.conversionRate}% conv.</span>
+                <span className="font-medium">{entry.conversionRate || 0}% conv.</span>
               </div>
             </div>
             
@@ -91,12 +91,12 @@ export const LeaderboardCard = ({ title, entries, showRewards = true }: Leaderbo
             <div className="text-right">
               {showRewards && (
                 <p className="font-mono font-bold text-foreground text-sm">
-                  {entry.totalRewards.toLocaleString()} pts
+                  {entry.totalRewards ? (typeof entry.totalRewards === 'number' ? entry.totalRewards.toLocaleString() : entry.totalRewards) : '0'} pts
                 </p>
               )}
               <div className="flex items-center gap-1 text-xs text-success font-medium mt-1 justify-end">
                 <TrendingUp className="w-3 h-3" />
-                <span>+{entry.growthRate}%</span>
+                <span>+{entry.growthRate || 0}%</span>
               </div>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { ReferralChart } from '@/components/dashboard/ReferralChart';
 import { RecentReferrals } from '@/components/dashboard/RecentReferrals';
 import { UniversityPieChart } from '@/components/dashboard/UniversityPieChart';
 import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline';
-import { dashboardStats, leaderboard, counselorLeaderboard, referrals } from '@/data/mockData';
+import { dashboardStats, leaderboard, referrals } from '@/data/mockData';
 import { FileText, Users, Award, Building2, TrendingUp, Clock, Plus, BarChart3, Target, CheckCircle, ArrowUpRight, Zap } from 'lucide-react';
 import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,6 @@ const Dashboard = () => {
   // State for API data
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [referrerLeaderboard, setReferrerLeaderboard] = useState<any[]>([]);
-  const [counselorLeaderboardData, setCounselorLeaderboardData] = useState<any[]>([]);
   const [recentReferrals, setRecentReferrals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,18 +41,23 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
-        // Fetch all dashboard data in parallel
-        const [analytics, referrerLB, counselorLB, referralsData] = await Promise.all([
-          analyticsAPI.getDashboardAnalytics(),
+        console.log('Fetching dashboard data...');
+        // Fetch all dashboard data in parallel - use fast endpoints
+        const [stats, referrerLB, referralsData] = await Promise.all([
+          analyticsAPI.getDashboardStats(), // Fast endpoint - just stats
           leaderboardAPI.getReferrerLeaderboard({ limit: 5 }),
-          leaderboardAPI.getCounselorLeaderboard({ limit: 5 }),
           referralsAPI.getReferrals({ page: 1, limit: 5 }),
         ]);
 
-        setDashboardData(analytics);
+        console.log('Dashboard stats received:', stats);
+        console.log('Referrer leaderboard:', referrerLB.entries?.length || 0, 'entries');
+        console.log('Recent referrals:', referralsData.items?.length || 0, 'items');
+
+        // Wrap stats in analytics response format for compatibility
+        setDashboardData({ dashboard_stats: stats });
         setReferrerLeaderboard(referrerLB.entries || []);
-        setCounselorLeaderboardData(counselorLB.entries || []);
         setRecentReferrals(referralsData.items || []);
+        console.log('Dashboard loaded successfully');
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         // Keep using mock data as fallback
@@ -182,7 +186,7 @@ const Dashboard = () => {
             <Button 
               size="lg"
               className="gradient-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all hover:-translate-y-0.5 h-auto py-4 px-6"
-              onClick={() => navigate('/counselors/add')}
+              onClick={() => navigate('/referees/add')}
             >
               <Plus className="w-5 h-5 mr-2" />
               New Referral
@@ -253,9 +257,8 @@ const Dashboard = () => {
         </div>
 
         {/* Leaderboards & Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <LeaderboardCard title="Top Referrers" entries={referrerLeaderboard.length > 0 ? referrerLeaderboard : leaderboard} />
-          <LeaderboardCard title="Top Counselors" entries={counselorLeaderboardData.length > 0 ? counselorLeaderboardData : counselorLeaderboard} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LeaderboardCard title="Top Referees" entries={referrerLeaderboard.length > 0 ? referrerLeaderboard : leaderboard} />
           <ActivityTimeline />
         </div>
 

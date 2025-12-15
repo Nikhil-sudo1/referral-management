@@ -1,17 +1,53 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { universities, programs, referrals } from '@/data/mockData';
-import { ArrowLeft, BookOpen, Plus, DollarSign, Clock, FileText, CheckCircle, TrendingUp, Edit } from 'lucide-react';
+import { ArrowLeft, BookOpen, Plus, DollarSign, Clock, FileText, CheckCircle, TrendingUp, Edit, Loader2 } from 'lucide-react';
+import { universitiesAPI, referralsAPI } from '@/lib/api';
 
 const UniversityPrograms = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [university, setUniversity] = useState<any>(null);
+  const [universityPrograms, setUniversityPrograms] = useState<any[]>([]);
+  const [referrals, setReferrals] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const university = universities.find((u) => u.id === id);
-  const universityPrograms = programs.filter((p) => p.universityId === id);
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      setIsLoading(true);
+      try {
+        // Fetch university, programs, and referrals in parallel
+        const [uniData, programsData, referralsData] = await Promise.all([
+          universitiesAPI.getUniversity(id),
+          universitiesAPI.getUniversityPrograms(id),
+          referralsAPI.getReferrals({ university_id: id, limit: 100 }).catch(() => ({ items: [] })),
+        ]);
+        setUniversity(uniData);
+        setUniversityPrograms(programsData || []);
+        setReferrals(referralsData.items || []);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading...</span>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!university) {
     return (
@@ -75,12 +111,18 @@ const UniversityPrograms = () => {
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {universityPrograms.map((program) => {
-              const programReferrals = referrals.filter((r) => r.programId === program.id);
-              const programAdmissions = programReferrals.filter((r) => r.status === 'admitted').length;
+            {universityPrograms.map((program: any) => {
+              const programReferrals = referrals.filter((r: any) => r.program_id === program.id || r.programId === program.id);
+              const programAdmissions = programReferrals.filter((r: any) => r.status === 'admitted').length;
               const programConversionRate = programReferrals.length > 0
                 ? ((programAdmissions / programReferrals.length) * 100).toFixed(1)
                 : 0;
+
+              // Get correct property names (backend uses snake_case)
+              const feeStructure = program.fee_structure || program.feeStructure || 0;
+              const rewardAmount = program.reward_amount || program.rewardAmount || 0;
+              const commissionRate = program.commission_rate || program.commissionRate || 0;
+              const rewardTier = program.reward_tier || program.rewardTier || 'bronze';
 
               return (
                 <Card key={program.id} className="hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/30 group">
@@ -119,28 +161,28 @@ const UniversityPrograms = () => {
                             <p className="text-xs text-muted-foreground">Fee Structure</p>
                           </div>
                           <p className="font-semibold text-card-foreground">
-                            ₹{program.feeStructure.toLocaleString()}
+                            ₹{Number(feeStructure).toLocaleString()}
                           </p>
                         </div>
                       </div>
                       
                       {/* Commission/Reward Card */}
                       <div className={`p-3 rounded-lg border-2 ${
-                        program.rewardTier === 'platinum' ? 'bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30' :
-                        program.rewardTier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30' :
-                        program.rewardTier === 'silver' ? 'bg-gradient-to-br from-slate-500/10 to-gray-500/10 border-slate-500/30' :
+                        rewardTier === 'platinum' ? 'bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30' :
+                        rewardTier === 'gold' ? 'bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30' :
+                        rewardTier === 'silver' ? 'bg-gradient-to-br from-slate-500/10 to-gray-500/10 border-slate-500/30' :
                         'bg-gradient-to-br from-amber-700/10 to-orange-700/10 border-amber-700/30'
                       }`}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">{program.rewardTier} Tier</p>
-                            <p className="text-2xl font-bold text-success mt-1">₹{program.rewardAmount.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Per Successful Referral ({program.commissionRate}%)</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">{rewardTier} Tier</p>
+                            <p className="text-2xl font-bold text-success mt-1">₹{Number(rewardAmount).toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">Per Successful Referral ({commissionRate}%)</p>
                           </div>
                           <div className={`text-3xl`}>
-                            {program.rewardTier === 'platinum' ? '💎' :
-                             program.rewardTier === 'gold' ? '🏆' :
-                             program.rewardTier === 'silver' ? '🥈' : '🥉'}
+                            {rewardTier === 'platinum' ? '💎' :
+                             rewardTier === 'gold' ? '🏆' :
+                             rewardTier === 'silver' ? '🥈' : '🥉'}
                           </div>
                         </div>
                       </div>
@@ -167,7 +209,12 @@ const UniversityPrograms = () => {
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => navigate(`/universities/${id}/programs/${program.id}/edit`)}
+                      >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </Button>

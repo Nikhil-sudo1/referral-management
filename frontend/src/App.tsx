@@ -19,6 +19,7 @@ import EditUniversity from "./pages/EditUniversity";
 import UniversityDetails from "./pages/UniversityDetails";
 import UniversityPrograms from "./pages/UniversityPrograms";
 import AddProgram from "./pages/AddProgram";
+import EditProgram from "./pages/EditProgram";
 import Leaderboard from "./pages/Leaderboard";
 import Rewards from "./pages/Rewards";
 import Analytics from "./pages/Analytics";
@@ -31,7 +32,17 @@ import ReferrerAddReferral from "./pages/ReferrerAddReferral";
 import RefereeRegister from "./pages/RefereeRegister";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
+      cacheTime: 10 * 60 * 1000, // Cache data for 10 minutes
+      refetchOnWindowFocus: false, // Don't refetch when user returns to tab
+      refetchOnMount: false, // Don't refetch on component mount if data exists
+      retry: 1, // Only retry failed requests once
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -49,16 +60,17 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/referrals" element={<Referrals />} />
-            <Route path="/counselors" element={<Counselors />} />
-            <Route path="/counselors/add" element={<AddReferee />} />
-            <Route path="/counselors/profile/:email" element={<RefereeProfile />} />
-            <Route path="/counselors/referrals/:email" element={<RefereeReferrals />} />
+            <Route path="/referees" element={<Counselors />} />
+            <Route path="/referees/add" element={<AddReferee />} />
+            <Route path="/referees/profile/:email" element={<RefereeProfile />} />
+            <Route path="/referees/referrals/:email" element={<RefereeReferrals />} />
             <Route path="/universities" element={<Universities />} />
             <Route path="/universities/add" element={<AddUniversity />} />
             <Route path="/universities/:id/edit" element={<EditUniversity />} />
             <Route path="/universities/:id" element={<UniversityDetails />} />
             <Route path="/universities/:id/programs" element={<UniversityPrograms />} />
             <Route path="/universities/:universityId/programs/add" element={<AddProgram />} />
+            <Route path="/universities/:universityId/programs/:programId/edit" element={<EditProgram />} />
             <Route path="/programs/add" element={<AddProgram />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/rewards" element={<Rewards />} />

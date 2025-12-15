@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { universities } from '@/data/mockData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Building2, Save } from 'lucide-react';
+import { ArrowLeft, Building2, Save, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { universitiesAPI } from '@/lib/api';
 
 const EditUniversity = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,30 +18,50 @@ const EditUniversity = () => {
     name: '',
     code: '',
     logoUrl: '',
+    website: '',
+    description: '',
+    contactEmail: '',
+    contactPhone: '',
+    address: '',
     status: 'active' as 'active' | 'inactive',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load university data
-    const university = universities.find((u) => u.id === id);
-    if (university) {
-      setFormData({
-        name: university.name,
-        code: university.code,
-        logoUrl: university.logoUrl || '',
-        status: university.status,
-      });
-      setIsLoading(false);
-    } else {
-      toast({
-        title: 'University Not Found',
-        description: 'The university you are trying to edit does not exist',
-        variant: 'destructive',
-      });
-      navigate('/universities');
-    }
+    // Load university data from API
+    const loadUniversity = async () => {
+      if (!id) {
+        navigate('/universities');
+        return;
+      }
+
+      try {
+        const university = await universitiesAPI.getUniversity(id);
+        setFormData({
+          name: university.name || '',
+          code: university.code || '',
+          logoUrl: university.logo_url || '',
+          website: university.website || '',
+          description: university.description || '',
+          contactEmail: university.contact_email || '',
+          contactPhone: university.contact_phone || '',
+          address: university.address || '',
+          status: university.status || 'active',
+        });
+        setIsLoading(false);
+      } catch (error: any) {
+        console.error('Error loading university:', error);
+        toast({
+          title: 'Error',
+          description: error.response?.data?.message || 'Failed to load university',
+          variant: 'destructive',
+        });
+        navigate('/universities');
+      }
+    };
+
+    loadUniversity();
   }, [id, navigate]);
 
   const handleInputChange = (field: string, value: string) => {
@@ -64,24 +85,11 @@ const EditUniversity = () => {
     }
 
     // Code validation - should be uppercase and alphanumeric
-    const codeRegex = /^[A-Z0-9]+$/;
+    const codeRegex = /^[A-Z0-9-]+$/;
     if (!codeRegex.test(formData.code.toUpperCase())) {
       toast({
         title: 'Validation Error',
-        description: 'University code must contain only uppercase letters and numbers',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Check for duplicate code (excluding current university)
-    const duplicateCode = universities.find(
-      (u) => u.code.toUpperCase() === formData.code.toUpperCase() && u.id !== id
-    );
-    if (duplicateCode) {
-      toast({
-        title: 'Validation Error',
-        description: 'A university with this code already exists',
+        description: 'University code must contain only uppercase letters, numbers, and hyphens',
         variant: 'destructive',
       });
       return;
@@ -101,22 +109,54 @@ const EditUniversity = () => {
       }
     }
 
+    if (formData.website && formData.website.trim() !== '') {
+      try {
+        new URL(formData.website);
+      } catch {
+        toast({
+          title: 'Validation Error',
+          description: 'Please enter a valid URL for the website',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      if (!id) {
+        throw new Error('University ID is missing');
+      }
+
+      await universitiesAPI.updateUniversity(id, {
+        name: formData.name,
+        code: formData.code.toUpperCase(),
+        logo_url: formData.logoUrl || undefined,
+        website: formData.website || undefined,
+        description: formData.description || undefined,
+        contact_email: formData.contactEmail || undefined,
+        contact_phone: formData.contactPhone || undefined,
+        address: formData.address || undefined,
+        status: formData.status,
+      });
+
       toast({
         title: 'University Updated',
         description: `${formData.name} has been successfully updated`,
       });
       
+      navigate('/universities');
+    } catch (error: any) {
+      console.error('Error updating university:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to update university',
+        variant: 'destructive',
+      });
+    } finally {
       setIsSubmitting(false);
-      
-      // Navigate back to universities page after a short delay
-      setTimeout(() => {
-        navigate('/universities');
-      }, 1500);
-    }, 1000);
+    }
   };
 
   if (isLoading) {
@@ -124,7 +164,7 @@ const EditUniversity = () => {
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading university data...</p>
           </div>
         </div>
@@ -220,9 +260,79 @@ const EditUniversity = () => {
                   onChange={(e) => handleInputChange('logoUrl', e.target.value)}
                   className="border-2"
                 />
-                <p className="text-xs text-muted-foreground">
-                  URL to the university logo image
-                </p>
+              </div>
+
+              {/* Website */}
+              <div className="space-y-2">
+                <Label htmlFor="website">
+                  Website <span className="text-muted-foreground text-xs">(Optional)</span>
+                </Label>
+                <Input
+                  id="website"
+                  type="url"
+                  placeholder="https://www.university.edu"
+                  value={formData.website}
+                  onChange={(e) => handleInputChange('website', e.target.value)}
+                  className="border-2"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  Description <span className="text-muted-foreground text-xs">(Optional)</span>
+                </Label>
+                <Textarea
+                  id="description"
+                  placeholder="Brief description of the university..."
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  className="border-2 min-h-[100px]"
+                />
+              </div>
+
+              {/* Contact Email */}
+              <div className="space-y-2">
+                <Label htmlFor="contactEmail">
+                  Contact Email <span className="text-muted-foreground text-xs">(Optional)</span>
+                </Label>
+                <Input
+                  id="contactEmail"
+                  type="email"
+                  placeholder="admissions@university.edu"
+                  value={formData.contactEmail}
+                  onChange={(e) => handleInputChange('contactEmail', e.target.value)}
+                  className="border-2"
+                />
+              </div>
+
+              {/* Contact Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="contactPhone">
+                  Contact Phone <span className="text-muted-foreground text-xs">(Optional)</span>
+                </Label>
+                <Input
+                  id="contactPhone"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  value={formData.contactPhone}
+                  onChange={(e) => handleInputChange('contactPhone', e.target.value)}
+                  className="border-2"
+                />
+              </div>
+
+              {/* Address */}
+              <div className="space-y-2">
+                <Label htmlFor="address">
+                  Address <span className="text-muted-foreground text-xs">(Optional)</span>
+                </Label>
+                <Textarea
+                  id="address"
+                  placeholder="University address..."
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  className="border-2"
+                />
               </div>
 
               {/* Status */}

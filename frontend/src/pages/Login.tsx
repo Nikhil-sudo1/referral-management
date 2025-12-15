@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Award, Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap, Sparkles } from 'lucide-react';
+import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -14,7 +14,6 @@ const Login = () => {
   const { login, signup, isLoading: authLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [userRole, setUserRole] = useState<'admin' | 'referrer'>('admin');
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [signupData, setSignupData] = useState({
@@ -23,22 +22,48 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Login attempt started...');
     if (!loginData.email || !loginData.password) {
       toast({ title: 'Validation Error', description: 'Please fill in all fields', variant: 'destructive' });
       return;
     }
     setIsLoading(true);
     try {
+      console.log('Calling login API...');
       const success = await login(loginData.email, loginData.password);
+      console.log('Login API response:', success);
       if (success) {
-        // Navigate based on role - check user role from context or use selected role
-        // The actual role will come from the API response
-        if (userRole === 'referrer') {
-          navigate('/referrer');
+        // Wait a moment for the user state to update
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Get the updated user from context after login
+        // The login function in AuthContext already sets the user with their role from backend
+        const storedUser = localStorage.getItem('user');
+        console.log('Stored user:', storedUser);
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          const userRole = userData.role;
+          console.log('User role from backend:', userRole);
+          
+          // Navigate based on actual role from backend
+          if (userRole === 'referrer') {
+            console.log('Navigating to /referrer/referrals');
+            navigate('/referrer/referrals');
+          } else {
+            // super_admin, admin, or any other role goes to dashboard
+            console.log('Navigating to /dashboard');
+            navigate('/dashboard');
+          }
         } else {
+          // Fallback to dashboard
+          console.log('No stored user, fallback to dashboard');
           navigate('/dashboard');
         }
+      } else {
+        console.log('Login failed - success was false');
       }
+    } catch (error) {
+      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -165,34 +190,43 @@ const Login = () => {
                 {/* Login Tab */}
                 <TabsContent value="login">
                   <form onSubmit={handleLogin} className="space-y-4">
-                    {/* Role Selector */}
+                    {/* Quick Login Buttons for Testing */}
                     <div className="space-y-2">
-                      <Label className="text-white/70">Login As</Label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
+                      <Label className="text-white/70">Quick Login (Testing Only)</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button
                           type="button"
-                          onClick={() => setUserRole('admin')}
-                          className={`p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                            userRole === 'admin' 
-                              ? 'border-primary bg-primary/10 text-primary' 
-                              : 'border-white/10 text-white/50 hover:border-white/20'
-                          }`}
+                          variant="outline"
+                          onClick={() => {
+                            setLoginData({ email: 'admin@teamlease.com', password: 'Password123!' });
+                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
+                          }}
+                          className="text-xs py-2 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
                         >
-                          <Building2 className="w-4 h-4" />
-                          <span className="font-semibold">Admin</span>
-                        </button>
-                        <button
+                          Super Admin
+                        </Button>
+                        <Button
                           type="button"
-                          onClick={() => setUserRole('referrer')}
-                          className={`p-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                            userRole === 'referrer' 
-                              ? 'border-primary bg-primary/10 text-primary' 
-                              : 'border-white/10 text-white/50 hover:border-white/20'
-                          }`}
+                          variant="outline"
+                          onClick={() => {
+                            setLoginData({ email: 'rajesh.kumar@teamlease.com', password: 'Password123!' });
+                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
+                          }}
+                          className="text-xs py-2 bg-warning/10 border-warning/30 text-warning hover:bg-warning/20"
                         >
-                          <User className="w-4 h-4" />
-                          <span className="font-semibold">Referrer</span>
-                        </button>
+                          Manager
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setLoginData({ email: 'arjun.mehta@gmail.com', password: 'Password123!' });
+                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
+                          }}
+                          className="text-xs py-2 bg-success/10 border-success/30 text-success hover:bg-success/20"
+                        >
+                          Referrer
+                        </Button>
                       </div>
                     </div>
 

@@ -30,8 +30,13 @@ const Rewards = () => {
   const fetchRewards = async () => {
     setIsLoading(true);
     try {
-      const data = await rewardsAPI.getRewards({ page: 1, limit: 100 });
-      setRewardsList(data.items);
+      console.log('Fetching rewards data...');
+      const data = await rewardsAPI.getRewards({ page: 1, limit: 20 });
+      console.log('Rewards data received:', data);
+      console.log('Total rewards:', data.total);
+      console.log('Rewards items:', data.items?.length || 0);
+      setRewardsList(data.items || []);
+      console.log('Rewards loaded successfully');
     } catch (error) {
       console.error('Error fetching rewards:', error);
       toast({
@@ -39,6 +44,7 @@ const Rewards = () => {
         description: 'Failed to load rewards data',
         variant: 'destructive',
       });
+      setRewardsList([]);
     } finally {
       setIsLoading(false);
     }
