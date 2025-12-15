@@ -18,6 +18,7 @@ class DashboardStats(BaseModel):
     monthly_referrals: int
     monthly_admissions: int
     monthly_rewards: float
+    active_universities: int = 0
     
     class Config:
         json_encoders = {

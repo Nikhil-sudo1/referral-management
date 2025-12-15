@@ -57,6 +57,11 @@ class AnalyticsService:
         total_referrers = self.db.query(User).filter(User.role == "referrer").count()
         total_counselors = self.db.query(User).filter(User.role == "counselor").count()
         
+        # Count active universities
+        active_universities = self.db.query(University).filter(
+            University.status == "active"
+        ).count()
+        
         # Monthly stats (current month)
         month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
@@ -86,6 +91,7 @@ class AnalyticsService:
             monthly_referrals=monthly_referrals,
             monthly_admissions=monthly_admissions,
             monthly_rewards=monthly_rewards,
+            active_universities=active_universities,
         )
     
     def get_referral_analytics(
