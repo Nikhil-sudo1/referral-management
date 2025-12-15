@@ -66,6 +66,17 @@ const Analytics = () => {
 
   const { dashboard_stats, time_series, university_performance, conversion_funnel } = analyticsData;
 
+  // Ensure all dashboard_stats values are valid numbers with defaults
+  const stats = {
+    total_referrals: Number(dashboard_stats?.total_referrals) || 0,
+    total_admissions: Number(dashboard_stats?.total_admissions) || 0,
+    conversion_rate: Number(dashboard_stats?.conversion_rate) || 0,
+    total_rewards: Number(dashboard_stats?.total_rewards) || 0,
+    monthly_referrals: Number(dashboard_stats?.monthly_referrals) || 0,
+    monthly_admissions: Number(dashboard_stats?.monthly_admissions) || 0,
+    monthly_rewards: Number(dashboard_stats?.monthly_rewards) || 0,
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -83,12 +94,12 @@ const Analytics = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Total Referrals</p>
                   <p className="text-3xl font-bold text-card-foreground">
-                    <AnimatedCounter value={dashboard_stats.total_referrals} />
+                    <AnimatedCounter value={stats.total_referrals} />
                   </p>
                   <div className="flex items-center gap-1 mt-2">
                     <TrendingUp className="w-4 h-4 text-success" />
                     <span className="text-xs text-success font-medium">
-                      {dashboard_stats.monthly_referrals} this month
+                      {stats.monthly_referrals} this month
                     </span>
                   </div>
                 </div>
@@ -105,12 +116,12 @@ const Analytics = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Total Admissions</p>
                   <p className="text-3xl font-bold text-card-foreground">
-                    <AnimatedCounter value={dashboard_stats.total_admissions} />
+                    <AnimatedCounter value={stats.total_admissions} />
                   </p>
                   <div className="flex items-center gap-1 mt-2">
                     <TrendingUp className="w-4 h-4 text-success" />
                     <span className="text-xs text-success font-medium">
-                      {dashboard_stats.monthly_admissions} this month
+                      {stats.monthly_admissions} this month
                     </span>
                   </div>
                 </div>
@@ -127,11 +138,11 @@ const Analytics = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Conversion Rate</p>
                   <p className="text-3xl font-bold text-card-foreground">
-                    {dashboard_stats.conversion_rate.toFixed(1)}%
+                    {stats.conversion_rate.toFixed(1)}%
                   </p>
                   <div className="flex items-center gap-1 mt-2">
                     <Badge variant="outline" className="text-xs">
-                      {dashboard_stats.conversion_rate >= 50 ? 'Excellent' : dashboard_stats.conversion_rate >= 30 ? 'Good' : 'Needs Improvement'}
+                      {stats.conversion_rate >= 50 ? 'Excellent' : stats.conversion_rate >= 30 ? 'Good' : 'Needs Improvement'}
                     </Badge>
                   </div>
                 </div>
@@ -148,12 +159,12 @@ const Analytics = () => {
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Total Rewards</p>
                   <p className="text-3xl font-bold text-card-foreground">
-                    ₹<AnimatedCounter value={dashboard_stats.total_rewards} />
+                    ₹<AnimatedCounter value={stats.total_rewards} />
                   </p>
                   <div className="flex items-center gap-1 mt-2">
                     <TrendingUp className="w-4 h-4 text-warning" />
                     <span className="text-xs text-warning font-medium">
-                      ₹{dashboard_stats.monthly_rewards} this month
+                      ₹{stats.monthly_rewards.toLocaleString()} this month
                     </span>
                   </div>
                 </div>

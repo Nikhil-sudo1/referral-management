@@ -194,3 +194,4 @@ The frontend is now ready for testing. All routes should work correctly, and aut
 4. Test login functionality
 5. Check browser console for any errors
 
+i looged 

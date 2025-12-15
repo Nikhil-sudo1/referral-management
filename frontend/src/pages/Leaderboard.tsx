@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, TrendingUp, Medal, Crown, Star, Loader2 } from 'lucide-react';
+import { Trophy, TrendingUp, Medal, Crown, Star, Loader2, Sparkles, Award, Flame } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { leaderboardAPI, type LeaderboardEntry } from '@/lib/api';
@@ -18,16 +18,8 @@ const Leaderboard = () => {
   const fetchLeaderboards = async () => {
     setIsLoading(true);
     try {
-      console.log('Fetching referrer leaderboard data...');
       const referrerData = await leaderboardAPI.getReferrerLeaderboard({ limit: 50 });
-
-      console.log('Referrer leaderboard data received:', referrerData);
-      console.log('Referrer entries count:', referrerData.entries?.length || 0);
-
       setReferrerLeaderboard(referrerData.entries || []);
-
-      console.log('Referrer leaderboard loaded successfully');
-      console.log('Referrers:', referrerData.entries?.length || 0, 'entries');
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
       toast({
@@ -35,29 +27,120 @@ const Leaderboard = () => {
         description: 'Failed to load leaderboard data',
         variant: 'destructive',
       });
-      // Set empty array on error to show empty state
       setReferrerLeaderboard([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown className="w-6 h-6 text-warning" />;
-    if (rank === 2) return <Medal className="w-6 h-6 text-muted-foreground" />;
-    if (rank === 3) return <Medal className="w-6 h-6 text-warning" />;
+  const getRankIcon = (rank: number, size: 'sm' | 'lg' = 'sm') => {
+    const sizeClass = size === 'lg' ? 'w-10 h-10' : 'w-6 h-6';
+    if (rank === 1) return <Crown className={cn(sizeClass, 'text-yellow-500 drop-shadow-lg')} />;
+    if (rank === 2) return <Medal className={cn(sizeClass, 'text-slate-400')} />;
+    if (rank === 3) return <Medal className={cn(sizeClass, 'text-amber-600')} />;
     return <span className="text-lg font-bold text-muted-foreground">#{rank}</span>;
   };
 
-  const getRankBg = (rank: number) => {
-    if (rank === 1) return 'bg-gradient-to-br from-warning/10 to-amber-100/50 border-warning/30';
-    if (rank === 2) return 'bg-gradient-to-br from-muted/50 to-slate-100/50 border-border';
-    if (rank === 3) return 'bg-gradient-to-br from-warning/10 to-orange-100/50 border-warning/20';
-    return 'bg-card border-border';
+  const PodiumCard = ({ entry, rank, position }: { entry: LeaderboardEntry; rank: number; position: 'left' | 'center' | 'right' }) => {
+    const isFirst = rank === 1;
+    const isSecond = rank === 2;
+    const isThird = rank === 3;
+
+    const bgGradient = isFirst 
+      ? 'bg-gradient-to-br from-yellow-50 via-amber-50 to-orange-50 dark:from-yellow-950/30 dark:via-amber-950/30 dark:to-orange-950/30'
+      : isSecond 
+      ? 'bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-100 dark:from-slate-950/30 dark:via-gray-950/30 dark:to-zinc-950/30'
+      : 'bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-orange-950/30 dark:via-amber-950/30 dark:to-yellow-950/30';
+
+    const borderColor = isFirst 
+      ? 'border-yellow-400/50 shadow-yellow-200/50' 
+      : isSecond 
+      ? 'border-slate-300/50 shadow-slate-200/50' 
+      : 'border-amber-400/50 shadow-amber-200/50';
+
+    const heightClass = isFirst ? 'min-h-[320px]' : isSecond ? 'min-h-[280px]' : 'min-h-[260px]';
+    const orderClass = position === 'left' ? 'order-1' : position === 'center' ? 'order-2 md:-mt-8' : 'order-3';
+
+    return (
+      <div className={cn('flex-1', orderClass)}>
+        <Card className={cn(
+          'border-2 transition-all duration-300 hover:scale-105 hover:shadow-2xl relative overflow-hidden',
+          bgGradient,
+          borderColor,
+          heightClass,
+          isFirst && 'ring-2 ring-yellow-400/30'
+        )}>
+          {/* Decorative elements */}
+          {isFirst && (
+            <>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 via-amber-500 to-orange-400" />
+              <Sparkles className="absolute top-4 right-4 w-5 h-5 text-yellow-400 animate-pulse" />
+              <Sparkles className="absolute top-8 left-4 w-4 h-4 text-amber-400 animate-pulse delay-300" />
+            </>
+          )}
+          
+          <CardContent className="p-6 text-center flex flex-col items-center justify-center h-full">
+            {/* Rank Badge */}
+            <div className={cn(
+              'w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-lg',
+              isFirst ? 'bg-gradient-to-br from-yellow-400 to-amber-500' : 
+              isSecond ? 'bg-gradient-to-br from-slate-300 to-gray-400' : 
+              'bg-gradient-to-br from-amber-500 to-orange-600'
+            )}>
+              {getRankIcon(rank, 'lg')}
+            </div>
+
+            {/* Rank Number */}
+            <div className={cn(
+              'text-4xl font-black mb-2',
+              isFirst ? 'text-yellow-600' : isSecond ? 'text-slate-500' : 'text-amber-600'
+            )}>
+              #{rank}
+            </div>
+
+            {/* Name */}
+            <h3 className="text-xl font-bold text-card-foreground mb-1 line-clamp-1">
+              {entry?.user_name || 'Unknown'}
+            </h3>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-6 mt-4 w-full">
+              <div className="text-center">
+                <p className={cn(
+                  'text-3xl font-bold',
+                  isFirst ? 'text-yellow-600' : 'text-primary'
+                )}>
+                  {entry?.total_referrals || 0}
+                </p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Referrals</p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-bold text-emerald-500">
+                  {entry?.total_admissions || 0}
+                </p>
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Success</p>
+              </div>
+            </div>
+
+            {/* Conversion Rate */}
+            <div className={cn(
+              'mt-4 px-4 py-2 rounded-full',
+              isFirst ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-muted/50'
+            )}>
+              <div className="flex items-center gap-2">
+                <Flame className={cn('w-4 h-4', isFirst ? 'text-orange-500' : 'text-emerald-500')} />
+                <span className="text-sm font-bold text-card-foreground">
+                  {(entry?.conversion_rate || 0).toFixed(1)}% conversion
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   };
 
   const LeaderboardList = ({ entries }: { entries: LeaderboardEntry[] }) => {
-    // Handle empty state
     if (entries.length === 0) {
       return (
         <div className="text-center py-12">
@@ -68,128 +151,104 @@ const Leaderboard = () => {
       );
     }
 
-    // Get top 3 for podium - arrange as: 2nd (left), 1st (center, elevated), 3rd (right)
-    const topThree = entries.length >= 3 
-      ? [entries[1], entries[0], entries[2]] // Podium order: 2nd, 1st, 3rd
-      : entries.slice(0, 3);
+    const top3 = entries.slice(0, 3);
+    const rest = entries.slice(3);
 
     return (
-      <div className="space-y-4">
-        {/* Top 3 Podium */}
+      <div className="space-y-8">
+        {/* Podium - Top 3 */}
         {entries.length >= 3 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 items-end">
-            {topThree.map((entry, idx) => {
-              const rank = entry.rank; // Use actual rank from backend
-              const isFirst = rank === 1;
-              return (
-                <Card
-                  key={entry?.user_id || idx}
-                  className={cn(
-                    'border-2 transition-all hover:shadow-lg',
-                    getRankBg(rank),
-                    isFirst && 'md:scale-110 md:-translate-y-4' // Make #1 bigger and elevated
-                  )}
-                >
-                  <CardContent className="p-6 text-center">
-                    <div className="mb-4 flex justify-center">{getRankIcon(rank)}</div>
-                    <h3 className="text-xl font-bold text-card-foreground mb-1">
-                      {entry?.user_name || 'Unknown'}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {entry?.user_email || ''}
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 text-center">
-                      <div>
-                        <p className="text-2xl font-bold text-primary">
-                          {entry?.total_referrals || 0}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Referrals</p>
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-success">
-                          {entry?.total_admissions || 0}
-                        </p>
-                        <p className="text-xs text-muted-foreground">Success</p>
-                      </div>
-                    </div>
-                    {entry?.conversion_rate !== undefined && (
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <div className="flex items-center justify-center gap-2">
-                          <TrendingUp className="w-4 h-4 text-success" />
-                          <span className="text-sm font-semibold text-card-foreground">
-                            {entry.conversion_rate.toFixed(1)}% conversion
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="flex flex-col md:flex-row gap-4 items-end justify-center px-4">
+            {/* 2nd Place */}
+            <PodiumCard entry={top3[1]} rank={2} position="left" />
+            {/* 1st Place */}
+            <PodiumCard entry={top3[0]} rank={1} position="center" />
+            {/* 3rd Place */}
+            <PodiumCard entry={top3[2]} rank={3} position="right" />
           </div>
         )}
 
-        {/* Rest of the list */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-primary" />
-              Full Rankings
+        {/* Full Rankings Table */}
+        <Card className="border-2 shadow-xl">
+          <CardHeader className="bg-gradient-to-r from-primary/5 via-transparent to-primary/5 border-b">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Award className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <span className="text-xl font-bold">Full Rankings</span>
+                <p className="text-sm font-normal text-muted-foreground mt-0.5">{entries.length} performers</p>
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {entries.map((entry) => (
-                <div
-                  key={entry.user_id}
-                  className={cn(
-                    'flex items-center justify-between p-4 rounded-lg border-2 transition-all hover:shadow-md',
-                    getRankBg(entry.rank)
-                  )}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 flex justify-center">
-                      {getRankIcon(entry.rank)}
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {entries.map((entry, idx) => {
+                const isTop3 = entry.rank <= 3;
+                return (
+                  <div
+                    key={entry.user_id}
+                    className={cn(
+                      'flex items-center justify-between p-4 transition-all hover:bg-muted/50',
+                      isTop3 && 'bg-gradient-to-r from-primary/5 via-transparent to-transparent'
+                    )}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* Rank */}
+                      <div className={cn(
+                        'w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg',
+                        entry.rank === 1 ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white shadow-lg' :
+                        entry.rank === 2 ? 'bg-gradient-to-br from-slate-300 to-gray-400 text-white shadow-md' :
+                        entry.rank === 3 ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-md' :
+                        'bg-muted text-muted-foreground'
+                      )}>
+                        {isTop3 ? getRankIcon(entry.rank) : `#${entry.rank}`}
+                      </div>
+                      
+                      {/* User Info */}
+                      <div>
+                        <h4 className="font-semibold text-card-foreground flex items-center gap-2">
+                          {entry.user_name}
+                          {entry.rank === 1 && <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">{entry.user_email}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-semibold text-card-foreground">
-                        {entry.user_name}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {entry.user_email}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Referrals</p>
-                      <p className="text-lg font-bold text-card-foreground">
-                        {entry.total_referrals}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Success</p>
-                      <p className="text-lg font-bold text-success">
-                        {entry.total_admissions}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Rate</p>
-                      <Badge variant="outline" className="bg-primary/10 text-primary">
-                        {entry.conversion_rate?.toFixed(1) || 0}%
-                      </Badge>
-                    </div>
-                    {entry.total_rewards !== undefined && (
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Rewards</p>
-                        <p className="text-lg font-bold text-warning">
-                          ₹{entry.total_rewards.toLocaleString()}
+
+                    {/* Stats */}
+                    <div className="flex items-center gap-8">
+                      <div className="text-center min-w-[70px]">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Referrals</p>
+                        <p className="text-xl font-bold text-card-foreground">{entry.total_referrals}</p>
+                      </div>
+                      <div className="text-center min-w-[70px]">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Success</p>
+                        <p className="text-xl font-bold text-emerald-500">{entry.total_admissions}</p>
+                      </div>
+                      <div className="text-center min-w-[80px]">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Rate</p>
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            'font-bold',
+                            (entry.conversion_rate || 0) >= 50 ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
+                            (entry.conversion_rate || 0) >= 30 ? 'bg-blue-100 text-blue-700 border-blue-300' :
+                            'bg-orange-100 text-orange-700 border-orange-300'
+                          )}
+                        >
+                          {(entry.conversion_rate || 0).toFixed(1)}%
+                        </Badge>
+                      </div>
+                      <div className="text-center min-w-[100px]">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Rewards</p>
+                        <p className="text-xl font-bold text-amber-500">
+                          ₹{(entry.total_rewards || 0).toLocaleString()}
                         </p>
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -201,7 +260,10 @@ const Leaderboard = () => {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading leaderboard...</p>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -209,26 +271,70 @@ const Leaderboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shadow-lg">
-            <Trophy className="w-6 h-6 text-primary-foreground" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+            <Trophy className="w-7 h-7 text-white" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Leaderboard</h1>
-            <p className="text-muted-foreground mt-1">Top performers based on successful referrals</p>
+            <p className="text-muted-foreground mt-1">Top performers based on conversion rate</p>
           </div>
         </div>
 
-        {/* Loading State */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <LeaderboardList entries={referrerLeaderboard} />
-        )}
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-950/20 dark:to-amber-950/20 border-yellow-200/50">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-yellow-400/20 flex items-center justify-center">
+                <Crown className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Top Performer</p>
+                <p className="text-lg font-bold text-card-foreground">{referrerLeaderboard[0]?.user_name || '-'}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Highest Conversion</p>
+                <p className="text-lg font-bold text-card-foreground">{(referrerLeaderboard[0]?.conversion_rate || 0).toFixed(1)}%</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <Award className="w-6 h-6 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Performers</p>
+                <p className="text-lg font-bold text-card-foreground">{referrerLeaderboard.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Flame className="w-6 h-6 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Referrals</p>
+                <p className="text-lg font-bold text-card-foreground">
+                  {referrerLeaderboard.reduce((sum, e) => sum + (e.total_referrals || 0), 0)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Leaderboard */}
+        <LeaderboardList entries={referrerLeaderboard} />
       </div>
     </DashboardLayout>
   );

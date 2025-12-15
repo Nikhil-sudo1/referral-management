@@ -50,14 +50,15 @@ const Rewards = () => {
     }
   };
 
-  // Calculate stats
+  // Calculate stats - ensure amounts are numbers
   const pendingRewards = rewardsList.filter((r) => r.status === 'pending');
-  const totalPending = pendingRewards.reduce((sum, r) => sum + r.amount, 0);
+  const totalPending = pendingRewards.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
   const totalDisbursed = rewardsList
     .filter((r) => r.status === 'disbursed')
-    .reduce((sum, r) => sum + r.amount, 0);
+    .reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const totalAmount = rewardsList.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
   const avgReward = rewardsList.length > 0 
-    ? Math.round(rewardsList.reduce((sum, r) => sum + r.amount, 0) / rewardsList.length)
+    ? Math.round(totalAmount / rewardsList.length)
     : 0;
 
   const handleApprove = async (rewardId: string) => {
@@ -234,10 +235,10 @@ const Rewards = () => {
                           <TableCell>
                             <div>
                               <p className="font-medium text-card-foreground">
-                                {reward.user?.name || 'Unknown'}
+                                {reward.user_name || reward.user?.name || 'Unknown'}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {reward.user?.email || ''}
+                                {reward.referral_code || ''}
                               </p>
                             </div>
                           </TableCell>
@@ -247,7 +248,7 @@ const Rewards = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="font-semibold text-card-foreground">
-                            ₹{reward.amount.toLocaleString()}
+                            ₹{Number(reward.amount || 0).toLocaleString()}
                           </TableCell>
                           <TableCell>
                             <Badge

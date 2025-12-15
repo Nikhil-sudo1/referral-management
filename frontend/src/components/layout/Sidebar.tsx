@@ -21,7 +21,7 @@ import { NotificationBell } from './NotificationBell';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Define menu items with role access
-// Roles: super_admin (all access), manager (manage referees), referrer (only own referrals)
+// Roles: super_admin (all access), manager (day-to-day operations), referrer (only own referrals)
 const menuItems = [
   { 
     label: 'Dashboard', 
@@ -33,37 +33,37 @@ const menuItems = [
     label: 'Referrals', 
     icon: FileText, 
     path: '/referrals',
-    roles: ['super_admin'] // Only super admin can see all referrals
+    roles: ['super_admin', 'manager'] // Manager can track and manage referrals
   },
   { 
     label: 'Referees', 
     icon: Users, 
     path: '/referees',
-    roles: ['super_admin', 'manager'] // Super admin and manager can manage referees
+    roles: ['super_admin', 'manager'] // Manager can manage referees
   },
   { 
     label: 'Universities', 
     icon: Building2, 
     path: '/universities',
-    roles: ['super_admin'] // Only super admin can manage universities
+    roles: ['super_admin'] // Only super admin can configure universities
   },
   { 
     label: 'Leaderboard', 
     icon: Trophy, 
     path: '/leaderboard',
-    roles: ['super_admin'] // Only super admin can see leaderboard
+    roles: ['super_admin', 'manager'] // Manager can view performance rankings
   },
   { 
     label: 'Rewards', 
     icon: Award, 
     path: '/rewards',
-    roles: ['super_admin'] // Only super admin can manage rewards
+    roles: ['super_admin', 'manager'] // Manager can approve rewards
   },
   { 
     label: 'Analytics', 
     icon: TrendingUp, 
     path: '/analytics',
-    roles: ['super_admin'] // Only super admin can see analytics
+    roles: ['super_admin', 'manager'] // Manager can view analytics
   },
   { 
     label: 'My Referrals', 
