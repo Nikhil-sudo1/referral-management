@@ -7,7 +7,7 @@ from uuid import UUID
 from datetime import datetime, timedelta
 from decimal import Decimal
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, Integer, case
 from app.models.referral import Referral
 from app.models.university import University
 from app.models.program import Program
@@ -22,6 +22,7 @@ from app.schemas.analytics import (
     MyAnalyticsResponse,
 )
 from app.core.logging import logger
+from app.core.cache import get_cached, set_cached
 
 
 class AnalyticsService:
@@ -33,46 +34,58 @@ class AnalyticsService:
     def get_dashboard_stats(self) -> DashboardStats:
         """
         Get main dashboard statistics
+        CACHED: Results cached for 30 seconds to reduce load on remote database
         """
-        total_referrals = self.db.query(Referral).count()
+        # Check cache first - critical for remote database performance
+        cache_key = "dashboard_stats"
+        cached_result = get_cached(cache_key)
+        if cached_result is not None:
+            logger.info("Dashboard stats: cache hit")
+            return cached_result
         
-        pending_referrals = self.db.query(Referral).filter(
+        logger.info("Dashboard stats: cache miss, fetching from database")
+        month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        # Simple queries - optimized for remote database with high latency
+        # Each query is simple to minimize database processing time
+        total_referrals = self.db.query(func.count(Referral.id)).scalar() or 0
+        
+        pending_referrals = self.db.query(func.count(Referral.id)).filter(
             Referral.status.in_(["submitted", "assigned", "contacted"])
-        ).count()
+        ).scalar() or 0
         
-        total_admissions = self.db.query(Referral).filter(
+        total_admissions = self.db.query(func.count(Referral.id)).filter(
             Referral.status == "admitted"
-        ).count()
+        ).scalar() or 0
         
         conversion_rate = 0.0
         if total_referrals > 0:
             conversion_rate = round((total_admissions / total_referrals) * 100, 1)
         
+        # Reward stats
         total_rewards_raw = self.db.query(func.sum(Reward.amount)).filter(
             Reward.status == "disbursed"
         ).scalar()
         total_rewards = float(total_rewards_raw) if total_rewards_raw else 0.0
         
-        # Count users by role
-        total_referrers = self.db.query(User).filter(User.role == "referrer").count()
-        total_counselors = self.db.query(User).filter(User.role == "counselor").count()
+        # User counts  
+        total_referrers = self.db.query(func.count(User.id)).filter(User.role == "referrer").scalar() or 0
+        total_counselors = self.db.query(func.count(User.id)).filter(User.role == "counselor").scalar() or 0
         
-        # Count active universities
-        active_universities = self.db.query(University).filter(
+        # Active universities
+        active_universities = self.db.query(func.count(University.id)).filter(
             University.status == "active"
-        ).count()
+        ).scalar() or 0
         
-        # Monthly stats (current month)
-        month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
-        monthly_referrals = self.db.query(Referral).filter(
+        # Monthly stats
+        monthly_referrals = self.db.query(func.count(Referral.id)).filter(
             Referral.created_at >= month_start
-        ).count()
+        ).scalar() or 0
         
-        monthly_admissions = self.db.query(Referral).filter(
+        monthly_admissions = self.db.query(func.count(Referral.id)).filter(
             Referral.status == "admitted",
             Referral.created_at >= month_start
-        ).count()
+        ).scalar() or 0
         
         monthly_rewards_raw = self.db.query(func.sum(Reward.amount)).filter(
             Reward.status == "disbursed",
@@ -80,7 +93,7 @@ class AnalyticsService:
         ).scalar()
         monthly_rewards = float(monthly_rewards_raw) if monthly_rewards_raw else 0.0
         
-        return DashboardStats(
+        result = DashboardStats(
             total_referrals=total_referrals,
             total_admissions=total_admissions,
             total_referrers=total_referrers,
@@ -93,6 +106,11 @@ class AnalyticsService:
             monthly_rewards=monthly_rewards,
             active_universities=active_universities,
         )
+        
+        # Cache the result for 30 seconds - critical for performance
+        set_cached(cache_key, result, ttl=30)
+        logger.info("Dashboard stats: cached for 30 seconds")
+        return result
     
     def get_referral_analytics(
         self,
@@ -118,24 +136,22 @@ class AnalyticsService:
         # By university
         university_performance = self._get_university_performance()
         
-        # By status
-        by_status = {}
-        for status in ["submitted", "assigned", "contacted", "admitted", "rejected"]:
-            count = self.db.query(Referral).filter(Referral.status == status).count()
-            by_status[status] = count
+        # By status - OPTIMIZED: single query with GROUP BY
+        by_status = {status: 0 for status in ["submitted", "assigned", "contacted", "admitted", "rejected"]}
+        status_results = self.db.query(
+            Referral.status,
+            func.count(Referral.id)
+        ).group_by(Referral.status).all()
+        for status, count in status_results:
+            if status in by_status:
+                by_status[status] = count
         
-        # Conversion funnel - convert to list of dicts
-        total = self.db.query(Referral).count()
+        # Conversion funnel - use pre-computed by_status
+        total = sum(by_status.values())
         submitted_count = total
-        assigned_count = self.db.query(Referral).filter(
-            Referral.status.in_(["assigned", "contacted", "admitted", "rejected"])
-        ).count()
-        contacted_count = self.db.query(Referral).filter(
-            Referral.status.in_(["contacted", "admitted", "rejected"])
-        ).count()
-        admitted_count = self.db.query(Referral).filter(
-            Referral.status == "admitted"
-        ).count()
+        assigned_count = by_status["assigned"] + by_status["contacted"] + by_status["admitted"] + by_status["rejected"]
+        contacted_count = by_status["contacted"] + by_status["admitted"] + by_status["rejected"]
+        admitted_count = by_status["admitted"]
         
         conversion_funnel = [
             {
@@ -348,25 +364,28 @@ class AnalyticsService:
         return data
     
     def _get_university_performance(self) -> List[UniversityPerformance]:
-        """Get performance data by university"""
-        universities = self.db.query(University).all()
-        data = []
+        """Get performance data by university - OPTIMIZED: single query with GROUP BY"""
+        # OPTIMIZATION: Single query using JOIN and GROUP BY instead of N*2 queries
+        results = self.db.query(
+            University.id,
+            University.name,
+            func.count(Referral.id).label('total_referrals'),
+            func.sum(func.cast(Referral.status == "admitted", Integer)).label('admissions'),
+        ).outerjoin(
+            Referral, Referral.university_id == University.id
+        ).group_by(
+            University.id, University.name
+        ).all()
         
-        for uni in universities:
-            total = self.db.query(Referral).filter(
-                Referral.university_id == uni.id
-            ).count()
-            
-            admissions = self.db.query(Referral).filter(
-                Referral.university_id == uni.id,
-                Referral.status == "admitted"
-            ).count()
-            
+        data = []
+        for uni_id, uni_name, total, admissions in results:
+            total = total or 0
+            admissions = admissions or 0
             rate = round((admissions / total) * 100, 1) if total > 0 else 0.0
             
             data.append(UniversityPerformance(
-                university_id=str(uni.id),
-                university_name=uni.name,
+                university_id=str(uni_id),
+                university_name=uni_name,
                 total_referrals=total,
                 total_admissions=admissions,
                 conversion_rate=rate,

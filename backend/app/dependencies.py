@@ -10,9 +10,13 @@ from app.database import get_db
 from app.models.user import User
 from app.core.security import decode_token
 from app.core.exceptions import UnauthorizedException, ForbiddenException
+from app.core.cache import get_cached, set_cached
 
 # Security scheme
 security = HTTPBearer(auto_error=False)
+
+# User cache TTL (5 minutes) - users rarely change
+USER_CACHE_TTL = 300
 
 
 async def get_current_user(
@@ -21,6 +25,7 @@ async def get_current_user(
 ) -> User:
     """
     Get current authenticated user from JWT token
+    OPTIMIZED: Caches user data to avoid database query on every request
     """
     if not credentials:
         raise HTTPException(
@@ -46,6 +51,13 @@ async def get_current_user(
             detail="Invalid token payload",
         )
     
+    # OPTIMIZATION: Check cache first to avoid database query
+    cache_key = f"user:{user_id}"
+    cached_user = get_cached(cache_key)
+    if cached_user is not None:
+        return cached_user
+    
+    # Cache miss - query database
     user = db.query(User).filter(User.id == user_id).first()
     
     if not user:
@@ -59,6 +71,9 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account is deactivated",
         )
+    
+    # Cache the user for subsequent requests
+    set_cached(cache_key, user, ttl=USER_CACHE_TTL)
     
     return user
 

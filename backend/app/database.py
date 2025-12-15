@@ -8,14 +8,18 @@ from sqlalchemy.pool import QueuePool
 from app.config import settings
 
 # Create database engine with connection pooling
+# OPTIMIZATION: Disabled SQL echo and pool_pre_ping for remote database performance
 engine = create_engine(
     settings.DATABASE_URL,
     poolclass=QueuePool,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    echo=settings.DEBUG,
+    pool_size=20,          # Increased pool size
+    max_overflow=30,       # Increased overflow
+    pool_pre_ping=False,   # DISABLED - causes latency on remote databases
+    pool_recycle=300,      # Recycle connections every 5 min
+    echo=False,            # DISABLED SQL echo for performance
+    connect_args={
+        "connect_timeout": 10,  # Connection timeout
+    }
 )
 
 # Session factory

@@ -56,6 +56,7 @@ class ReferralService:
     ) -> ReferralListResponse:
         """
         Get paginated list of referrals with filters
+        OPTIMIZED: Uses bulk loading instead of N+1 queries
         """
         query = self.db.query(Referral)
         
@@ -94,7 +95,7 @@ class ReferralService:
         
         total = query.count()
         
-        # Get stats
+        # Get stats using optimized single query
         stats = self._get_status_stats()
         
         # Apply pagination
@@ -103,22 +104,34 @@ class ReferralService:
             Referral.submission_date.desc()
         ).offset(offset).limit(limit).all()
         
-        # Build response items
+        # OPTIMIZATION: Pre-load all universities, programs, and counselors in bulk
+        # instead of querying for each referral (N+1 problem fix)
+        university_ids = {ref.university_id for ref in referrals if ref.university_id}
+        program_ids = {ref.program_id for ref in referrals if ref.program_id}
+        counselor_ids = {ref.counselor_id for ref in referrals if ref.counselor_id}
+        
+        # Bulk load all related data in 3 queries instead of N*3 queries
+        universities_map = {}
+        if university_ids:
+            universities = self.db.query(University).filter(University.id.in_(university_ids)).all()
+            universities_map = {u.id: u for u in universities}
+        
+        programs_map = {}
+        if program_ids:
+            programs = self.db.query(Program).filter(Program.id.in_(program_ids)).all()
+            programs_map = {p.id: p for p in programs}
+        
+        counselors_map = {}
+        if counselor_ids:
+            counselors = self.db.query(User).filter(User.id.in_(counselor_ids)).all()
+            counselors_map = {c.id: c.name for c in counselors}
+        
+        # Build response items using pre-loaded data
         items = []
         for ref in referrals:
-            university = self.db.query(University).filter(
-                University.id == ref.university_id
-            ).first()
-            program = self.db.query(Program).filter(
-                Program.id == ref.program_id
-            ).first()
-            counselor = None
-            if ref.counselor_id:
-                counselor_user = self.db.query(User).filter(
-                    User.id == ref.counselor_id
-                ).first()
-                if counselor_user:
-                    counselor = counselor_user.name
+            university = universities_map.get(ref.university_id)
+            program = programs_map.get(ref.program_id)
+            counselor_name = counselors_map.get(ref.counselor_id)
             
             items.append(ReferralListItem(
                 id=ref.id,
@@ -128,7 +141,7 @@ class ReferralService:
                 referrer_name=ref.referrer_name,
                 university_code=university.code if university else "",
                 program_code=program.code if program else "",
-                counselor_name=counselor,
+                counselor_name=counselor_name,
                 status=ref.status,
                 submission_date=ref.submission_date,
             ))
@@ -434,10 +447,19 @@ class ReferralService:
         return code
     
     def _get_status_stats(self) -> Dict[str, int]:
-        """Get referral count by status"""
-        stats = {}
-        for status in ["submitted", "assigned", "contacted", "admitted", "rejected"]:
-            count = self.db.query(Referral).filter(Referral.status == status).count()
-            stats[status] = count
+        """Get referral count by status - OPTIMIZED: single query with GROUP BY"""
+        # Initialize with all statuses at 0
+        stats = {status: 0 for status in ["submitted", "assigned", "contacted", "admitted", "rejected"]}
+        
+        # Single query with GROUP BY instead of 5 separate COUNT queries
+        results = self.db.query(
+            Referral.status,
+            func.count(Referral.id)
+        ).group_by(Referral.status).all()
+        
+        for status, count in results:
+            if status in stats:
+                stats[status] = count
+        
         return stats
 
