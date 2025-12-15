@@ -39,14 +39,30 @@ const Counselors = () => {
     setIsLoading(true);
     try {
       console.log('Fetching referees data...');
-      const [referralsData, universitiesData] = await Promise.all([
-        referralsAPI.getReferrals({ page: 1, limit: 100 }), // Increased limit to get more data
-        universitiesAPI.getUniversities({ page: 1, limit: 50 })
-      ]);
+      
+      // First fetch to get total count
+      const firstPage = await referralsAPI.getReferrals({ page: 1, limit: 100 });
+      let allReferrals = [...(firstPage.items || [])];
+      
+      // If there are more pages, fetch them all
+      const totalPages = Math.ceil((firstPage.total || 0) / 100);
+      console.log(`Total referrals: ${firstPage.total}, Pages: ${totalPages}`);
+      
+      if (totalPages > 1) {
+        const additionalPages = [];
+        for (let page = 2; page <= totalPages; page++) {
+          additionalPages.push(referralsAPI.getReferrals({ page, limit: 100 }));
+        }
+        const results = await Promise.all(additionalPages);
+        results.forEach(res => {
+          allReferrals = [...allReferrals, ...(res.items || [])];
+        });
+      }
+      
+      const universitiesData = await universitiesAPI.getUniversities({ page: 1, limit: 50 });
 
-      console.log('Referrals data received:', referralsData);
-      console.log('Total referrals:', referralsData.total);
-      console.log('Referral items:', referralsData.items?.length);
+      console.log('All referrals fetched:', allReferrals.length);
+      console.log('Total from API:', firstPage.total);
 
       setUniversities(universitiesData.items || []);
       
@@ -56,7 +72,7 @@ const Counselors = () => {
       
       console.log('Processing referrals for referee extraction...');
       
-      (referralsData.items || []).forEach((referral: any, index: number) => {
+      allReferrals.forEach((referral: any, index: number) => {
         // Get the student (referee) details from referral
         // Note: referee_name/referee_email is the STUDENT being referred
         const email = referral.referee_email || referral.student_email;
