@@ -53,31 +53,52 @@ const Referrals = () => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch referrals, universities, and counselors in parallel
-      const [referralsData, universitiesData, counselorsData] = await Promise.all([
-        referralsAPI.getReferrals({ 
-          page: 1, 
-          limit: 20,
-          status: statusFilter === 'all' ? undefined : statusFilter 
-        }),
-        universitiesAPI.getUniversities({ page: 1, limit: 20 }),
-        usersAPI.getCounselors({ page: 1, limit: 20 })
+      // First fetch to get total count
+      const firstPage = await referralsAPI.getReferrals({ 
+        page: 1, 
+        limit: 100,
+        status: statusFilter === 'all' ? undefined : statusFilter 
+      });
+      
+      let allReferrals = [...(firstPage.items || [])];
+      
+      // If there are more pages, fetch them all
+      const totalPages = Math.ceil((firstPage.total || 0) / 100);
+      if (totalPages > 1) {
+        const additionalPages = [];
+        for (let page = 2; page <= totalPages; page++) {
+          additionalPages.push(referralsAPI.getReferrals({ 
+            page, 
+            limit: 100,
+            status: statusFilter === 'all' ? undefined : statusFilter 
+          }));
+        }
+        const results = await Promise.all(additionalPages);
+        results.forEach(res => {
+          allReferrals = [...allReferrals, ...(res.items || [])];
+        });
+      }
+
+      // Fetch universities and counselors in parallel
+      const [universitiesData, counselorsData] = await Promise.all([
+        universitiesAPI.getUniversities({ page: 1, limit: 100 }),
+        usersAPI.getCounselors({ page: 1, limit: 100 })
       ]);
 
-      setReferrals(referralsData.items || []);
+      setReferrals(allReferrals);
       setUniversities(universitiesData.items || []);
       setCounselors(counselorsData.items || []);
-      setTotalReferrals(referralsData.total || 0);
+      setTotalReferrals(firstPage.total || 0);
 
-      // Calculate stats
-      const pending = referralsData.items.filter((r: any) => r.status === 'submitted').length;
-      const admitted = referralsData.items.filter((r: any) => r.status === 'admitted').length;
-      const conversion = referralsData.items.length > 0 
-        ? Math.round((admitted / referralsData.items.length) * 100) 
+      // Calculate stats from ALL referrals
+      const pending = allReferrals.filter((r: any) => r.status === 'submitted').length;
+      const admitted = allReferrals.filter((r: any) => r.status === 'admitted').length;
+      const conversion = allReferrals.length > 0 
+        ? Math.round((admitted / allReferrals.length) * 100) 
         : 0;
 
       setStats({
-        total: referralsData.items.length,
+        total: allReferrals.length,
         pending,
         admitted,
         conversionRate: conversion
