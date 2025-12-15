@@ -198,7 +198,7 @@ const Login = () => {
                           type="button"
                           variant="outline"
                           onClick={() => {
-                            setLoginData({ email: 'admin@teamlease.com', password: 'Password123!' });
+                            setLoginData({ email: 'admin@teamlease.com', password: 'password123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs py-2 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
@@ -209,7 +209,7 @@ const Login = () => {
                           type="button"
                           variant="outline"
                           onClick={() => {
-                            setLoginData({ email: 'rajesh.kumar@teamlease.com', password: 'Password123!' });
+                            setLoginData({ email: 'rajesh.kumar@teamlease.com', password: 'password123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs py-2 bg-warning/10 border-warning/30 text-warning hover:bg-warning/20"
@@ -220,7 +220,7 @@ const Login = () => {
                           type="button"
                           variant="outline"
                           onClick={() => {
-                            setLoginData({ email: 'arjun.mehta@gmail.com', password: 'Password123!' });
+                            setLoginData({ email: 'arjun.mehta@gmail.com', password: 'password123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs py-2 bg-success/10 border-success/30 text-success hover:bg-success/20"
