@@ -40,8 +40,8 @@ const Counselors = () => {
     try {
       console.log('Fetching referees data...');
       const [referralsData, universitiesData] = await Promise.all([
-        referralsAPI.getReferrals({ page: 1, limit: 20 }),
-        universitiesAPI.getUniversities({ page: 1, limit: 20 })
+        referralsAPI.getReferrals({ page: 1, limit: 100 }), // Increased limit to get more data
+        universitiesAPI.getUniversities({ page: 1, limit: 50 })
       ]);
 
       console.log('Referrals data received:', referralsData);
@@ -50,41 +50,52 @@ const Counselors = () => {
 
       setUniversities(universitiesData.items || []);
       
-      // Extract unique referees from referrals
+      // Extract unique referees (students being referred) from referrals
+      // Backend returns: referee_name, referee_email (student info) and referrer_name (person who referred)
       const refereeMap = new Map<string, RefereeInfo>();
       
-      (referralsData.items || []).forEach((referral: any) => {
-        // Check if referee email exists
-        if (!referral.referee_email) {
+      console.log('Processing referrals for referee extraction...');
+      
+      (referralsData.items || []).forEach((referral: any, index: number) => {
+        // Get the student (referee) details from referral
+        // Note: referee_name/referee_email is the STUDENT being referred
+        const email = referral.referee_email || referral.student_email;
+        const name = referral.referee_name || referral.student_name || 'Unknown Student';
+        
+        console.log(`Referral ${index + 1}: name=${name}, email=${email}, status=${referral.status}`);
+        
+        if (!email) {
           console.warn('Referral without referee email:', referral);
           return;
         }
         
-        const key = referral.referee_email.toLowerCase();
+        const key = email.toLowerCase();
         
         if (!refereeMap.has(key)) {
           refereeMap.set(key, {
-            name: referral.referee_name || 'Unknown',
-            email: referral.referee_email,
-            phone: referral.referee_phone || 'N/A',
-            totalReferrals: 0,
-            admitted: 0,
+            name: name,
+            email: email,
+            phone: 'N/A', // Phone not returned in list item
+            totalReferrals: 1,
+            admitted: referral.status === 'admitted' ? 1 : 0,
             conversionRate: 0,
             status: referral.status,
-            latestReferralDate: referral.created_at,
+            latestReferralDate: referral.submission_date || referral.created_at,
             universityId: referral.university_id,
             programId: referral.program_id,
           });
-        }
-        
-        const referee = refereeMap.get(key)!;
-        referee.totalReferrals += 1;
-        if (referral.status === 'admitted') {
-          referee.admitted += 1;
-        }
-        if (new Date(referral.created_at) > new Date(referee.latestReferralDate)) {
-          referee.latestReferralDate = referral.created_at;
-          referee.status = referral.status;
+        } else {
+          // This referee appears in multiple referrals (same student multiple times - unlikely but handle)
+          const referee = refereeMap.get(key)!;
+          referee.totalReferrals += 1;
+          if (referral.status === 'admitted') {
+            referee.admitted += 1;
+          }
+          const referralDate = new Date(referral.submission_date || referral.created_at);
+          if (referralDate > new Date(referee.latestReferralDate)) {
+            referee.latestReferralDate = referral.submission_date || referral.created_at;
+            referee.status = referral.status;
+          }
         }
       });
       
@@ -96,8 +107,10 @@ const Counselors = () => {
       });
       
       const refereesArray = Array.from(refereeMap.values());
-      console.log('Unique referees extracted:', refereesArray.length);
-      console.log('Referees:', refereesArray);
+      // Sort by latest referral date (most recent first)
+      refereesArray.sort((a, b) => new Date(b.latestReferralDate).getTime() - new Date(a.latestReferralDate).getTime());
+      
+      console.log('Unique referees (students) extracted:', refereesArray.length);
       
       setReferees(refereesArray);
     } catch (error) {
