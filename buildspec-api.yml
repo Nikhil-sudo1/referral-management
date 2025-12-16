@@ -14,21 +14,26 @@ env:
 phases:
   pre_build:
     commands:
-      - echo "=== Pre-build phase started ==="
+      - echo "=== Pre-build phase started on $(date) ==="
       - echo "Logging in to Amazon ECR..."
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
-      - echo "Repository URI:" $REPOSITORY_URI
-      - echo "Image tag:" $IMAGE_TAG
+      - BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      - echo "Repository URI - $REPOSITORY_URI"
+      - echo "Image tag - $IMAGE_TAG"
 
   build:
     commands:
       - echo "=== Build phase started on $(date) ==="
       - echo "Building the Docker image..."
-      - docker build -t $REPOSITORY_URI:latest -f Dockerfile.api .
-      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      - |
+        docker build \
+          --tag $REPOSITORY_URI:latest \
+          --tag $REPOSITORY_URI:$IMAGE_TAG \
+          --file Dockerfile.api \
+          .
       - echo "Docker build completed successfully"
 
   post_build:
@@ -40,10 +45,13 @@ phases:
       - echo "Writing image definitions file..."
       - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       - cat imagedefinitions.json
-      - echo "=== Build completed successfully ==="
+      - echo "=== Build completed successfully on $(date) ==="
 
 artifacts:
   files:
     - imagedefinitions.json
   discard-paths: yes
 
+cache:
+  paths:
+    - '/root/.cache/pip/**/*'

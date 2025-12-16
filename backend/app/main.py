@@ -7,8 +7,9 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from sqlalchemy import text
 from app.config import settings
-from app.database import init_db
+from app.database import init_db, SessionLocal
 from app.api import router as api_router
 from app.core.exceptions import AppException
 from app.core.logging import logger
@@ -135,15 +136,67 @@ async def general_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router, prefix="/api/v1")
 
 
-# Health check endpoint
+# Health check endpoint (for ALB)
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Health check endpoint"""
-    return {
+    """
+    Health check endpoint for AWS ALB
+    Returns 200 OK if service is healthy
+    """
+    health_status = {
         "status": "healthy",
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
+        "checks": {
+            "api": "ok",
+            "database": "ok"
+        }
     }
+    
+    # Check database connectivity
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+    except Exception as e:
+        logger.error(f"Health check - Database connection failed: {e}")
+        health_status["status"] = "unhealthy"
+        health_status["checks"]["database"] = "failed"
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=health_status
+        )
+    
+    return health_status
+
+
+# Simple health check (for container health check - no DB dependency)
+@app.get("/health/live", tags=["Health"])
+async def liveness_check():
+    """
+    Liveness probe - checks if the application is running
+    Used by container orchestrators
+    """
+    return {"status": "alive"}
+
+
+# Readiness check (for ALB target group)
+@app.get("/health/ready", tags=["Health"])
+async def readiness_check():
+    """
+    Readiness probe - checks if the application is ready to receive traffic
+    Used by load balancers
+    """
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        return {"status": "ready"}
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "not_ready", "reason": "database_unavailable"}
+        )
 
 
 # Root endpoint

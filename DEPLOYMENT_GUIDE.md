@@ -370,25 +370,132 @@ GET http://<ui-alb-dns>/health
 Response: healthy
 ```
 
-### API Health Check
+**ALB Target Group Configuration for UI:**
+- Protocol: HTTP
+- Port: 80
+- Health check path: `/health`
+- Healthy threshold: 2
+- Unhealthy threshold: 3
+- Timeout: 5 seconds
+- Interval: 30 seconds
+- Success codes: 200
 
+### API Health Check Endpoints
+
+| Endpoint | Purpose | Use Case |
+|----------|---------|----------|
+| `/health` | Full health check (includes DB) | ALB Target Group |
+| `/health/live` | Liveness probe (no DB) | Container health check |
+| `/health/ready` | Readiness probe (includes DB) | ALB Target Group alternative |
+
+**Main Health Check Response:**
 ```
 GET http://<api-alb-dns>:8000/health
 
-Response:
+Response (200 OK):
 {
   "status": "healthy",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "environment": "production",
+  "checks": {
+    "api": "ok",
+    "database": "ok"
+  }
+}
+
+Response (503 Service Unavailable - if DB is down):
+{
+  "status": "unhealthy",
+  "version": "1.0.0",
+  "environment": "production",
+  "checks": {
+    "api": "ok",
+    "database": "failed"
+  }
 }
 ```
+
+**ALB Target Group Configuration for API:**
+- Protocol: HTTP
+- Port: 8000
+- Health check path: `/health`
+- Healthy threshold: 2
+- Unhealthy threshold: 3
+- Timeout: 10 seconds
+- Interval: 30 seconds
+- Success codes: 200
 
 ### API Documentation
 
 | Endpoint | Description |
 |----------|-------------|
-| `/docs` | Swagger UI |
-| `/redoc` | ReDoc documentation |
-| `/openapi.json` | OpenAPI specification |
+| `/docs` | Swagger UI (disabled in production) |
+| `/redoc` | ReDoc documentation (disabled in production) |
+| `/openapi.json` | OpenAPI specification (disabled in production) |
+
+---
+
+## 🔒 Security Measures
+
+### Container Security
+
+1. **Non-root user execution**
+   - API container runs as `appuser` (UID 1000)
+   - Nginx worker processes run as `nginx` user
+
+2. **Multi-stage builds**
+   - Build dependencies not included in final image
+   - Smaller attack surface
+
+3. **Minimal base images**
+   - `python:3.12-slim` for API
+   - `nginx:stable-alpine` for UI
+
+### Network Security
+
+1. **Security Groups**
+   - ALB: Allow inbound 80/443 from internet
+   - ECS Tasks: Allow inbound only from ALB security group
+   - RDS: Allow inbound 5432 only from ECS task security group
+
+2. **VPC Configuration**
+   - ECS tasks in private subnets
+   - ALB in public subnets
+   - NAT Gateway for outbound traffic
+
+### Application Security
+
+1. **HTTP Security Headers** (UI - Nginx)
+   - `X-Frame-Options: SAMEORIGIN`
+   - `X-Content-Type-Options: nosniff`
+   - `X-XSS-Protection: 1; mode=block`
+   - `Referrer-Policy: strict-origin-when-cross-origin`
+   - `Content-Security-Policy` configured
+   - `Permissions-Policy` configured
+
+2. **API Security**
+   - JWT token authentication
+   - CORS origins restricted
+   - Input validation (Pydantic)
+   - SQL injection protection (SQLAlchemy ORM)
+   - Rate limiting (configure at ALB)
+
+3. **Secrets Management**
+   - Use AWS Systems Manager Parameter Store
+   - SecureString for sensitive values
+   - IAM roles for access control
+
+### AWS SSM Parameters Required
+
+Create these in AWS Systems Manager Parameter Store:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `/referral/dev/db-host` | String | RDS endpoint |
+| `/referral/dev/db-password` | SecureString | Database password |
+| `/referral/dev/jwt-secret` | SecureString | JWT signing key (32+ chars) |
+| `/referral/dev/cors-origins` | String | Allowed origins |
+| `/referral/dev/api-url` | String | API URL for UI build |
 
 ---
 
