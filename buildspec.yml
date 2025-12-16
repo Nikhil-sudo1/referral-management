@@ -1,0 +1,55 @@
+# TeamLease EdTech Referral Portal - Backend Build Specification
+# AWS CodeBuild buildspec for backend deployment
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: "ap-south-1"
+  parameter-store:
+    DB_PASSWORD: "/referral/prod/db-password"
+    JWT_SECRET: "/referral/prod/jwt-secret"
+
+phases:
+  pre_build:
+    commands:
+      - echo "=== Pre-build phase started ==="
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/referral-backend
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo "Repository URI:" $REPOSITORY_URI
+      - echo "Image tag:" $IMAGE_TAG
+
+  build:
+    commands:
+      - echo "=== Build phase started on $(date) ==="
+      - echo "Building the Docker image..."
+      - cd backend
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+      - echo "Docker build completed successfully"
+
+  post_build:
+    commands:
+      - echo "=== Post-build phase started on $(date) ==="
+      - echo "Pushing Docker images to ECR..."
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo "Writing image definitions file..."
+      - cd ..
+      - printf '[{"name":"referral-backend","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - cat imagedefinitions.json
+      - echo "=== Build completed successfully ==="
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - appspec.yml
+    - taskdef.json
+  discard-paths: yes
+
+cache:
+  paths:
+    - '/root/.cache/pip/**/*'
+
