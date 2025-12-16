@@ -8,8 +8,8 @@ env:
     AWS_ACCOUNT_ID: "163742846785"
     ECR_REPO: "dev-referral-mgmt-api-ecr"
     ECS_CLUSTER: "hackathon"
-    ECS_SERVICE: "dev-referral-mgmt-apii-service"
-    CONTAINER_NAME: "dev-referral-mgmt-api"
+    ECS_SERVICE: "dev-referral-mgmt-api-service"
+    CONTAINER_NAME: "dev-referral-mgmt-api-container"
 
 phases:
   pre_build:
