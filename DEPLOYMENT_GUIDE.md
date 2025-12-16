@@ -72,36 +72,48 @@
 
 ```
 referral-management/
-├── Dockerfile.ui          # Frontend Docker build
-├── Dockerfile.api         # Backend Docker build
-├── nginx.conf             # Nginx config for UI
-├── buildspec-ui.yml       # CodeBuild spec for UI
-├── buildspec-api.yml      # CodeBuild spec for API
-├── frontend/              # React frontend source
-└── backend/               # FastAPI backend source
+├── frontend/
+│   ├── Dockerfile         # Frontend Docker build (port 3001)
+│   ├── nginx.conf         # Nginx config for UI
+│   ├── buildspec.yml      # CodeBuild spec for UI
+│   └── src/               # React source code
+├── backend/
+│   ├── Dockerfile         # Backend Docker build (port 80)
+│   ├── buildspec.yml      # CodeBuild spec for API
+│   └── app/               # FastAPI source code
+└── DEPLOYMENT_GUIDE.md
 ```
+
+### Port Configuration
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Frontend (UI) | 3001 | Nginx serving React app |
+| Backend (API) | 80 | Gunicorn/Uvicorn serving FastAPI |
 
 ### Build Commands (Local Testing)
 
 ```bash
-# Build UI image
-docker build -t dev-referral-mgmt-ui:latest -f Dockerfile.ui .
+# Build UI image (from frontend folder)
+cd frontend
+docker build -t dev-referral-mgmt-ui:latest .
 
-# Build API image
-docker build -t dev-referral-mgmt-api:latest -f Dockerfile.api .
+# Build API image (from backend folder)
+cd backend
+docker build -t dev-referral-mgmt-api:latest .
 
-# Run UI locally
-docker run -p 80:80 dev-referral-mgmt-ui:latest
+# Run UI locally (port 3001)
+docker run -p 3001:3001 dev-referral-mgmt-ui:latest
 
-# Run API locally (with env vars)
-docker run -p 8000:8000 \
+# Run API locally (port 80)
+docker run -p 80:80 \
   -e DATABASE_HOST=your-db-host \
   -e DATABASE_PORT=5432 \
   -e DATABASE_NAME=referral_db \
   -e DATABASE_USER=postgres \
   -e DATABASE_PASSWORD=your-password \
   -e JWT_SECRET_KEY=your-secret \
-  -e CORS_ORIGINS=http://localhost \
+  -e CORS_ORIGINS=http://localhost:3001 \
   dev-referral-mgmt-api:latest
 ```
 
@@ -151,12 +163,12 @@ Create in AWS Console or use this JSON template:
   "executionRoleArn": "arn:aws:iam::163742846785:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {
-      "name": "dev-referral-mgmt-ui",
+      "name": "dev-referral-mgmt-ui-container",
       "image": "163742846785.dkr.ecr.ap-south-1.amazonaws.com/dev-referral-mgmt-ui-ecr:latest",
       "portMappings": [
         {
-          "containerPort": 80,
-          "hostPort": 80,
+          "containerPort": 3001,
+          "hostPort": 3001,
           "protocol": "tcp"
         }
       ],
@@ -171,7 +183,7 @@ Create in AWS Console or use this JSON template:
         }
       },
       "healthCheck": {
-        "command": ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/health || exit 1"],
+        "command": ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1"],
         "interval": 30,
         "timeout": 5,
         "retries": 3,
@@ -197,12 +209,12 @@ Create in AWS Console or use this JSON template:
   "taskRoleArn": "arn:aws:iam::163742846785:role/ecsTaskRole",
   "containerDefinitions": [
     {
-      "name": "dev-referral-mgmt-api",
+      "name": "dev-referral-mgmt-api-container",
       "image": "163742846785.dkr.ecr.ap-south-1.amazonaws.com/dev-referral-mgmt-api-ecr:latest",
       "portMappings": [
         {
-          "containerPort": 8000,
-          "hostPort": 8000,
+          "containerPort": 80,
+          "hostPort": 80,
           "protocol": "tcp"
         }
       ],
@@ -244,7 +256,7 @@ Create in AWS Console or use this JSON template:
         }
       },
       "healthCheck": {
-        "command": ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "command": ["CMD-SHELL", "curl -f http://localhost:80/health || exit 1"],
         "interval": 30,
         "timeout": 5,
         "retries": 3,
@@ -326,8 +338,9 @@ aws sts get-caller-identity
 # Login to ECR
 aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 163742846785.dkr.ecr.ap-south-1.amazonaws.com
 
-# Build image
-docker build -t dev-referral-mgmt-ui:latest -f Dockerfile.ui .
+# Build image (from frontend folder)
+cd frontend
+docker build -t dev-referral-mgmt-ui:latest .
 
 # Tag image
 docker tag dev-referral-mgmt-ui:latest 163742846785.dkr.ecr.ap-south-1.amazonaws.com/dev-referral-mgmt-ui-ecr:latest
@@ -345,8 +358,9 @@ aws ecs update-service --cluster hackathon --service dev-referral-mgmt-ui-servic
 # Login to ECR
 aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 163742846785.dkr.ecr.ap-south-1.amazonaws.com
 
-# Build image
-docker build -t dev-referral-mgmt-api:latest -f Dockerfile.api .
+# Build image (from backend folder)
+cd backend
+docker build -t dev-referral-mgmt-api:latest .
 
 # Tag image
 docker tag dev-referral-mgmt-api:latest 163742846785.dkr.ecr.ap-south-1.amazonaws.com/dev-referral-mgmt-api-ecr:latest
@@ -355,7 +369,7 @@ docker tag dev-referral-mgmt-api:latest 163742846785.dkr.ecr.ap-south-1.amazonaw
 docker push 163742846785.dkr.ecr.ap-south-1.amazonaws.com/dev-referral-mgmt-api-ecr:latest
 
 # Update ECS service (force new deployment)
-aws ecs update-service --cluster hackathon --service dev-referral-mgmt-apii-service --force-new-deployment --region ap-south-1
+aws ecs update-service --cluster hackathon --service dev-referral-mgmt-api-service --force-new-deployment --region ap-south-1
 ```
 
 ---
@@ -365,14 +379,14 @@ aws ecs update-service --cluster hackathon --service dev-referral-mgmt-apii-serv
 ### UI Health Check
 
 ```
-GET http://<ui-alb-dns>/health
+GET http://<ui-alb-dns>:3001/health
 
 Response: healthy
 ```
 
 **ALB Target Group Configuration for UI:**
 - Protocol: HTTP
-- Port: 80
+- Port: 3001
 - Health check path: `/health`
 - Healthy threshold: 2
 - Unhealthy threshold: 3
@@ -390,7 +404,7 @@ Response: healthy
 
 **Main Health Check Response:**
 ```
-GET http://<api-alb-dns>:8000/health
+GET http://<api-alb-dns>:80/health
 
 Response (200 OK):
 {
@@ -417,7 +431,7 @@ Response (503 Service Unavailable - if DB is down):
 
 **ALB Target Group Configuration for API:**
 - Protocol: HTTP
-- Port: 8000
+- Port: 80
 - Health check path: `/health`
 - Healthy threshold: 2
 - Unhealthy threshold: 3

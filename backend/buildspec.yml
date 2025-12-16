@@ -1,5 +1,6 @@
 # TeamLease EdTech Referral Portal - API Build Specification
 # AWS CodeBuild buildspec for API deployment to ECS Fargate
+# Runs on port 80
 version: 0.2
 
 env:
@@ -20,7 +21,6 @@ phases:
       - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_HASH:=latest}
-      - BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
       - echo "Repository URI - $REPOSITORY_URI"
       - echo "Image tag - $IMAGE_TAG"
 
@@ -32,7 +32,7 @@ phases:
         docker build \
           --tag $REPOSITORY_URI:latest \
           --tag $REPOSITORY_URI:$IMAGE_TAG \
-          --file Dockerfile.api \
+          --file Dockerfile \
           .
       - echo "Docker build completed successfully"
 
@@ -55,3 +55,4 @@ artifacts:
 cache:
   paths:
     - '/root/.cache/pip/**/*'
+
