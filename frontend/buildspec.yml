@@ -30,6 +30,9 @@ phases:
   build:
     commands:
       - echo "=== Build phase started on $(date) ==="
+      - echo "Changing to frontend directory..."
+      - cd frontend
+      - pwd
       - echo "Building the Docker image..."
       - |
         docker build \
