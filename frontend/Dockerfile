@@ -1,60 +1,37 @@
-# TeamLease EdTech Referral Portal - UI Dockerfile
-# For AWS ECS Fargate Deployment
-# Runs on port 3001
-
-# Build stage
-FROM 163742846785.dkr.ecr.ap-south-1.amazonaws.com/nginx-alpine:latest
+# ---------- Build stage ----------
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Build-time env for Vite
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
+# Copy dependency files
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci --ignore-scripts
+RUN npm ci --no-audit --no-fund
 
-# Copy source code
+# Copy rest of the source
 COPY . .
 
-# Build argument for API URL
-ARG VITE_API_URL=http://localhost:80
-ENV VITE_API_URL=${VITE_API_URL}
-
-# Build for production
+# Build the Vite app
 RUN npm run build
 
-# Production stage
-FROM 163742846785.dkr.ecr.ap-south-1.amazonaws.com/nginx-alpine:latest
 
-# Security: Remove default nginx configs
-RUN rm -rf /etc/nginx/conf.d/default.conf \
-    && rm -rf /usr/share/nginx/html/*
+# ---------- Runtime stage ----------
+FROM nginx:1.28-alpine
 
-# Copy built files
-COPY --from=build /app/dist /usr/share/nginx/html
+# Remove default config
+RUN rm /etc/nginx/conf.d/default.conf
 
-# Copy custom nginx configuration
+# Custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Security: Create nginx cache directories
-RUN mkdir -p /var/cache/nginx/client_temp \
-    && mkdir -p /var/cache/nginx/proxy_temp \
-    && mkdir -p /var/cache/nginx/fastcgi_temp \
-    && mkdir -p /var/cache/nginx/uwsgi_temp \
-    && mkdir -p /var/cache/nginx/scgi_temp
+# Copy built assets
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Security: Set proper permissions
-RUN chown -R nginx:nginx /var/cache/nginx \
-    && chown -R nginx:nginx /var/log/nginx \
-    && chown -R nginx:nginx /usr/share/nginx/html \
-    && chmod -R 755 /usr/share/nginx/html
-
-# Expose port 3001
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
-
 CMD ["nginx", "-g", "daemon off;"]
-
