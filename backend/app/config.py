@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+    CORS_ORIGINS: str = "http://localhost:3001,http://localhost:5173,http://localhost:80"
     
     # Logging
     LOG_LEVEL: str = "INFO"

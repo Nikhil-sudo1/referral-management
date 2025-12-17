@@ -17,7 +17,7 @@ RUN npm ci --ignore-scripts
 COPY frontend/ .
 
 # Build argument for API URL (passed at build time or use default)
-ARG VITE_API_URL=http://localhost:8000
+ARG VITE_API_URL=http://localhost:80
 ENV VITE_API_URL=${VITE_API_URL}
 
 # Build for production
@@ -57,11 +57,11 @@ RUN apk del --no-cache curl wget \
     && rm -rf /var/cache/apk/*
 
 # Expose port
-EXPOSE 80
+EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-# Run nginx (as root to bind port 80, but worker processes run as nginx user)
+# Run nginx (as root to bind port 3001, but worker processes run as nginx user)
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,65 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { 
-  CheckCircle, Users, Gift, ArrowRight, TrendingUp, Star, Zap, Shield, 
-  Clock, Building2, GraduationCap, Target, Mail, Phone, MapPin, 
-  Linkedin, Twitter, Sparkles, Globe, Rocket, FileText, Menu, X, 
-  ChevronDown, Play, Award, Heart
+  Users, Gift, ArrowRight, TrendingUp, Star, Zap, Shield, 
+  Building2, GraduationCap, Target, Mail, Phone, MapPin, 
+  Sparkles, Globe, Rocket, FileText, Menu, X, 
+  ChevronDown, Play, Check
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import { universitiesAPI, referralsAPI } from '@/lib/api';
 
 const PublicPortal = () => {
-  const [universities, setUniversities] = useState<any[]>([]);
-  const [programs, setPrograms] = useState<any[]>([]);
-  const [formStep, setFormStep] = useState(1);
-  const [selectedUniversity, setSelectedUniversity] = useState('');
-  const [trackingCode, setTrackingCode] = useState('');
-  const [submittedCode, setSubmittedCode] = useState('');
   const [scrollY, setScrollY] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [activeTestimonial, setActiveTestimonial] = useState(0);
 
-  // Fetch universities on mount
-  useEffect(() => {
-    const fetchUniversities = async () => {
-      try {
-        const response = await universitiesAPI.getUniversities({ status: 'active', limit: 100 });
-        setUniversities(response.items || []);
-      } catch (error) {
-        console.error('Error fetching universities:', error);
-      }
-    };
-    fetchUniversities();
-  }, []);
-
-  // Fetch programs when university changes
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      if (!selectedUniversity) {
-        setPrograms([]);
-        return;
-      }
-      try {
-        const programsList = await universitiesAPI.getUniversityPrograms(selectedUniversity);
-        setPrograms(programsList || []);
-      } catch (error) {
-        console.error('Error fetching programs:', error);
-        setPrograms([]);
-      }
-    };
-    fetchPrograms();
-  }, [selectedUniversity]);
-
-  const filteredPrograms = programs.filter((p: any) => p.status === 'active');
+  const { scrollYProgress } = useScroll();
+  const backgroundY = useTransform(scrollYProgress, [0, 1], ['0%', '100%']);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -67,81 +26,13 @@ const PublicPortal = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const generateCode = () => {
-    const uni = universities.find((u) => u.id === selectedUniversity);
-    return `${uni?.code || 'REF'}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-  };
-
-  const validateForm = (step: number): boolean => {
-    const errors: Record<string, string> = {};
-    
-    if (step === 1) {
-      const name = (document.getElementById('referrerName') as HTMLInputElement)?.value;
-      const phone = (document.getElementById('referrerPhone') as HTMLInputElement)?.value;
-      const email = (document.getElementById('referrerEmail') as HTMLInputElement)?.value;
-      if (!name || name.length < 2) errors.referrerName = 'Please enter a valid name';
-      if (!phone || !/^\+?[\d\s-]{10,}$/.test(phone)) errors.referrerPhone = 'Please enter a valid phone';
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.referrerEmail = 'Please enter a valid email';
-    }
-    
-    if (step === 2) {
-      const name = (document.getElementById('refereeName') as HTMLInputElement)?.value;
-      const phone = (document.getElementById('refereePhone') as HTMLInputElement)?.value;
-      const email = (document.getElementById('refereeEmail') as HTMLInputElement)?.value;
-      if (!name || name.length < 2) errors.refereeName = 'Please enter a valid name';
-      if (!phone || !/^\+?[\d\s-]{10,}$/.test(phone)) errors.refereePhone = 'Please enter a valid phone';
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.refereeEmail = 'Please enter a valid email';
-    }
-    
-    if (step === 3 && !selectedUniversity) {
-      errors.university = 'Please select a university';
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm(3)) {
-      toast({ title: 'Please fill all fields', variant: 'destructive' });
-      return;
-    }
-    setIsSubmitting(true);
-    
-    try {
-      // Get form values
-      const referrerName = (document.getElementById('referrerName') as HTMLInputElement)?.value;
-      const referrerEmail = (document.getElementById('referrerEmail') as HTMLInputElement)?.value;
-      const referrerPhone = (document.getElementById('referrerPhone') as HTMLInputElement)?.value;
-      const refereeName = (document.getElementById('refereeName') as HTMLInputElement)?.value;
-      const refereeEmail = (document.getElementById('refereeEmail') as HTMLInputElement)?.value;
-      const refereePhone = (document.getElementById('refereePhone') as HTMLInputElement)?.value;
-      const programId = (document.getElementById('program') as HTMLSelectElement)?.value;
-      
-      // Submit to backend
-      const response = await referralsAPI.createReferral({
-        referrer_name: referrerName,
-        referrer_email: referrerEmail,
-        referrer_phone: referrerPhone,
-        referee_name: refereeName,
-        referee_email: refereeEmail,
-        referee_phone: refereePhone,
-        university_id: selectedUniversity,
-        program_id: programId || undefined,
-      });
-      
-      const code = response.referral_code || generateCode();
-      setSubmittedCode(code);
-      setFormStep(4);
-      toast({ title: 'Referral Submitted!', description: `Code: ${code}` });
-    } catch (error) {
-      console.error('Error submitting referral:', error);
-      toast({ title: 'Error', description: 'Failed to submit referral. Please try again.', variant: 'destructive' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Auto-rotate testimonials
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const scrollToSection = (id: string) => {
     setMobileMenuOpen(false);
@@ -149,579 +40,937 @@ const PublicPortal = () => {
   };
 
   const stats = [
-    { value: '50K+', label: 'Active Referrers', icon: Users },
-    { value: '₹2Cr+', label: 'Rewards Distributed', icon: Gift },
-    { value: '85%', label: 'Success Rate', icon: TrendingUp },
-    { value: '100+', label: 'Partner Universities', icon: Building2 },
+    { value: '50K+', label: 'Active Referrers', icon: Users, color: 'from-blue-500 to-cyan-500' },
+    { value: '₹2Cr+', label: 'Rewards Paid', icon: Gift, color: 'from-purple-500 to-pink-500' },
+    { value: '85%', label: 'Success Rate', icon: TrendingUp, color: 'from-green-500 to-emerald-500' },
+    { value: '100+', label: 'Universities', icon: Building2, color: 'from-orange-500 to-red-500' },
   ];
 
-  const howItWorks = [
-    { step: '01', title: 'Sign Up', desc: 'Register as a referrer in under 2 minutes', icon: FileText, color: 'from-primary to-cyan-400' },
-    { step: '02', title: 'Refer Friends', desc: 'Share university programs with interested students', icon: Users, color: 'from-accent to-pink-400' },
-    { step: '03', title: 'Track Progress', desc: 'Monitor admission status in real-time', icon: Target, color: 'from-success to-emerald-400' },
-    { step: '04', title: 'Earn Rewards', desc: 'Get paid for every successful admission', icon: Gift, color: 'from-warning to-orange-400' },
+  const process = [
+    { 
+      step: '01', 
+      title: 'Sign Up', 
+      desc: 'Create your free account in under 2 minutes with just your email',
+      icon: FileText, 
+      color: 'from-primary to-cyan-400',
+      code: `const user = await register({
+  email: "you@email.com",
+  role: "referrer"
+});`
+    },
+    { 
+      step: '02', 
+      title: 'Refer Students', 
+      desc: 'Share opportunities with students interested in higher education',
+      icon: Users, 
+      color: 'from-purple-500 to-pink-500',
+      code: `await createReferral({
+  student: studentInfo,
+  university: selectedUni
+});`
+    },
+    { 
+      step: '03', 
+      title: 'Track Progress', 
+      desc: 'Monitor admission status with real-time updates and notifications',
+      icon: Target, 
+      color: 'from-green-500 to-emerald-500',
+      code: `const status = await track({
+  code: "REF-ABC123"
+}); // → "Admitted ✓"`
+    },
+    { 
+      step: '04', 
+      title: 'Earn Rewards', 
+      desc: 'Get paid within 7 days of successful admission confirmation',
+      icon: Gift, 
+      color: 'from-orange-500 to-yellow-500',
+      code: `await claimReward({
+  amount: "₹10,000",
+  method: "bank_transfer"
+});`
+    },
   ];
 
-  const features = [
-    { title: 'Instant Tracking', desc: 'Real-time updates on referral status', icon: Zap, gradient: 'from-primary/20 to-cyan-500/20' },
-    { title: 'Secure Platform', desc: 'Bank-grade security for your data', icon: Shield, gradient: 'from-success/20 to-emerald-500/20' },
-    { title: 'Fast Payouts', desc: 'Receive rewards within 7 days', icon: Clock, gradient: 'from-warning/20 to-orange-500/20' },
-    { title: 'Global Network', desc: '100+ universities worldwide', icon: Globe, gradient: 'from-accent/20 to-purple-500/20' },
+  const services = [
+    { 
+      title: 'Smart Matching', 
+      desc: 'AI-powered student-university matching for higher conversion rates',
+      icon: Sparkles, 
+      gradient: 'from-violet-500 to-purple-600',
+      stat: '3x Higher Match Rate'
+    },
+    { 
+      title: 'Real-time Tracking', 
+      desc: 'Live updates on every referral from submission to admission',
+      icon: Target, 
+      gradient: 'from-cyan-500 to-blue-600',
+      stat: 'Instant Notifications'
+    },
+    { 
+      title: 'Fast Payouts', 
+      desc: 'Industry-leading 7-day payout guarantee with secure transfers',
+      icon: Zap, 
+      gradient: 'from-amber-500 to-orange-600',
+      stat: '7-Day Guarantee'
+    },
+    { 
+      title: 'Premium Support', 
+      desc: 'Dedicated relationship managers for top performers',
+      icon: Shield, 
+      gradient: 'from-emerald-500 to-green-600',
+      stat: '24/7 Available'
+    },
   ];
 
   const testimonials = [
-    { name: 'Priya Sharma', role: 'MBA Student', quote: 'Earned ₹50,000 by referring just 5 friends. The process was incredibly smooth!', avatar: 'PS', rating: 5 },
-    { name: 'Rahul Kumar', role: 'Engineering Graduate', quote: 'Best referral platform I\'ve used. Transparent tracking and fast payouts.', avatar: 'RK', rating: 5 },
-    { name: 'Anita Desai', role: 'Career Counselor', quote: 'Helped 20+ students find the right university while earning substantial rewards.', avatar: 'AD', rating: 5 },
+    { 
+      name: 'Priya Sharma', 
+      role: 'Career Counselor', 
+      company: 'EduGuide India',
+      quote: 'Earned over ₹2 lakhs in 3 months. The platform is incredibly intuitive and the payouts are always on time.',
+      avatar: 'PS', 
+      rating: 5,
+      earnings: '₹2.4L'
+    },
+    { 
+      name: 'Rahul Verma', 
+      role: 'Education Consultant', 
+      company: 'StudyAbroad Pro',
+      quote: 'Best referral platform I have used. The tracking system is transparent and support is exceptional.',
+      avatar: 'RV', 
+      rating: 5,
+      earnings: '₹1.8L'
+    },
+    { 
+      name: 'Anita Desai', 
+      role: 'University Liaison', 
+      company: 'Academic Connect',
+      quote: 'Helped 50+ students find their dream university while building a sustainable income stream.',
+      avatar: 'AD', 
+      rating: 5,
+      earnings: '₹5.2L'
+    },
+    { 
+      name: 'Vikram Singh', 
+      role: 'Independent Referrer', 
+      company: 'Self-employed',
+      quote: 'Started part-time, now it is my primary income. The commission structure is unmatched in the industry.',
+      avatar: 'VS', 
+      rating: 5,
+      earnings: '₹8.1L'
+    },
   ];
 
   const faqs = [
-    { q: 'How much can I earn per referral?', a: 'Rewards range from ₹2,000 to ₹50,000 depending on the program. Premium MBA programs offer the highest rewards.' },
-    { q: 'When do I receive my payment?', a: 'Payments are processed within 7 working days after the referred student\'s admission is confirmed.' },
-    { q: 'Is there a limit on referrals?', a: 'No limits! The more students you refer, the more you earn. Top referrers earn lakhs monthly.' },
-    { q: 'How do I track my referrals?', a: 'Use your unique referral code or email to track all referrals in real-time through our dashboard.' },
+    { q: 'How much can I earn per referral?', a: 'Rewards range from ₹2,000 to ₹50,000 depending on the university and program. Premium MBA programs offer the highest rewards.' },
+    { q: 'When do I receive my payment?', a: 'Standard payouts are processed within 14 days. Professional members get 7-day payouts, and Enterprise gets instant transfers.' },
+    { q: 'Is there a limit on referrals?', a: 'Free tier allows 10 referrals/month. Professional and Enterprise tiers have unlimited referrals.' },
+    { q: 'How do I track my referrals?', a: 'Use your unique referral code or login to the dashboard for real-time tracking with detailed status updates.' },
+    { q: 'What universities are available?', a: 'We partner with 100+ top universities across India including IIMs, IITs, and leading private institutions.' },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[128px] animate-pulse-soft" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-accent/20 rounded-full blur-[128px] animate-pulse-soft" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-success/10 rounded-full blur-[150px]" />
+    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
+      {/* Animated Background - Netflix/Radison inspired */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <motion.div 
+          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-primary/30 via-transparent to-transparent rounded-full blur-[120px]"
+          animate={{ 
+            rotate: [0, 360],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+        />
+        <motion.div 
+          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-600/20 via-transparent to-transparent rounded-full blur-[120px]"
+          animate={{ 
+            rotate: [360, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
+        />
+        {/* Grid overlay like Radison */}
+        <div 
+          className="absolute inset-0 opacity-[0.02]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
+            backgroundSize: '100px 100px'
+          }}
+        />
       </div>
 
-      {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrollY > 50 ? 'bg-[#0a0a0f]/90 backdrop-blur-xl border-b border-white/5' : ''}`}>
+      {/* Navigation - LinkedIn inspired clean nav */}
+      <motion.nav 
+        className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+          scrollY > 50 ? 'bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-white/10 shadow-2xl' : ''
+        }`}
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center shadow-lg shadow-primary/30">
-                <GraduationCap className="w-6 h-6 text-white" />
+            <motion.div 
+              className="flex items-center gap-3"
+              whileHover={{ scale: 1.02 }}
+            >
+              <div className="relative">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center shadow-lg shadow-primary/30">
+                  <GraduationCap className="w-6 h-6 text-white" />
+                </div>
+                <motion.div 
+                  className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0a0a0f]"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
               </div>
               <div>
-                <span className="font-bold text-xl text-white">TeamLease</span>
-                <p className="text-xs text-white/50">EdTech Referrals</p>
+                <span className="font-bold text-lg text-white tracking-tight">TeamLease</span>
+                <p className="text-[10px] text-white/50 font-medium tracking-wider uppercase">EdTech Referrals</p>
               </div>
-            </div>
+            </motion.div>
             
-            <div className="hidden md:flex items-center gap-8">
-              {['How It Works', 'Features', 'Testimonials', 'FAQ'].map((item) => (
-                <button
+            <div className="hidden md:flex items-center gap-1">
+              {['Process', 'Services', 'Testimonials', 'How to Refer', 'FAQ'].map((item, index) => (
+                <motion.button
                   key={item}
-                  onClick={() => scrollToSection(item.toLowerCase().replace(' ', '-'))}
-                  className="text-sm text-white/70 hover:text-white transition-colors font-medium"
+                  onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, '-'))}
+                  className="px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-all font-medium"
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * index }}
+                  whileHover={{ y: -2 }}
                 >
                   {item}
-                </button>
+                </motion.button>
               ))}
-              <Link to="/login">
-                <Button className="bg-white text-black hover:bg-white/90 rounded-full px-6 font-semibold">
-                  Login <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
             </div>
 
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2">
+            <div className="hidden md:flex items-center gap-3">
+              <Link to="/login">
+                <Button variant="ghost" className="text-white/70 hover:text-white hover:bg-white/5">
+                  Sign In
+                </Button>
+              </Link>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link to="/login?tab=signup">
+                  <Button className="bg-gradient-to-r from-primary to-cyan-500 hover:opacity-90 text-white rounded-full px-6 shadow-lg shadow-primary/25">
+                    Sign Up <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              </motion.div>
+            </div>
+
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 hover:bg-white/5 rounded-lg">
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
 
-          {mobileMenuOpen && (
-            <div className="md:hidden py-6 border-t border-white/10 animate-fade-in">
-              {['How It Works', 'Features', 'Testimonials', 'FAQ'].map((item) => (
-                <button
-                  key={item}
-                  onClick={() => scrollToSection(item.toLowerCase().replace(' ', '-'))}
-                  className="block w-full text-left py-3 text-white/70 hover:text-white transition-colors font-medium"
-                >
-                  {item}
-                </button>
-              ))}
-              <Link to="/login" className="block mt-4">
-                <Button className="w-full bg-white text-black hover:bg-white/90 rounded-full">Login</Button>
-              </Link>
-            </div>
-          )}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div 
+                className="md:hidden py-6 border-t border-white/10"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                {['Process', 'Services', 'Testimonials', 'How to Refer', 'FAQ'].map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => scrollToSection(item.toLowerCase().replace(/ /g, '-'))}
+                    className="block w-full text-left py-3 px-4 text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                  >
+                    {item}
+                  </button>
+                ))}
+                <div className="flex gap-3 mt-4 pt-4 border-t border-white/10">
+                  <Link to="/login" className="flex-1">
+                    <Button variant="outline" className="w-full border-white/20 text-white">Sign In</Button>
+                  </Link>
+                  <Link to="/login?tab=signup" className="flex-1">
+                    <Button className="w-full bg-primary">Sign Up</Button>
+                  </Link>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </nav>
+      </motion.nav>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+      {/* Hero Section - Netflix + LinkedIn inspired */}
+      <section className="relative min-h-screen flex items-center pt-20">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-20">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <Badge className="bg-white/10 text-white border-0 px-4 py-2 text-sm font-medium rounded-full">
-                <Sparkles className="w-4 h-4 mr-2 text-primary" />
-                #1 Education Referral Platform
-              </Badge>
+            <motion.div 
+              className="space-y-8"
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <Badge className="bg-gradient-to-r from-primary/20 to-cyan-500/20 text-primary border border-primary/30 px-4 py-2 text-sm font-medium rounded-full backdrop-blur-sm">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  #1 Education Referral Platform in India
+                </Badge>
+              </motion.div>
               
-              <h1 className="text-5xl lg:text-7xl font-bold leading-tight">
-                Earn While You
-                <span className="block bg-gradient-to-r from-primary via-cyan-400 to-accent bg-clip-text text-transparent">
-                  Help Others Learn
+              <motion.h1 
+                className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                Transform Education
+                <span className="block mt-2">
+                  <span className="bg-gradient-to-r from-primary via-cyan-400 to-purple-500 bg-clip-text text-transparent">
+                    Into Income
+                  </span>
                 </span>
-              </h1>
+              </motion.h1>
               
-              <p className="text-xl text-white/60 max-w-lg leading-relaxed">
-                Join 50,000+ referrers earning rewards by connecting students with top universities. No limits, instant tracking, fast payouts.
-              </p>
+              <motion.p 
+                className="text-xl text-white/60 max-w-lg leading-relaxed"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                Join 50,000+ referrers earning substantial rewards by connecting ambitious students with India's top universities. No limits. Real-time tracking. Fast payouts.
+              </motion.p>
               
-              <div className="flex flex-wrap gap-4">
-                <Button 
-                  size="lg" 
-                  onClick={() => scrollToSection('referral-form')}
-                  className="bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90 text-white rounded-full px-8 py-6 text-lg shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
-                >
-                  Start Referring <Rocket className="w-5 h-5 ml-2" />
-                </Button>
-                <Link to="/register/referee">
+              <motion.div 
+                className="flex flex-wrap gap-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}>
+                  <Link to="/login?tab=signup">
+                    <Button 
+                      size="lg" 
+                      className="bg-gradient-to-r from-primary to-cyan-500 hover:opacity-90 text-white rounded-full px-8 py-7 text-lg shadow-2xl shadow-primary/30 hover:shadow-primary/50 transition-all"
+                    >
+                      Sign Up Now <Rocket className="w-5 h-5 ml-2" />
+                    </Button>
+                  </Link>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.95 }}>
                   <Button 
                     size="lg" 
-                    className="bg-gradient-to-r from-accent to-pink-400 hover:opacity-90 text-white rounded-full px-8 py-6 text-lg shadow-lg shadow-accent/30 hover:shadow-xl hover:shadow-accent/40 transition-all"
+                    variant="outline"
+                    onClick={() => scrollToSection('process')}
+                    className="border-white/20 bg-white/5 text-white hover:bg-white/10 rounded-full px-8 py-7 text-lg backdrop-blur-sm"
                   >
-                    Join as Student <GraduationCap className="w-5 h-5 ml-2" />
+                    <Play className="w-5 h-5 mr-2 fill-current" /> See How It Works
                   </Button>
-                </Link>
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={() => scrollToSection('how-it-works')}
-                  className="border-white/30 bg-white/5 text-white hover:bg-white/10 rounded-full px-8 py-6 text-lg backdrop-blur-sm"
-                >
-                  <Play className="w-5 h-5 mr-2 fill-white" /> Watch Demo
-                </Button>
-              </div>
+                </motion.div>
+              </motion.div>
 
-              {/* Trust Badges */}
-              <div className="flex items-center gap-6 pt-4">
-                <div className="flex -space-x-3">
-                  {['PS', 'RK', 'AD', 'MN'].map((initials, i) => (
-                    <div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xs font-bold border-2 border-[#0a0a0f]">
-                      {initials}
-                    </div>
-                  ))}
-                </div>
+              {/* Trust indicators - LinkedIn style */}
+              <motion.div 
+                className="flex items-center gap-8 pt-8 border-t border-white/10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.7 }}
+              >
                 <div>
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-warning text-warning" />)}
+                  <p className="text-3xl font-bold text-white">₹2Cr+</p>
+                  <p className="text-sm text-white/50">Rewards Paid</p>
+                </div>
+                <div className="w-px h-12 bg-white/10" />
+                <div>
+                  <p className="text-3xl font-bold text-white">50K+</p>
+                  <p className="text-sm text-white/50">Active Referrers</p>
+                </div>
+                <div className="w-px h-12 bg-white/10" />
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    {['PS', 'RV', 'AD'].map((initials, i) => (
+                      <motion.div 
+                        key={i}
+                        className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-xs font-bold border-2 border-[#0a0a0f]"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.8 + i * 0.1, type: 'spring' }}
+                      >
+                        {initials}
+                      </motion.div>
+                    ))}
                   </div>
-                  <p className="text-sm text-white/50">Trusted by 50,000+ referrers</p>
+                  <div className="flex items-center">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              {stats.map((stat, index) => (
-                <div 
-                  key={stat.label}
-                  className="group relative p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-primary/50 transition-all duration-500 hover:-translate-y-1"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <stat.icon className="w-8 h-8 text-primary mb-4" />
-                  <p className="text-4xl font-bold text-white mb-1">{stat.value}</p>
-                  <p className="text-sm text-white/50">{stat.label}</p>
-                </div>
-              ))}
-            </div>
+            {/* Stats Cards - Radison inspired floating cards */}
+            <motion.div 
+              className="relative hidden lg:block"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+            >
+              <div className="grid grid-cols-2 gap-4">
+                {stats.map((stat, index) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 + index * 0.1, duration: 0.5 }}
+                    whileHover={{ y: -8, scale: 1.02 }}
+                    className={`relative p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm overflow-hidden group ${
+                      index === 0 ? 'col-span-2' : ''
+                    }`}
+                  >
+                    <motion.div 
+                      className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}
+                    />
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-4 shadow-lg`}>
+                      <stat.icon className="w-6 h-6 text-white" />
+                    </div>
+                    <p className="text-4xl font-bold text-white mb-1">{stat.value}</p>
+                    <p className="text-sm text-white/50">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </div>
+              
+              {/* Floating badge */}
+              <motion.div
+                className="absolute -top-4 -right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg"
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                  Live Payouts
+                </span>
+              </motion.div>
+            </motion.div>
           </div>
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+        <motion.div 
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
           <ChevronDown className="w-6 h-6 text-white/30" />
-        </div>
+        </motion.div>
       </section>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="py-24 relative">
+      {/* Process Section - Radison inspired with code blocks */}
+      <section id="process" className="py-32 relative">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="bg-primary/20 text-primary border-0 px-4 py-2 mb-4 rounded-full">Simple Process</Badge>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4">How It Works</h2>
-            <p className="text-xl text-white/50 max-w-2xl mx-auto">Start earning in 4 simple steps</p>
-          </div>
+          <motion.div 
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <Badge className="bg-primary/10 text-primary border-0 px-4 py-2 mb-6 rounded-full">
+              Simple Process
+            </Badge>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+              Your Path to <span className="text-primary">Excellence</span>
+            </h2>
+            <p className="text-xl text-white/50 max-w-2xl mx-auto">
+              A simple, effective approach to start earning with referrals
+            </p>
+          </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {howItWorks.map((item, index) => (
-              <div 
+            {process.map((item, index) => (
+              <motion.div
                 key={item.step}
-                className="group relative p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-white/20 transition-all duration-500"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -10 }}
+                className="group relative"
               >
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg`}>
-                  <item.icon className="w-8 h-8 text-white" />
+                <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all h-full">
+                  <motion.div 
+                    className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-6 shadow-lg`}
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                  >
+                    <item.icon className="w-7 h-7 text-white" />
+                  </motion.div>
+                  <span className="text-6xl font-bold text-white/5 absolute top-4 right-4">{item.step}</span>
+                  <h3 className="text-xl font-bold mb-2 text-white">{item.title}</h3>
+                  <p className="text-white/50 mb-4 text-sm">{item.desc}</p>
+                  
+                  {/* Code block - Radison inspired */}
+                  <div className="bg-black/40 rounded-lg p-3 font-mono text-xs overflow-hidden">
+                    <pre className="text-green-400/80 whitespace-pre-wrap">{item.code}</pre>
+                  </div>
                 </div>
-                <span className="text-6xl font-bold text-white/5 absolute top-4 right-4">{item.step}</span>
-                <h3 className="text-xl font-bold mb-2">{item.title}</h3>
-                <p className="text-white/50">{item.desc}</p>
+                
                 {index < 3 && (
-                  <div className="hidden lg:block absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+                  <div className="hidden lg:flex absolute top-1/2 -right-3 w-6 h-6 rounded-full bg-white/10 items-center justify-center z-10">
                     <ArrowRight className="w-3 h-3 text-white/50" />
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="py-24 relative">
+      {/* Services Section - Netflix card style */}
+      <section id="services" className="py-32 relative bg-gradient-to-b from-transparent via-primary/5 to-transparent">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <Badge className="bg-accent/20 text-accent border-0 px-4 py-2 mb-4 rounded-full">Why Choose Us</Badge>
-              <h2 className="text-4xl lg:text-5xl font-bold mb-6">
-                Built for
-                <span className="block text-accent">Serious Earners</span>
-              </h2>
-              <p className="text-xl text-white/50 mb-8">
-                Everything you need to maximize your referral earnings in one powerful platform.
-              </p>
-              
-              <div className="space-y-4">
-                {features.map((feature) => (
-                  <div key={feature.title} className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all group">
-                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
-                      <feature.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg mb-1">{feature.title}</h3>
-                      <p className="text-white/50 text-sm">{feature.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <motion.div 
+            className="text-center mb-20"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <Badge className="bg-purple-500/10 text-purple-400 border-0 px-4 py-2 mb-6 rounded-full">
+              Why Choose Us
+            </Badge>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+              Innovative Services for <span className="text-purple-400">Growth</span>
+            </h2>
+            <p className="text-xl text-white/50 max-w-2xl mx-auto">
+              Tailored solutions to streamline, innovate, and maximize your earnings
+            </p>
+          </motion.div>
 
-            {/* Reward Calculator Card */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-accent/30 rounded-3xl blur-3xl" />
-              <Card className="relative bg-white/5 border-white/10 rounded-3xl overflow-hidden">
-                <CardContent className="p-8">
-                  <div className="flex items-center gap-3 mb-8">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-warning to-orange-400 flex items-center justify-center">
-                      <Award className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold">Reward Calculator</h3>
-                      <p className="text-sm text-white/50">See your potential earnings</p>
-                    </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {services.map((service, index) => (
+              <motion.div
+                key={service.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -10, scale: 1.02 }}
+                className="group"
+              >
+                <div className="h-full p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all relative overflow-hidden">
+                  <motion.div 
+                    className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}
+                  />
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${service.gradient} flex items-center justify-center mb-4 shadow-lg relative z-10`}>
+                    <service.icon className="w-6 h-6 text-white" />
                   </div>
-
-                  <div className="space-y-6">
-                    <div className="p-6 rounded-2xl bg-white/5">
-                      <p className="text-sm text-white/50 mb-2">Average per referral</p>
-                      <p className="text-4xl font-bold text-warning">₹10,000</p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      {[5, 10, 20].map((num) => (
-                        <div key={num} className="p-4 rounded-xl bg-white/5 text-center">
-                          <p className="text-2xl font-bold text-white">{num}</p>
-                          <p className="text-xs text-white/50">referrals</p>
-                          <p className="text-lg font-bold text-success mt-2">₹{(num * 10000).toLocaleString()}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-center text-sm text-white/40">*Actual rewards vary by program</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  <h3 className="text-lg font-bold mb-2 text-white relative z-10">{service.title}</h3>
+                  <p className="text-white/50 text-sm mb-4 relative z-10">{service.desc}</p>
+                  <Badge className="bg-white/10 text-white/70 border-0 text-xs relative z-10">
+                    {service.stat}
+                  </Badge>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section id="testimonials" className="py-24 relative">
+      {/* Testimonials - Netflix carousel style */}
+      <section id="testimonials" className="py-32 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="bg-success/20 text-success border-0 px-4 py-2 mb-4 rounded-full">Success Stories</Badge>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4">What Referrers Say</h2>
-            <p className="text-xl text-white/50">Real people, real earnings</p>
-          </div>
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <Badge className="bg-green-500/10 text-green-400 border-0 px-4 py-2 mb-6 rounded-full">
+              Success Stories
+            </Badge>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+              Trusted by <span className="text-green-400">Satisfied Clients</span>
+            </h2>
+            <p className="text-xl text-white/50">Real people, real earnings, real success</p>
+          </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {testimonials.map((t, index) => (
-              <Card key={t.name} className="bg-white/5 border-white/10 rounded-3xl overflow-hidden hover:border-white/20 transition-all group">
-                <CardContent className="p-8">
-                  <div className="flex items-center gap-1 mb-4">
-                    {[...Array(t.rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-warning text-warning" />
-                    ))}
-                  </div>
-                  <p className="text-lg text-white/80 mb-6 leading-relaxed">"{t.quote}"</p>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-bold">
+              <motion.div
+                key={t.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -5 }}
+                className={`p-6 rounded-2xl border transition-all ${
+                  activeTestimonial === index 
+                    ? 'bg-gradient-to-br from-primary/20 to-purple-500/20 border-primary/50' 
+                    : 'bg-white/5 border-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(t.rating)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-white/80 mb-6 text-sm leading-relaxed">"{t.quote}"</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center font-bold text-sm">
                       {t.avatar}
                     </div>
                     <div>
-                      <p className="font-semibold">{t.name}</p>
-                      <p className="text-sm text-white/50">{t.role}</p>
+                      <p className="font-semibold text-sm text-white">{t.name}</p>
+                      <p className="text-xs text-white/50">{t.role}</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-green-400">{t.earnings}</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider">Earned</p>
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Referral Form */}
-      <section id="referral-form" className="py-24 relative">
-        <div className="max-w-4xl mx-auto px-6 lg:px-8">
-          <Card className="bg-white/5 border-white/10 rounded-3xl overflow-hidden">
-            <CardContent className="p-8 lg:p-12">
-              <div className="text-center mb-10">
-                <Badge className="bg-primary/20 text-primary border-0 px-4 py-2 mb-4 rounded-full">Get Started</Badge>
-                <h2 className="text-3xl lg:text-4xl font-bold mb-4">Submit Your Referral</h2>
-                <p className="text-white/50">Fill in the details below to start earning</p>
-              </div>
 
-              {/* Progress Steps */}
-              <div className="flex items-center justify-center gap-4 mb-10">
-                {[1, 2, 3].map((step) => (
-                  <div key={step} className="flex items-center gap-2">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
-                      formStep >= step 
-                        ? 'bg-gradient-to-br from-primary to-cyan-400 text-white' 
-                        : 'bg-white/10 text-white/50'
-                    }`}>
-                      {formStep > step ? <CheckCircle className="w-5 h-5" /> : step}
-                    </div>
-                    {step < 3 && <div className={`w-12 h-1 rounded-full ${formStep > step ? 'bg-primary' : 'bg-white/10'}`} />}
-                  </div>
-                ))}
-              </div>
+      {/* How to Refer Section - Step by Step Guide */}
+      <section id="how-to-refer" className="py-32 relative bg-gradient-to-b from-transparent via-purple-500/5 to-transparent">
+        <div className="max-w-6xl mx-auto px-6 lg:px-8">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <Badge className="bg-primary/20 text-primary border-0 px-4 py-2 mb-6 rounded-full">
+              Quick Guide
+            </Badge>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+              How to <span className="text-primary">Submit a Referral</span>
+            </h2>
+            <p className="text-xl text-white/50 max-w-2xl mx-auto">
+              Follow these simple steps to start earning rewards by referring students
+            </p>
+          </motion.div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {formStep === 1 && (
-                  <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-xl font-semibold mb-4">Your Details (Referrer)</h3>
-                    <div>
-                      <Label className="text-white/70">Full Name</Label>
-                      <Input id="referrerName" placeholder="Enter your name" className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-12" />
-                      {formErrors.referrerName && <p className="text-destructive text-sm mt-1">{formErrors.referrerName}</p>}
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Step 1 */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="relative"
+            >
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm overflow-hidden h-full">
+                <CardContent className="p-8">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-2xl font-bold text-white">1</span>
                     </div>
                     <div>
-                      <Label className="text-white/70">Phone Number</Label>
-                      <Input id="referrerPhone" placeholder="+91 XXXXX XXXXX" className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-12" />
-                      {formErrors.referrerPhone && <p className="text-destructive text-sm mt-1">{formErrors.referrerPhone}</p>}
-                    </div>
-                    <div>
-                      <Label className="text-white/70">Email Address</Label>
-                      <Input id="referrerEmail" type="email" placeholder="you@email.com" className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-12" />
-                      {formErrors.referrerEmail && <p className="text-destructive text-sm mt-1">{formErrors.referrerEmail}</p>}
-                    </div>
-                    <Button 
-                      type="button"
-                      onClick={() => validateForm(1) && setFormStep(2)}
-                      className="w-full bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90 rounded-xl h-12 text-lg"
-                    >
-                      Continue <ArrowRight className="w-5 h-5 ml-2" />
-                    </Button>
-                  </div>
-                )}
-
-                {formStep === 2 && (
-                  <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-xl font-semibold mb-4">Student Details (Referee)</h3>
-                    <div>
-                      <Label className="text-white/70">Student Name</Label>
-                      <Input id="refereeName" placeholder="Enter student name" className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-12" />
-                      {formErrors.refereeName && <p className="text-destructive text-sm mt-1">{formErrors.refereeName}</p>}
-                    </div>
-                    <div>
-                      <Label className="text-white/70">Student Phone</Label>
-                      <Input id="refereePhone" placeholder="+91 XXXXX XXXXX" className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-12" />
-                      {formErrors.refereePhone && <p className="text-destructive text-sm mt-1">{formErrors.refereePhone}</p>}
-                    </div>
-                    <div>
-                      <Label className="text-white/70">Student Email</Label>
-                      <Input id="refereeEmail" type="email" placeholder="student@email.com" className="mt-2 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl h-12" />
-                      {formErrors.refereeEmail && <p className="text-destructive text-sm mt-1">{formErrors.refereeEmail}</p>}
-                    </div>
-                    <div className="flex gap-4">
-                      <Button type="button" variant="outline" onClick={() => setFormStep(1)} className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl h-12">
-                        Back
-                      </Button>
-                      <Button 
-                        type="button"
-                        onClick={() => validateForm(2) && setFormStep(3)}
-                        className="flex-1 bg-gradient-to-r from-primary to-cyan-400 hover:opacity-90 rounded-xl h-12"
-                      >
-                        Continue <ArrowRight className="w-5 h-5 ml-2" />
-                      </Button>
+                      <h3 className="text-xl font-bold text-white mb-2">Create Your Account</h3>
+                      <p className="text-white/60 mb-4">
+                        Sign up for free using your email and phone number. Complete your profile with basic details to get started.
+                      </p>
+                      <ul className="space-y-2">
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Takes less than 2 minutes
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          No documents required initially
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Instant access to dashboard
+                        </li>
+                      </ul>
                     </div>
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            </motion.div>
 
-                {formStep === 3 && (
-                  <div className="space-y-4 animate-fade-in">
-                    <h3 className="text-xl font-semibold mb-4">Select Program</h3>
+            {/* Step 2 */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="relative"
+            >
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm overflow-hidden h-full">
+                <CardContent className="p-8">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-2xl font-bold text-white">2</span>
+                    </div>
                     <div>
-                      <Label className="text-white/70">University</Label>
-                      <Select value={selectedUniversity} onValueChange={setSelectedUniversity}>
-                        <SelectTrigger className="mt-2 bg-white/5 border-white/10 text-white rounded-xl h-12">
-                          <SelectValue placeholder="Select university" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {universities.filter(u => u.status === 'active').map((u) => (
-                            <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {selectedUniversity && (
-                      <div>
-                        <Label className="text-white/70">Program</Label>
-                        <Select>
-                          <SelectTrigger className="mt-2 bg-white/5 border-white/10 text-white rounded-xl h-12">
-                            <SelectValue placeholder="Select program" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filteredPrograms.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name} - ₹{p.rewardAmount.toLocaleString()} reward
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    <div className="flex gap-4 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setFormStep(2)} className="flex-1 border-white/20 text-white hover:bg-white/10 rounded-xl h-12">
-                        Back
-                      </Button>
-                      <Button 
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="flex-1 bg-gradient-to-r from-success to-emerald-400 hover:opacity-90 rounded-xl h-12"
-                      >
-                        {isSubmitting ? 'Submitting...' : 'Submit Referral'}
-                      </Button>
+                      <h3 className="text-xl font-bold text-white mb-2">Add Student Details</h3>
+                      <p className="text-white/60 mb-4">
+                        Enter the student's information including name, contact details, and their preferred university and program.
+                      </p>
+                      <ul className="space-y-2">
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Student name and contact info
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Choose from 100+ universities
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Select preferred program
+                        </li>
+                      </ul>
                     </div>
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            </motion.div>
 
-                {formStep === 4 && (
-                  <div className="text-center py-8 animate-fade-in">
-                    <div className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mx-auto mb-6">
-                      <CheckCircle className="w-10 h-10 text-success" />
+            {/* Step 3 */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="relative"
+            >
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm overflow-hidden h-full">
+                <CardContent className="p-8">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-2xl font-bold text-white">3</span>
                     </div>
-                    <h3 className="text-2xl font-bold mb-2">Referral Submitted!</h3>
-                    <p className="text-white/50 mb-6">Your referral code:</p>
-                    <div className="bg-white/10 rounded-xl p-4 mb-6">
-                      <p className="text-3xl font-mono font-bold text-primary">{submittedCode}</p>
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-2">Track Your Referral</h3>
+                      <p className="text-white/60 mb-4">
+                        Get a unique tracking code and monitor the student's admission journey in real-time through your dashboard.
+                      </p>
+                      <ul className="space-y-2">
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Unique referral tracking code
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Real-time status updates
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Email & SMS notifications
+                        </li>
+                      </ul>
                     </div>
-                    <p className="text-sm text-white/50 mb-6">Save this code to track your referral status</p>
-                    <Button onClick={() => { setFormStep(1); setSubmittedCode(''); }} variant="outline" className="border-white/20 text-white hover:bg-white/10 rounded-xl">
-                      Submit Another Referral
-                    </Button>
                   </div>
-                )}
-              </form>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Step 4 */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4 }}
+              className="relative"
+            >
+              <Card className="bg-white/5 border-white/10 backdrop-blur-sm overflow-hidden h-full">
+                <CardContent className="p-8">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-2xl font-bold text-white">4</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white mb-2">Receive Your Reward</h3>
+                      <p className="text-white/60 mb-4">
+                        Once the student is successfully admitted, your reward is processed and transferred directly to your bank account.
+                      </p>
+                      <ul className="space-y-2">
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Rewards from ₹2,000 to ₹50,000
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Direct bank transfer
+                        </li>
+                        <li className="flex items-center gap-2 text-sm text-white/50">
+                          <Check className="w-4 h-4 text-green-400" />
+                          Processed within 7 days
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+
+          {/* CTA */}
+          <motion.div 
+            className="text-center mt-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.5 }}
+          >
+            <Link to="/login?tab=signup">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  size="lg" 
+                  className="bg-gradient-to-r from-primary to-cyan-500 hover:opacity-90 text-white rounded-full px-10 py-7 text-lg shadow-2xl shadow-primary/30"
+                >
+                  Sign Up & Start Referring <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </motion.div>
+            </Link>
+            <p className="text-white/40 text-sm mt-4">Free to join • No credit card required</p>
+          </motion.div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="py-24 relative">
+      {/* FAQ Section */}
+      <section id="faq" className="py-32 relative">
         <div className="max-w-3xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="bg-warning/20 text-warning border-0 px-4 py-2 mb-4 rounded-full">FAQ</Badge>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4">Common Questions</h2>
-          </div>
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <Badge className="bg-cyan-500/10 text-cyan-400 border-0 px-4 py-2 mb-6 rounded-full">
+              FAQ
+            </Badge>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+              We're Here to <span className="text-cyan-400">Help</span>
+            </h2>
+            <p className="text-xl text-white/50">FAQs designed to provide the information you need</p>
+          </motion.div>
 
           <Accordion type="single" collapsible className="space-y-4">
-            {faqs.map((faq, i) => (
-              <AccordionItem key={i} value={`item-${i}`} className="bg-white/5 border border-white/10 rounded-2xl px-6 overflow-hidden">
-                <AccordionTrigger className="text-left font-semibold hover:no-underline py-6">
-                  {faq.q}
-                </AccordionTrigger>
-                <AccordionContent className="text-white/60 pb-6">
-                  {faq.a}
-                </AccordionContent>
-              </AccordionItem>
+            {faqs.map((faq, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <AccordionItem value={`faq-${index}`} className="bg-white/5 border border-white/10 rounded-xl px-6 overflow-hidden">
+                  <AccordionTrigger className="text-white hover:text-primary py-6 text-left">
+                    {faq.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-white/60 pb-6">
+                    {faq.a}
+                  </AccordionContent>
+                </AccordionItem>
+              </motion.div>
             ))}
           </Accordion>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-24 relative">
+      {/* CTA Section */}
+      <section className="py-32 relative">
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
-          <div className="relative p-12 rounded-3xl bg-gradient-to-br from-primary/20 to-accent/20 border border-white/10 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10" />
-            <div className="relative">
-              <h2 className="text-4xl lg:text-5xl font-bold mb-4">Ready to Start Earning?</h2>
+          <motion.div 
+            className="relative p-12 md:p-16 rounded-3xl bg-gradient-to-br from-primary/20 via-purple-500/20 to-cyan-500/20 border border-white/10 overflow-hidden"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <motion.div 
+              className="absolute inset-0 bg-gradient-to-r from-primary/10 to-purple-500/10"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 3, repeat: Infinity }}
+            />
+            <div className="relative z-10">
+              <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+                Ready to Start <span className="text-primary">Earning?</span>
+              </h2>
               <p className="text-xl text-white/60 mb-8 max-w-2xl mx-auto">
-                Join thousands of referrers who are already earning rewards by helping students find their dream universities.
+                Join thousands of referrers who are already transforming education into income.
               </p>
-              <Button 
-                size="lg" 
-                onClick={() => scrollToSection('referral-form')}
-                className="bg-white text-black hover:bg-white/90 rounded-full px-10 py-6 text-lg shadow-xl"
-              >
-                Get Started Now <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link to="/login?tab=signup">
+                  <Button 
+                    size="lg" 
+                    className="bg-white text-black hover:bg-white/90 rounded-full px-10 py-7 text-lg shadow-2xl"
+                  >
+                    Sign Up Now <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </Link>
+              </motion.div>
+              <p className="text-white/40 text-sm mt-4">Free to join • No credit card required</p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-16 border-t border-white/5">
+      <footer className="py-16 border-t border-white/10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center">
-                  <GraduationCap className="w-6 h-6 text-white" />
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <span className="font-bold text-xl">TeamLease EdTech</span>
-                  <p className="text-xs text-white/50">Referral Platform</p>
-                </div>
+                <span className="font-bold text-lg">TeamLease EdTech</span>
               </div>
-              <p className="text-white/50 max-w-md mb-6">
-                Empowering education through referrals. Connect students with top universities and earn rewards.
+              <p className="text-white/50 text-sm leading-relaxed">
+                Your trusted partner in education referrals, creating pathways for students and rewards for referrers.
               </p>
-              <div className="flex gap-4">
-                {[Linkedin, Twitter, Mail].map((Icon, i) => (
-                  <a key={i} href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-                    <Icon className="w-5 h-5 text-white/70" />
-                  </a>
-                ))}
-              </div>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Quick Links</h4>
-              <div className="space-y-3">
-                {['How It Works', 'Features', 'Testimonials', 'FAQ'].map((link) => (
-                  <button key={link} onClick={() => scrollToSection(link.toLowerCase().replace(' ', '-'))} className="block text-white/50 hover:text-white transition-colors text-sm">
-                    {link}
-                  </button>
-                ))}
-              </div>
+              <h4 className="font-semibold mb-4 text-white">Sections</h4>
+              <ul className="space-y-3 text-sm text-white/50">
+                <li><button onClick={() => scrollToSection('process')} className="hover:text-white transition-colors">Process</button></li>
+                <li><button onClick={() => scrollToSection('services')} className="hover:text-white transition-colors">Services</button></li>
+                <li><button onClick={() => scrollToSection('testimonials')} className="hover:text-white transition-colors">Testimonials</button></li>
+                <li><button onClick={() => scrollToSection('how-to-refer')} className="hover:text-white transition-colors">How to Refer</button></li>
+              </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Contact</h4>
-              <div className="space-y-3 text-sm text-white/50">
-                <p className="flex items-center gap-2"><Mail className="w-4 h-4" /> edtech@teamlease.com</p>
-                <p className="flex items-center gap-2"><Phone className="w-4 h-4" /> +91 1800 123 4567</p>
-                <p className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Bangalore, India</p>
-              </div>
+              <h4 className="font-semibold mb-4 text-white">Pages</h4>
+              <ul className="space-y-3 text-sm text-white/50">
+                <li><Link to="/login" className="hover:text-white transition-colors">Login</Link></li>
+                <li><Link to="/login?tab=signup" className="hover:text-white transition-colors">Sign Up</Link></li>
+                <li><Link to="/register/referee" className="hover:text-white transition-colors">Student Sign Up</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-white">Contact</h4>
+              <ul className="space-y-3 text-sm text-white/50">
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  teamlease@edtech.com
+                </li>
+                <li className="flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  +91 80 4545 4545
+                </li>
+                <li className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  Bangalore, India
+                </li>
+              </ul>
             </div>
           </div>
-          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-white/40">© 2024 TeamLease EdTech. All rights reserved.</p>
             <div className="flex gap-6 text-sm text-white/40">
               <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
               <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
             </div>
           </div>
         </div>
@@ -731,4 +980,3 @@ const PublicPortal = () => {
 };
 
 export default PublicPortal;
-

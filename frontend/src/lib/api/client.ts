@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
 import { toast } from '@/hooks/use-toast';
 
 // API Base URL - can be configured via environment variable
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -38,16 +38,26 @@ apiClient.interceptors.response.use(
       // Handle different error statuses
       switch (status) {
         case 401:
-          // Unauthorized - clear auth and redirect to login
+          // Unauthorized - only redirect to login if user was previously logged in
+          // Don't redirect for public pages (/, /login, /register, /forgot-password)
+          const publicPaths = ['/', '/login', '/register', '/forgot-password', '/register/referee'];
+          const currentPath = window.location.pathname;
+          const isPublicPage = publicPaths.includes(currentPath);
+          const hadToken = localStorage.getItem('authToken');
+          
           console.error('401 Unauthorized error:', error.config?.url, data);
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
-          window.location.href = '/login';
-          toast({
-            title: 'Session Expired',
-            description: 'Please login again',
-            variant: 'destructive',
-          });
+          
+          // Only redirect if user was logged in and is not on a public page
+          if (hadToken && !isPublicPage) {
+            window.location.href = '/login';
+            toast({
+              title: 'Session Expired',
+              description: 'Please login again',
+              variant: 'destructive',
+            });
+          }
           break;
         case 403:
           toast({

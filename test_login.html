@@ -109,7 +109,7 @@
             resultDiv.innerHTML = '<div class="info">Testing login...</div>';
             
             try {
-                const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+                const response = await fetch('http://localhost:80/api/v1/auth/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -154,7 +154,7 @@
                         <pre>${error.stack || error.toString()}</pre>
                         <p><strong>Possible causes:</strong></p>
                         <ul>
-                            <li>Backend server is not running on port 8000</li>
+                            <li>Backend server is not running on port 80</li>
                             <li>CORS is not configured properly</li>
                             <li>Network connection issue</li>
                         </ul>
@@ -166,7 +166,7 @@
         // Test backend availability on page load
         window.addEventListener('load', async () => {
             try {
-                const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+                const response = await fetch('http://localhost:80/api/v1/auth/login', {
                     method: 'OPTIONS',
                 });
                 console.log('Backend is reachable');
@@ -174,7 +174,7 @@
                 document.getElementById('result').innerHTML = `
                     <div class="error">
                         <h3>⚠️ Backend Not Reachable</h3>
-                        <p>Cannot connect to http://localhost:8000</p>
+                        <p>Cannot connect to http://localhost:80</p>
                         <p>Please ensure the backend server is running.</p>
                     </div>
                 `;

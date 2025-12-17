@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +42,7 @@ const Leaderboard = () => {
     return <span className="text-lg font-bold text-muted-foreground">#{rank}</span>;
   };
 
-  const PodiumCard = ({ entry, rank, position }: { entry: LeaderboardEntry; rank: number; position: 'left' | 'center' | 'right' }) => {
+  const PodiumCard = ({ entry, rank, position, index }: { entry: LeaderboardEntry; rank: number; position: 'left' | 'center' | 'right'; index: number }) => {
     const isFirst = rank === 1;
     const isSecond = rank === 2;
     const isThird = rank === 3;
@@ -62,9 +63,22 @@ const Leaderboard = () => {
     const orderClass = position === 'left' ? 'order-1' : position === 'center' ? 'order-2 md:-mt-8' : 'order-3';
 
     return (
-      <div className={cn('flex-1', orderClass)}>
+      <motion.div 
+        className={cn('flex-1', orderClass)}
+        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ 
+          duration: 0.6, 
+          delay: isFirst ? 0.3 : isSecond ? 0.1 : 0.5,
+          ease: [0.22, 1, 0.36, 1]
+        }}
+      >
+        <motion.div
+          whileHover={{ scale: 1.05, y: -10 }}
+          transition={{ type: 'spring', stiffness: 300 }}
+        >
         <Card className={cn(
-          'border-2 transition-all duration-300 hover:scale-105 hover:shadow-2xl relative overflow-hidden',
+          'border-2 transition-shadow duration-300 hover:shadow-2xl relative overflow-hidden',
           bgGradient,
           borderColor,
           heightClass,
@@ -136,7 +150,8 @@ const Leaderboard = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </motion.div>
+      </motion.div>
     );
   };
 
@@ -158,14 +173,19 @@ const Leaderboard = () => {
       <div className="space-y-8">
         {/* Podium - Top 3 */}
         {entries.length >= 3 && (
-          <div className="flex flex-col md:flex-row gap-4 items-end justify-center px-4">
+          <motion.div 
+            className="flex flex-col md:flex-row gap-4 items-end justify-center px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
             {/* 2nd Place */}
-            <PodiumCard entry={top3[1]} rank={2} position="left" />
+            <PodiumCard entry={top3[1]} rank={2} position="left" index={1} />
             {/* 1st Place */}
-            <PodiumCard entry={top3[0]} rank={1} position="center" />
+            <PodiumCard entry={top3[0]} rank={1} position="center" index={0} />
             {/* 3rd Place */}
-            <PodiumCard entry={top3[2]} rank={3} position="right" />
-          </div>
+            <PodiumCard entry={top3[2]} rank={3} position="right" index={2} />
+          </motion.div>
         )}
 
         {/* Full Rankings Table */}

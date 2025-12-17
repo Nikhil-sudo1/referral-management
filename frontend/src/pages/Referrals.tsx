@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -162,51 +163,97 @@ const Referrals = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <motion.div 
+        className="space-y-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <motion.div 
+          className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center shadow-xl glow-primary">
+            <motion.div 
+              className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center shadow-xl glow-primary"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+            >
               <FileText className="w-7 h-7 text-white" />
-            </div>
+            </motion.div>
             <div>
               <h1 className="text-4xl font-display text-foreground">Referrals</h1>
               <p className="text-muted-foreground mt-1">Manage all referral submissions</p>
             </div>
           </div>
-          <Button
-            onClick={() => {
-              toast({
-                title: 'Export Started',
-                description: 'Your CSV file is being downloaded',
-              });
-            }}
-            variant="outline"
-            className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-        </div>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              onClick={() => {
+                toast({
+                  title: 'Export Started',
+                  description: 'Your CSV file is being downloaded',
+                });
+              }}
+              variant="outline"
+              className="border-2 hover:border-primary/40 hover:bg-primary/5 transition-all"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          </motion.div>
+        </motion.div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <motion.div 
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+            }
+          }}
+        >
           {statsCards.map((stat, index) => (
-            <Card key={stat.label} className="card-elevated animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg`}>
-                    <stat.icon className="w-5 h-5 text-white" />
+            <motion.div
+              key={stat.label}
+              variants={{
+                hidden: { opacity: 0, y: 20, scale: 0.95 },
+                visible: { 
+                  opacity: 1, 
+                  y: 0, 
+                  scale: 1,
+                  transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
+                }
+              }}
+              whileHover={{ y: -5, scale: 1.02 }}
+            >
+              <Card className="card-elevated h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <motion.div 
+                      className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg`}
+                      whileHover={{ scale: 1.1, rotate: 10 }}
+                      transition={{ type: 'spring', stiffness: 300 }}
+                    >
+                      <stat.icon className="w-5 h-5 text-white" />
+                    </motion.div>
+                    <div>
+                      <p className="text-2xl font-display text-foreground">{stat.value}</p>
+                      <p className="text-xs text-muted-foreground">{stat.label}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-display text-foreground">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Filters */}
         <Card className="card-elevated">
@@ -389,7 +436,7 @@ const Referrals = () => {
             </TableBody>
           </Table>
         </Card>
-      </div>
+      </motion.div>
     </DashboardLayout>
   );
 };

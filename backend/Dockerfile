@@ -22,17 +22,17 @@ RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
-EXPOSE 8000
+EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+  CMD curl -f http://localhost:80/health || exit 1
 
 # Run application with Gunicorn
 CMD ["gunicorn", "app.main:app", \
      "--workers", "4", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--bind", "0.0.0.0:8000", \
+     "--bind", "0.0.0.0:80", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
      "--timeout", "120"]

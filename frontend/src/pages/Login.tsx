@@ -1,19 +1,31 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap } from 'lucide-react';
+import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { staggerContainer, staggerItem } from '@/lib/framer';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, signup, isLoading: authLoading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('login');
+
+  // Check for tab query parameter
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'signup') {
+      setActiveTab('signup');
+    }
+  }, [searchParams]);
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [signupData, setSignupData] = useState({
@@ -105,61 +117,131 @@ const Login = () => {
     <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated Background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '4s' }} />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-accent/20 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+        <motion.div 
+          className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px]"
+          animate={{ 
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3]
+          }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <motion.div 
+          className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-500/20 rounded-full blur-[120px]"
+          animate={{ 
+            scale: [1, 1.3, 1],
+            opacity: [0.2, 0.4, 0.2]
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        />
       </div>
 
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center relative z-10">
+      <motion.div 
+        className="w-full max-w-6xl grid lg:grid-cols-2 gap-12 items-center relative z-10"
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
         {/* Left Side - Branding */}
-        <div className="hidden lg:flex flex-col justify-center space-y-8">
+        <motion.div 
+          className="hidden lg:flex flex-col justify-center space-y-8"
+          variants={staggerItem}
+        >
           <div className="space-y-6">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center shadow-2xl shadow-primary/30">
+            <motion.div 
+              className="flex items-center gap-4 mb-6"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <motion.div 
+                className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-cyan-400 flex items-center justify-center shadow-2xl shadow-primary/30"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: 'spring', stiffness: 300 }}
+              >
                 <GraduationCap className="w-8 h-8 text-white" />
-              </div>
+              </motion.div>
               <div>
                 <h1 className="text-3xl font-bold text-white">TeamLease EdTech</h1>
                 <p className="text-sm text-white/50">Referral Management Platform</p>
               </div>
-            </div>
+            </motion.div>
             
-            <h2 className="text-5xl font-bold leading-tight">
+            <motion.h2 
+              className="text-5xl font-bold leading-tight"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
               Making Every
               <br />
-              <span className="bg-gradient-to-r from-primary via-cyan-400 to-accent bg-clip-text text-transparent">
+              <motion.span 
+                className="bg-gradient-to-r from-primary via-cyan-400 to-purple-500 bg-clip-text text-transparent"
+                animate={{ 
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                }}
+                transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                style={{ backgroundSize: '200% 200%' }}
+              >
                 Learner Employable
-              </span>
-            </h2>
-            <p className="text-lg text-white/60 leading-relaxed max-w-lg">
+              </motion.span>
+            </motion.h2>
+            <motion.p 
+              className="text-lg text-white/60 leading-relaxed max-w-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
               Connect education with employment through our comprehensive referral management platform. Streamline student referrals, track admissions, and measure outcomes.
-            </p>
+            </motion.p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <motion.div 
+            className="grid grid-cols-2 gap-4"
+            initial="hidden"
+            animate="visible"
+            variants={staggerContainer}
+          >
             {[
               { value: '600K+', label: 'Students Impacted', gradient: 'from-primary/20 to-cyan-500/20' },
-              { value: '60+', label: 'Partner Universities', gradient: 'from-success/20 to-emerald-500/20' },
-              { value: '50K+', label: 'Active Referrers', gradient: 'from-warning/20 to-orange-500/20' },
-              { value: '85%', label: 'Success Rate', gradient: 'from-accent/20 to-purple-500/20' },
-            ].map((stat) => (
-              <div 
+              { value: '60+', label: 'Partner Universities', gradient: 'from-green-500/20 to-emerald-500/20' },
+              { value: '50K+', label: 'Active Referrers', gradient: 'from-orange-500/20 to-yellow-500/20' },
+              { value: '85%', label: 'Success Rate', gradient: 'from-purple-500/20 to-pink-500/20' },
+            ].map((stat, index) => (
+              <motion.div 
                 key={stat.label}
                 className={`p-5 rounded-2xl bg-gradient-to-br ${stat.gradient} border border-white/10 hover:border-white/20 transition-all`}
+                variants={staggerItem}
+                whileHover={{ scale: 1.05, y: -5 }}
+                transition={{ type: 'spring', stiffness: 300 }}
               >
                 <p className="text-3xl font-bold text-white mb-1">{stat.value}</p>
                 <p className="text-sm text-white/50">{stat.label}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
-          <Link to="/" className="text-sm text-primary hover:text-primary/80 font-medium inline-flex items-center gap-2 transition-colors group">
-            <ArrowRight className="w-4 h-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
-            Back to Home
-          </Link>
-        </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            <Link to="/" className="text-sm text-primary hover:text-primary/80 font-medium inline-flex items-center gap-2 transition-colors group">
+              <ArrowRight className="w-4 h-4 rotate-180 group-hover:-translate-x-1 transition-transform" />
+              Back to Home
+            </Link>
+          </motion.div>
+        </motion.div>
 
         {/* Right Side - Login/Signup Forms */}
-        <div className="flex items-center justify-center">
+        <motion.div 
+          className="flex items-center justify-center"
+          variants={staggerItem}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          >
           <Card className="w-full max-w-md bg-white/5 border-white/10 backdrop-blur-xl rounded-3xl overflow-hidden">
             <CardHeader className="border-b border-white/10 pb-6">
               <div className="flex items-center gap-3 mb-4 lg:hidden">
@@ -177,7 +259,7 @@ const Login = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <Tabs defaultValue="login" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6 bg-white/5 p-1 rounded-xl">
                   <TabsTrigger value="login" className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-white/50 rounded-lg font-semibold">
                     Login
@@ -198,7 +280,7 @@ const Login = () => {
                           type="button"
                           variant="outline"
                           onClick={() => {
-                            setLoginData({ email: 'admin@teamlease.com', password: 'password123' });
+                            setLoginData({ email: 'admin@teamlease.com', password: 'Test@123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs py-2 bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
@@ -209,18 +291,18 @@ const Login = () => {
                           type="button"
                           variant="outline"
                           onClick={() => {
-                            setLoginData({ email: 'rajesh.kumar@teamlease.com', password: 'password123' });
+                            setLoginData({ email: 'amit.patel@teamlease.com', password: 'Test@123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs py-2 bg-warning/10 border-warning/30 text-warning hover:bg-warning/20"
                         >
-                          Manager
+                          Counselor
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
                           onClick={() => {
-                            setLoginData({ email: 'arjun.mehta@gmail.com', password: 'password123' });
+                            setLoginData({ email: 'rahul.verma@gmail.com', password: 'Test@123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs py-2 bg-success/10 border-success/30 text-success hover:bg-success/20"
@@ -413,8 +495,9 @@ const Login = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 };

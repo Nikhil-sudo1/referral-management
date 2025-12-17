@@ -1,0 +1,26 @@
+{
+  "name": "referral-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Referral Management System - Full Stack Application",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "build:dev": "npm run build:dev --prefix frontend",
+    "lint": "npm run lint --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "install:frontend": "npm install --prefix frontend",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "install:all": "npm run install:frontend && npm run install:backend",
+    "start:frontend": "npm run dev --prefix frontend",
+    "start:backend": "cd backend && .\\venv\\Scripts\\Activate.ps1 && uvicorn app.main:app --reload --port 80"
+  },
+  "workspaces": [],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "framer-motion": "^12.23.26"
+  }
+}
