@@ -1,38 +1,27 @@
-# TeamLease EdTech Referral Portal - Backend API
-# FastAPI + Gunicorn + ECS Fargate
-# Exposes port 8000
-
-FROM python:3.12-slim
+# ---------- Build stage ----------
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Install OS dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Accept build-time variable
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Copy application code
 COPY . .
+RUN npm run build
 
-# Create non-root user
-RUN groupadd -g 1000 appgroup \
-    && useradd -u 1000 -g appgroup -s /bin/bash -m appuser \
-    && chown -R appuser:appgroup /app
 
-USER appuser
+# ---------- Runtime stage ----------
+FROM nginx:1.28-alpine
 
-# Application runs on 8000
-EXPOSE 8000
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Container health check (ECS + ALB friendly)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Start FastAPI using Gunicorn + Uvicorn worker
-CMD ["gunicorn", "app.main:app", "--workers=4", "--worker-class=uvicorn.workers.UvicornWorker", "--bind=0.0.0.0:8000", "--access-logfile=-", "--error-logfile=-", "--timeout=120"]
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
