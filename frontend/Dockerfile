@@ -3,7 +3,7 @@
 # Runs on port 3001
 
 # Build stage
-FROM node:18-alpine AS build
+FROM 163742846785.dkr.ecr.ap-south-1.amazonaws.com/nginx-alpine:latest
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # Production stage
-FROM nginx:stable-alpine
+FROM 163742846785.dkr.ecr.ap-south-1.amazonaws.com/nginx-alpine:latest
 
 # Security: Remove default nginx configs
 RUN rm -rf /etc/nginx/conf.d/default.conf \
