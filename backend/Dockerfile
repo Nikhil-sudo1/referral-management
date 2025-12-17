@@ -1,21 +1,31 @@
 FROM python:3.12-slim
 
+# Set working directory
 WORKDIR /app
 
-# Install system deps
+# Install system deps (only what is required)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps
+# Copy requirements first (better layer caching)
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app
+# Copy application code
 COPY . .
 
-# Expose API port
+# Expose application port
 EXPOSE 8000
 
-# Start API (SINGLE LINE CMD)
-CMD ["gunicorn","app.main:app","--workers","4","--worker-class","uvicorn.workers.UvicornWorker","--bind","0.0.0.0:8000","--access-logfile","-","--error-logfile","-"]
+# Health check (matches ALB + ECS)
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Start FastAPI using Gunicorn + Uvicorn workers
+CMD ["gunicorn", "app.main:app", \
+     "--workers", "4", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "120"]
