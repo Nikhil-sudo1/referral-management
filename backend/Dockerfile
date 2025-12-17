@@ -1,6 +1,6 @@
 # TeamLease EdTech Referral Portal - API Dockerfile
 # For AWS ECS Fargate Deployment
-# Runs on port 80
+# Runs on port 8080 (non-root users cannot bind to port 80)
 
 FROM python:3.12-slim AS builder
 
@@ -49,16 +49,16 @@ RUN find /app -type f -name "*.pyc" -delete \
 # Switch to non-root user
 USER appuser
 
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:80/health/live || exit 1
+  CMD curl -f http://localhost:8080/health/live || exit 1
 
-# Run application with Gunicorn
+# Run application with Gunicorn on port 8080
 CMD ["gunicorn", "app.main:app", \
      "--workers", "4", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--bind", "0.0.0.0:80", \
+     "--bind", "0.0.0.0:8080", \
      "--access-logfile", "-", \
      "--error-logfile", "-", \
      "--timeout", "120", \

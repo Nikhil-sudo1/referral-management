@@ -1,6 +1,6 @@
 # TeamLease EdTech Referral Portal - API Build Specification
 # AWS CodeBuild buildspec for API deployment to ECS Fargate
-# Runs on port 80
+# Runs on port 8080
 version: 0.2
 
 env:
