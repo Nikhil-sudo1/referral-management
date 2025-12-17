@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM 163742846785.dkr.ecr.ap-south-1.amazonaws.com/python3.12-slim-base-image:latest
 
 # Set working directory
 WORKDIR /app
