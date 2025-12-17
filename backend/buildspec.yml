@@ -7,10 +7,10 @@ env:
   variables:
     AWS_REGION: "ap-south-1"
     AWS_ACCOUNT_ID: "163742846785"
-    ECR_REPO: "dev-referral-mgmt-api-ecr"
+    ECR_REPO: "dev-referral-portal-api-ecr"
     ECS_CLUSTER: "hackathon"
-    ECS_SERVICE: "dev-referral-mgmt-api-service"
-    CONTAINER_NAME: "dev-referral-mgmt-api-container"
+    ECS_SERVICE: "dev-referral-portal-api-service"
+    CONTAINER_NAME: "dev-referral-portal-api-container"
 
 phases:
   pre_build:
@@ -27,9 +27,7 @@ phases:
   build:
     commands:
       - echo "=== Build phase started on $(date) ==="
-      - echo "Changing to backend directory..."
       - cd backend
-      - pwd
       - echo "Building the Docker image..."
       - |
         docker build \
@@ -48,6 +46,7 @@ phases:
       - echo "Writing image definitions file..."
       - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       - cat imagedefinitions.json
+      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment
       - echo "=== Build completed successfully on $(date) ==="
 
 artifacts:

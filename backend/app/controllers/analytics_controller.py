@@ -8,6 +8,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.services.analytics_service import AnalyticsService
 from app.schemas.common import BaseResponse
+from app.models.user import User
 
 
 class AnalyticsController:
@@ -16,9 +17,9 @@ class AnalyticsController:
     def __init__(self, db: Session):
         self.service = AnalyticsService(db)
     
-    def get_dashboard_stats(self) -> BaseResponse:
-        """Get dashboard statistics"""
-        stats = self.service.get_dashboard_stats()
+    def get_dashboard_stats(self, current_user: User = None) -> BaseResponse:
+        """Get dashboard statistics filtered by user role"""
+        stats = self.service.get_dashboard_stats(current_user)
         return BaseResponse(
             success=True,
             message="Success",

@@ -7,12 +7,11 @@ env:
   variables:
     AWS_REGION: "ap-south-1"
     AWS_ACCOUNT_ID: "163742846785"
-    ECR_REPO: "dev-referral-mgmt-ui-ecr"
+    ECR_REPO: "dev-referral-portal-ui-ecr"
     ECS_CLUSTER: "hackathon"
-    ECS_SERVICE: "dev-referral-mgmt-ui-service"
-    CONTAINER_NAME: "dev-referral-mgmt-ui-container"
-  parameter-store:
-    VITE_API_URL: "/referral/dev/api-url"
+    ECS_SERVICE: "dev-referral-portal-ui-service"
+    CONTAINER_NAME: "dev-referral-portal-ui-container"
+    VITE_API_URL: "https://devreferralapi.tledtech.com"
 
 phases:
   pre_build:
@@ -30,9 +29,7 @@ phases:
   build:
     commands:
       - echo "=== Build phase started on $(date) ==="
-      - echo "Changing to frontend directory..."
       - cd frontend
-      - pwd
       - echo "Building the Docker image..."
       - |
         docker build \
@@ -52,6 +49,7 @@ phases:
       - echo "Writing image definitions file..."
       - printf '[{"name":"%s","imageUri":"%s"}]' $CONTAINER_NAME $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
       - cat imagedefinitions.json
+      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment
       - echo "=== Build completed successfully on $(date) ==="
 
 artifacts:
@@ -61,5 +59,5 @@ artifacts:
 
 cache:
   paths:
-    - 'node_modules/**/*'
+    - node_modules/**/*
 

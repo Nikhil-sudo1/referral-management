@@ -7,69 +7,40 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 600px;
             margin: 50px auto;
             padding: 20px;
-            background: #f5f5f5;
+            background: #1a1a1a;
+            color: #fff;
         }
         .container {
-            background: white;
+            background: #2a2a2a;
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        h1 {
-            color: #333;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
+        h1 { color: #4ade80; }
         button {
-            background: #007bff;
-            color: white;
-            padding: 12px 30px;
+            background: #4ade80;
+            color: #000;
             border: none;
+            padding: 12px 24px;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
+            margin: 10px 5px;
         }
-        button:hover {
-            background: #0056b3;
-        }
+        button:hover { background: #22c55e; }
         .result {
             margin-top: 20px;
             padding: 15px;
             border-radius: 5px;
+            background: #333;
         }
-        .success {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-        }
-        .error {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-        }
-        .info {
-            background: #d1ecf1;
-            border: 1px solid #bee5eb;
-            color: #0c5460;
-        }
+        .success { border-left: 4px solid #4ade80; }
+        .error { border-left: 4px solid #ef4444; }
+        .info { border-left: 4px solid #3b82f6; }
         pre {
-            background: #f8f9fa;
+            background: #1a1a1a;
             padding: 10px;
             border-radius: 5px;
             overflow-x: auto;
@@ -78,109 +49,123 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔐 Login Test Page</h1>
-        <p>Test direct API login to diagnose issues</p>
-
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" value="alex@example.com" required>
-            </div>
-
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" value="password123" required>
-            </div>
-
-            <button type="submit">Test Login</button>
-        </form>
+        <h1>🔐 Login Test Tool</h1>
+        <p>This will test if your backend login is working correctly.</p>
+        
+        <div>
+            <button onclick="testBackendHealth()">1. Test Backend Health</button>
+            <button onclick="testAdminLogin()">2. Test Admin Login</button>
+            <button onclick="testReferrerLogin()">3. Test Referrer Login</button>
+        </div>
 
         <div id="result"></div>
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        const API_URL = 'http://localhost:8000';
+        const resultDiv = document.getElementById('result');
+
+        function showResult(type, title, message, data = null) {
+            let html = `<div class="result ${type}">
+                <h3>${title}</h3>
+                <p>${message}</p>`;
             
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const resultDiv = document.getElementById('result');
+            if (data) {
+                html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
             
-            resultDiv.innerHTML = '<div class="info">Testing login...</div>';
-            
+            html += '</div>';
+            resultDiv.innerHTML = html;
+        }
+
+        async function testBackendHealth() {
             try {
-                const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+                showResult('info', '⏳ Testing...', 'Checking backend health...');
+                
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('success', '✅ Backend is Healthy!', 
+                        `Status: ${data.status}<br>Database: ${data.checks.database}`, data);
+                } else {
+                    showResult('error', '❌ Backend Error', 
+                        `Status: ${response.status}`, data);
+                }
+            } catch (error) {
+                showResult('error', '❌ Connection Failed', 
+                    `Cannot connect to backend at ${API_URL}<br>Error: ${error.message}`);
+            }
+        }
+
+        async function testAdminLogin() {
+            try {
+                showResult('info', '⏳ Testing...', 'Attempting admin login...');
+                
+                const response = await fetch(`${API_URL}/api/v1/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        email: email,
-                        password: password
+                        email: 'admin@teamlease.com',
+                        password: 'Password123!'
                     })
                 });
                 
                 const data = await response.json();
                 
-                if (response.ok) {
-                    resultDiv.innerHTML = `
-                        <div class="success">
-                            <h3>✅ Login Successful!</h3>
-                            <p><strong>User:</strong> ${data.data.user.name}</p>
-                            <p><strong>Email:</strong> ${data.data.user.email}</p>
-                            <p><strong>Role:</strong> ${data.data.user.role}</p>
-                            <p><strong>Token:</strong> ${data.data.access_token.substring(0, 50)}...</p>
-                            <h4>Full Response:</h4>
-                            <pre>${JSON.stringify(data, null, 2)}</pre>
-                        </div>
-                    `;
+                if (response.ok && data.success) {
+                    showResult('success', '✅ Admin Login Successful!', 
+                        `Welcome ${data.data.user.name}!<br>Role: ${data.data.user.role}<br>Token received: Yes`, 
+                        { user: data.data.user, token: data.data.access_token.substring(0, 50) + '...' });
                 } else {
-                    resultDiv.innerHTML = `
-                        <div class="error">
-                            <h3>❌ Login Failed</h3>
-                            <p><strong>Status:</strong> ${response.status}</p>
-                            <p><strong>Message:</strong> ${data.detail || data.message || 'Unknown error'}</p>
-                            <h4>Full Response:</h4>
-                            <pre>${JSON.stringify(data, null, 2)}</pre>
-                        </div>
-                    `;
+                    showResult('error', '❌ Login Failed', 
+                        data.message || 'Invalid credentials', data);
                 }
             } catch (error) {
-                resultDiv.innerHTML = `
-                    <div class="error">
-                        <h3>❌ Network Error</h3>
-                        <p>${error.message}</p>
-                        <p><strong>Details:</strong></p>
-                        <pre>${error.stack || error.toString()}</pre>
-                        <p><strong>Possible causes:</strong></p>
-                        <ul>
-                            <li>Backend server is not running on port 8000</li>
-                            <li>CORS is not configured properly</li>
-                            <li>Network connection issue</li>
-                        </ul>
-                    </div>
-                `;
+                showResult('error', '❌ Request Failed', 
+                    `Error: ${error.message}`);
             }
-        });
+        }
 
-        // Test backend availability on page load
-        window.addEventListener('load', async () => {
+        async function testReferrerLogin() {
             try {
-                const response = await fetch('http://localhost:8000/api/v1/auth/login', {
-                    method: 'OPTIONS',
+                showResult('info', '⏳ Testing...', 'Attempting referrer login...');
+                
+                const response = await fetch(`${API_URL}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'arjun.mehta@gmail.com',
+                        password: 'Password123!'
+                    })
                 });
-                console.log('Backend is reachable');
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showResult('success', '✅ Referrer Login Successful!', 
+                        `Welcome ${data.data.user.name}!<br>Role: ${data.data.user.role}<br>Token received: Yes`, 
+                        { user: data.data.user, token: data.data.access_token.substring(0, 50) + '...' });
+                } else {
+                    showResult('error', '❌ Login Failed', 
+                        data.message || 'Invalid credentials', data);
+                }
             } catch (error) {
-                document.getElementById('result').innerHTML = `
-                    <div class="error">
-                        <h3>⚠️ Backend Not Reachable</h3>
-                        <p>Cannot connect to http://localhost:8000</p>
-                        <p>Please ensure the backend server is running.</p>
-                    </div>
-                `;
+                showResult('error', '❌ Request Failed', 
+                    `Error: ${error.message}`);
             }
-        });
+        }
+
+        // Auto-test on load
+        window.onload = () => {
+            showResult('info', '👋 Welcome!', 
+                'Click the buttons above to test your backend login functionality.<br><br>' +
+                'Make sure your backend is running on http://localhost:8000');
+        };
     </script>
 </body>
 </html>
-

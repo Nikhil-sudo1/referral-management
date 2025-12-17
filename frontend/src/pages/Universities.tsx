@@ -106,14 +106,24 @@ const Universities = () => {
     navigate(`/universities/${universityId}/programs`);
   };
   
-  const getUniversityStats = (universityId: string) => {
-    const uniReferrals = referrals.filter((r) => r.university_id === universityId);
+  const getUniversityStats = (university: any) => {
+    // Use stats from API response if available (more accurate)
+    if (university.stats) {
+      return {
+        totalReferrals: university.stats.total_referrals || 0,
+        admissions: university.stats.total_admissions || 0,
+        conversionRate: university.stats.conversion_rate?.toFixed(1) || '0',
+        programs: university.stats.total_programs || 0,
+      };
+    }
+    // Fallback to local calculation
+    const uniReferrals = referrals.filter((r) => r.university_id === university.id);
     const admissions = uniReferrals.filter((r) => r.status === 'admitted').length;
     return {
       totalReferrals: uniReferrals.length,
       admissions,
       conversionRate: uniReferrals.length > 0 ? ((admissions / uniReferrals.length) * 100).toFixed(1) : '0',
-      programs: programs.filter((p) => p.university_id === universityId).length,
+      programs: programs.filter((p) => p.university_id === university.id).length,
     };
   };
 
@@ -142,9 +152,9 @@ const Universities = () => {
         case 'code':
           return (a.code || '').localeCompare(b.code || '');
         case 'referrals':
-          return getUniversityStats(b.id).totalReferrals - getUniversityStats(a.id).totalReferrals;
+          return getUniversityStats(b).totalReferrals - getUniversityStats(a).totalReferrals;
         case 'admissions':
-          return getUniversityStats(b.id).admissions - getUniversityStats(a.id).admissions;
+          return getUniversityStats(b).admissions - getUniversityStats(a).admissions;
         case 'date':
           return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
         default:
@@ -392,7 +402,7 @@ const Universities = () => {
             </div>
           ) : (
             filteredAndSortedUniversities.map((uni) => {
-            const stats = getUniversityStats(uni.id);
+            const stats = getUniversityStats(uni);
 
             return (
               <Card key={uni.id} className="hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/30 group">

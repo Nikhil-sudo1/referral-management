@@ -31,66 +31,152 @@ class AnalyticsService:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_dashboard_stats(self) -> DashboardStats:
+    def get_dashboard_stats(self, current_user: User = None) -> DashboardStats:
         """
         Get main dashboard statistics
         CACHED: Results cached for 30 seconds to reduce load on remote database
+        
+        Data visibility based on role:
+        - super_admin/admin: ALL data
+        - manager: Only their university's data
+        - referrer: Only their own data (redirects to my-analytics)
         """
+        # Determine university filter based on user role
+        university_filter = None
+        referrer_filter = None
+        cache_suffix = "global"
+        
+        if current_user:
+            if current_user.role in ['super_admin', 'admin']:
+                # See all data
+                cache_suffix = "global"
+            elif current_user.role == 'manager':
+                # See only their university's data
+                if current_user.university_id:
+                    university_filter = current_user.university_id
+                    cache_suffix = f"univ_{university_filter}"
+                else:
+                    # No university assigned - return zeros
+                    return DashboardStats(
+                        total_referrals=0,
+                        total_admissions=0,
+                        total_referrers=0,
+                        total_counselors=0,
+                        total_rewards=0.0,
+                        conversion_rate=0.0,
+                        pending_referrals=0,
+                        monthly_referrals=0,
+                        monthly_admissions=0,
+                        monthly_rewards=0.0,
+                        active_universities=0,
+                    )
+            elif current_user.role == 'referrer':
+                # Referrers see only their own referrals
+                referrer_filter = current_user.id
+                cache_suffix = f"referrer_{referrer_filter}"
+        
         # Check cache first - critical for remote database performance
-        cache_key = "dashboard_stats"
+        cache_key = f"dashboard_stats_{cache_suffix}"
         cached_result = get_cached(cache_key)
         if cached_result is not None:
-            logger.info("Dashboard stats: cache hit")
+            logger.info(f"Dashboard stats ({cache_suffix}): cache hit")
             return cached_result
         
-        logger.info("Dashboard stats: cache miss, fetching from database")
+        logger.info(f"Dashboard stats ({cache_suffix}): cache miss, fetching from database")
         month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         
-        # Simple queries - optimized for remote database with high latency
-        # Each query is simple to minimize database processing time
-        total_referrals = self.db.query(func.count(Referral.id)).scalar() or 0
+        # Build base query with optional university filter
+        def apply_referral_filter(query):
+            if university_filter:
+                query = query.filter(Referral.university_id == university_filter)
+            if referrer_filter:
+                query = query.filter(Referral.referrer_id == referrer_filter)
+            return query
         
-        pending_referrals = self.db.query(func.count(Referral.id)).filter(
+        def apply_reward_filter(query):
+            if university_filter:
+                # Filter rewards by referrals from this university
+                referral_ids = self.db.query(Referral.id).filter(
+                    Referral.university_id == university_filter
+                ).subquery()
+                query = query.filter(Reward.referral_id.in_(referral_ids))
+            if referrer_filter:
+                query = query.filter(Reward.user_id == referrer_filter)
+            return query
+        
+        # Total referrals
+        referral_query = self.db.query(func.count(Referral.id))
+        referral_query = apply_referral_filter(referral_query)
+        total_referrals = referral_query.scalar() or 0
+        
+        # Pending referrals
+        pending_query = self.db.query(func.count(Referral.id)).filter(
             Referral.status.in_(["submitted", "assigned", "contacted"])
-        ).scalar() or 0
+        )
+        pending_query = apply_referral_filter(pending_query)
+        pending_referrals = pending_query.scalar() or 0
         
-        total_admissions = self.db.query(func.count(Referral.id)).filter(
+        # Total admissions
+        admissions_query = self.db.query(func.count(Referral.id)).filter(
             Referral.status == "admitted"
-        ).scalar() or 0
+        )
+        admissions_query = apply_referral_filter(admissions_query)
+        total_admissions = admissions_query.scalar() or 0
         
+        # Conversion rate
         conversion_rate = 0.0
         if total_referrals > 0:
             conversion_rate = round((total_admissions / total_referrals) * 100, 1)
         
         # Reward stats
-        total_rewards_raw = self.db.query(func.sum(Reward.amount)).filter(
+        rewards_query = self.db.query(func.sum(Reward.amount)).filter(
             Reward.status == "disbursed"
-        ).scalar()
+        )
+        rewards_query = apply_reward_filter(rewards_query)
+        total_rewards_raw = rewards_query.scalar()
         total_rewards = float(total_rewards_raw) if total_rewards_raw else 0.0
         
-        # User counts  
-        total_referrers = self.db.query(func.count(User.id)).filter(User.role == "referrer").scalar() or 0
-        total_counselors = self.db.query(func.count(User.id)).filter(User.role == "counselor").scalar() or 0
-        
-        # Active universities
-        active_universities = self.db.query(func.count(University.id)).filter(
-            University.status == "active"
-        ).scalar() or 0
+        # User counts (filtered by university if applicable)
+        if university_filter:
+            total_referrers = self.db.query(func.count(func.distinct(Referral.referrer_id))).filter(
+                Referral.university_id == university_filter
+            ).scalar() or 0
+            total_counselors = self.db.query(func.count(User.id)).filter(
+                User.role == "counselor",
+                User.university_id == university_filter
+            ).scalar() or 0
+            active_universities = 1  # They can only see their own university
+        elif referrer_filter:
+            total_referrers = 1  # Just themselves
+            total_counselors = 0
+            active_universities = 0
+        else:
+            total_referrers = self.db.query(func.count(User.id)).filter(User.role == "referrer").scalar() or 0
+            total_counselors = self.db.query(func.count(User.id)).filter(User.role == "counselor").scalar() or 0
+            active_universities = self.db.query(func.count(University.id)).filter(
+                University.status == "active"
+            ).scalar() or 0
         
         # Monthly stats
-        monthly_referrals = self.db.query(func.count(Referral.id)).filter(
+        monthly_ref_query = self.db.query(func.count(Referral.id)).filter(
             Referral.created_at >= month_start
-        ).scalar() or 0
+        )
+        monthly_ref_query = apply_referral_filter(monthly_ref_query)
+        monthly_referrals = monthly_ref_query.scalar() or 0
         
-        monthly_admissions = self.db.query(func.count(Referral.id)).filter(
+        monthly_adm_query = self.db.query(func.count(Referral.id)).filter(
             Referral.status == "admitted",
             Referral.created_at >= month_start
-        ).scalar() or 0
+        )
+        monthly_adm_query = apply_referral_filter(monthly_adm_query)
+        monthly_admissions = monthly_adm_query.scalar() or 0
         
-        monthly_rewards_raw = self.db.query(func.sum(Reward.amount)).filter(
+        monthly_rewards_query = self.db.query(func.sum(Reward.amount)).filter(
             Reward.status == "disbursed",
             Reward.created_at >= month_start
-        ).scalar()
+        )
+        monthly_rewards_query = apply_reward_filter(monthly_rewards_query)
+        monthly_rewards_raw = monthly_rewards_query.scalar()
         monthly_rewards = float(monthly_rewards_raw) if monthly_rewards_raw else 0.0
         
         result = DashboardStats(
@@ -109,7 +195,7 @@ class AnalyticsService:
         
         # Cache the result for 30 seconds - critical for performance
         set_cached(cache_key, result, ttl=30)
-        logger.info("Dashboard stats: cached for 30 seconds")
+        logger.info(f"Dashboard stats ({cache_suffix}): cached for 30 seconds")
         return result
     
     def get_referral_analytics(

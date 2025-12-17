@@ -22,10 +22,15 @@ async def get_dashboard_stats(
 ):
     """
     Get main dashboard statistics
+    
+    Data visibility based on role:
+    - super_admin/admin: ALL data
+    - manager/counselor: Only their university's data
+    - referrer: Only their own data
     """
     try:
         controller = AnalyticsController(db)
-        return controller.get_dashboard_stats()
+        return controller.get_dashboard_stats(current_user)
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 

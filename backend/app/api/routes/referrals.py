@@ -40,17 +40,56 @@ async def get_referrals(
 ):
     """
     Get paginated list of referrals with filters
+    
+    Data visibility based on role:
+    - super_admin: ALL referrals
+    - admin: ALL referrals  
+    - manager: Only referrals from their assigned university
+    - referrer: Only their own referrals (use /my-referrals endpoint instead)
     """
     try:
         controller = ReferralController(db)
+        
+        # Apply role-based filtering
+        effective_university_id = university_id
+        effective_counselor_id = counselor_id
+        effective_referrer_id = referrer_id
+        
+        # Super Admin and Admin see everything
+        if current_user.role in ['super_admin', 'admin']:
+            pass  # No additional filtering
+        
+        # Manager sees only their university's referrals
+        elif current_user.role == 'manager':
+            if current_user.university_id:
+                effective_university_id = current_user.university_id
+            # If no university assigned, they see nothing
+            else:
+                return BaseResponse(
+                    success=True,
+                    message="No university assigned to your account",
+                    data={
+                        "items": [],
+                        "total": 0,
+                        "page": page,
+                        "limit": limit,
+                        "pages": 0,
+                        "stats": None
+                    }
+                )
+        
+        # Referrer should use /my-referrals endpoint
+        elif current_user.role == 'referrer':
+            effective_referrer_id = current_user.id
+        
         return controller.get_referrals(
             page=page,
             limit=limit,
             status=status,
-            university_id=university_id,
+            university_id=effective_university_id,
             program_id=program_id,
-            counselor_id=counselor_id,
-            referrer_id=referrer_id,
+            counselor_id=effective_counselor_id,
+            referrer_id=effective_referrer_id,
             search=search,
             date_from=date_from,
             date_to=date_to,

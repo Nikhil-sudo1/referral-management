@@ -141,16 +141,20 @@ async def get_super_admin(
     return current_user
 
 
-async def get_counselor_user(
+async def get_manager_or_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    """Require counselor or admin role"""
-    if current_user.role not in ["super_admin", "manager", "counselor"]:
+    """Require manager or admin role (for managing referrals)"""
+    if current_user.role not in ["super_admin", "manager"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Counselor access required",
+            detail="Manager access required",
         )
     return current_user
+
+
+# Alias for backward compatibility
+get_counselor_user = get_manager_or_admin
 
 
 async def get_referrer_user(

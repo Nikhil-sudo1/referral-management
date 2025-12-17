@@ -1,0 +1,18 @@
+[33m4441043[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Clean up old deployment files - moved to frontend/backend folders
+[33m4eb07e7[m[33m ([m[1;31morigin/main[m[33m)[m Add cd commands in buildspec files to navigate to respective folders - frontend/buildspec.yml: cd frontend before docker build - backend/buildspec.yml: cd backend before docker build
+[33m3b5697a[m Move Docker and buildspec files to respective folders with updated ports
+[33m11d0a9a[m[33m ([m[1;31morigin/nik-rik-dev[m[33m, [m[1;32mnik-rik-dev[m[33m)[m Update container names in buildspec files - UI container: dev-referral-mgmt-ui-container - API container: dev-referral-mgmt-api-container - API service: dev-referral-mgmt-api-service
+[33mba42793[m Add security measures and ALB health check improvements
+[33me7abc9f[m Add AWS ECS Fargate deployment configuration - Dockerfile.ui for frontend container - Dockerfile.api for backend container - nginx.conf for UI static file serving - buildspec-ui.yml for UI CodeBuild pipeline - buildspec-api.yml for API CodeBuild pipeline - DEPLOYMENT_GUIDE.md with complete deployment documentation
+[33mc75b04f[m Add CI/CD deployment configuration files
+[33m8a65899[m perf: Optimize API performance with caching and query fixes
+[33m6742511[m fix: Add active_universities count to dashboard stats API
+[33mb0f2169[m fix: Fetch ALL referrals on Referrals page with proper pagination
+[33m582a56b[m fix: Fetch ALL referrals by handling pagination properly
+[33me20fea0[m fix: Update Referees page to correctly extract referee data from API
+[33mb1c7b4f[m fix: Add role-based route protection and fix login - Add role-based redirection in DashboardLayout - Referrers redirected away from admin routes - Admins redirected away from referrer routes - Fix login passwords in database - Show loading state while checking auth
+[33m0165285[m feat: Improve UI and fix data display issues - Fix Rewards page to show user names instead of Unknown - Fix Analytics page NaN values with proper number conversion - Redesign Leaderboard with beautiful podium style UI - Update Manager role access (Referrals, Leaderboard, Analytics, Rewards) - Add proper type interfaces for API responses
+[33mdfad187[m feat: Connect all admin pages to backend database - Remove mock data from AddReferee, AddCounselor, UniversityPrograms, PublicPortal - Add real API calls for universities, programs, referrals - Fix property names for backend snake_case format - Add loading states and error handling - Connect referrer dashboard to backend APIs - All pages now fetch real data from database
+[33me3a539a[m docs: Add final push success documentation
+[33m602df34[m Fix: Remove all mock data and make system 100% database-driven - All pages now fetch real data from backend APIs - Fixed Referrals, Universities, Dashboard, Rewards, Leaderboard, Analytics pages - Fixed all Referee pages (Counselors, RefereeProfile, RefereeReferrals) - Added proper loading states and error handling - Fixed TypeError in Referrals page with optional chaining - Changed page_size to limit parameter - All data now comes from database
+[33m6341524[m feat: Complete production-ready referral management system

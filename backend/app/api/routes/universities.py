@@ -35,15 +35,43 @@ async def get_universities(
 ):
     """
     Get paginated list of universities with stats
+    
+    Data visibility based on role:
+    - super_admin/admin: ALL universities
+    - manager: Only their assigned university
+    - referrer: ALL universities (for submitting referrals)
     """
     try:
         controller = UniversityController(db)
+        
+        # Apply role-based filtering
+        university_filter_id = None
+        
+        # Manager only sees their assigned university
+        if current_user.role == 'manager':
+            if current_user.university_id:
+                university_filter_id = current_user.university_id
+            else:
+                # No university assigned - return empty list
+                return BaseResponse(
+                    success=True,
+                    message="No university assigned to your account",
+                    data={
+                        "items": [],
+                        "total": 0,
+                        "page": page,
+                        "limit": limit,
+                        "pages": 0
+                    }
+                )
+        
         return controller.get_universities(
             page=page,
             limit=limit,
             status=status,
             search=search,
             sort_by=sort_by,
+            university_id=university_filter_id,
         )
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

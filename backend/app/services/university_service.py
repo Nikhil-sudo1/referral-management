@@ -34,11 +34,17 @@ class UniversityService:
         status: Optional[str] = None,
         search: Optional[str] = None,
         sort_by: str = "name",
+        university_id: Optional[UUID] = None,
     ) -> UniversityListResponse:
         """
         Get paginated list of universities with stats
+        If university_id is provided, returns only that university (for role-based filtering)
         """
         query = self.db.query(University)
+        
+        # Apply university_id filter (for role-based access)
+        if university_id:
+            query = query.filter(University.id == university_id)
         
         # Apply filters
         if status:

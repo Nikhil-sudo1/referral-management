@@ -23,14 +23,16 @@ class UniversityController:
         status: Optional[str] = None,
         search: Optional[str] = None,
         sort_by: str = "name",
+        university_id: Optional[UUID] = None,
     ) -> BaseResponse:
-        """Get paginated universities"""
+        """Get paginated universities (optionally filtered to a single university)"""
         result = self.service.get_universities(
             page=page,
             limit=limit,
             status=status,
             search=search,
             sort_by=sort_by,
+            university_id=university_id,
         )
         return BaseResponse(
             success=True,
