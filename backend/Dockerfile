@@ -1,40 +1,29 @@
-# ---------- Build stage ----------
-FROM node:18-alpine AS build
+# Backend API Dockerfile (FastAPI / Flask)
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Build-time argument from CodeBuild
-ARG VITE_API_URL
-ENV VITE_API_URL=$VITE_API_URL
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files
-COPY package.json package-lock.json ./
+# Install Python deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN npm ci --no-audit --no-fund
-
-# Copy source
+# Copy app code
 COPY . .
 
-# Build Vite app
-RUN npm run build
+EXPOSE 8000
 
+# Health check (optional but recommended)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
 
-# ---------- Runtime stage ----------
-FROM nginx:1.28-alpine
-
-# Remove default nginx config
-RUN rm /etc/nginx/conf.d/default.conf
-
-# Custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copy built assets
-COPY --from=build /app/dist /usr/share/nginx/html
-
-EXPOSE 80
-
-# Health check for ALB
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -qO- http://localhost/health || exit 1
-
-CMD ["nginx", "-g", "daemon off;"]
+# Start API
+CMD ["gunicorn", "app.main:app",
+     "--workers", "4",
+     "--worker-class", "uvicorn.workers.UvicornWorker",
+     "--bind", "0.0.0.0:8000",
+     "--timeout", "120"]
