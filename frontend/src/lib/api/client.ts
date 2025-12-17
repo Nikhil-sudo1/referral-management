@@ -3,11 +3,11 @@ import { toast } from '@/hooks/use-toast';
 
 // API Base URL - can be configured via environment variable
 // Supports both VITE_API_URL (Docker) and VITE_API_BASE_URL (local)
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://devreferralapi.tledtech.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://devreferralapi.tledtech.com/api/v1';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
