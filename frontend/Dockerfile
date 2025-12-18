@@ -3,9 +3,10 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# ✅ Correct: accept the SAME variable name
-ARG VITE_API_BASE_URL
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+# Accept VITE_API_URL from buildspec.yml
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_API_BASE_URL=$VITE_API_URL
 
 # Copy dependency files
 COPY package.json package-lock.json ./
