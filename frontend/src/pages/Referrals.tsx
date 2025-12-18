@@ -713,34 +713,46 @@ const Referrals = () => {
                             {Array.isArray(crmActivity.activity) && crmActivity.activity.length > 0 ? (
                               <div className="space-y-3">
                                 {crmActivity.activity.map((item: any, index: number) => (
-                                  <div key={index} className="flex gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                                  <div key={item.id || index} className="flex gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                                     <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
                                     <div className="flex-1">
-                                      <p className="font-medium text-sm">{item.activity || item.action || item.type || 'Activity'}</p>
+                                      <p className="font-medium text-sm">
+                                        {item.activity?.name || item.activity || item.action || item.type || 'Activity'}
+                                      </p>
+                                      {item.activity_details?.title && (
+                                        <p className="text-sm text-muted-foreground">{item.activity_details.title}</p>
+                                      )}
                                       {item.description && (
                                         <p className="text-sm text-muted-foreground">{item.description}</p>
                                       )}
                                       {item.remarks && (
                                         <p className="text-sm text-muted-foreground">{item.remarks}</p>
                                       )}
-                                      {(item.created_at || item.date || item.timestamp) && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          {(() => {
-                                            try {
-                                              const dateStr = item.created_at || item.date || item.timestamp;
-                                              const date = new Date(dateStr);
-                                              return isNaN(date.getTime()) ? dateStr : format(date, 'MMM d, yyyy HH:mm');
-                                            } catch {
-                                              return 'Unknown';
-                                            }
-                                          })()}
-                                        </p>
-                                      )}
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {(item.created_at || item.date || item.timestamp) && (
+                                          <p className="text-xs text-muted-foreground">
+                                            {(() => {
+                                              try {
+                                                const dateStr = item.created_at || item.date || item.timestamp;
+                                                const date = new Date(dateStr);
+                                                return isNaN(date.getTime()) ? dateStr : format(date, 'MMM d, yyyy HH:mm');
+                                              } catch {
+                                                return 'Unknown';
+                                              }
+                                            })()}
+                                          </p>
+                                        )}
+                                        {item.created_by && (
+                                          <p className="text-xs text-muted-foreground">
+                                            • by {item.created_by.first_name} {item.created_by.last_name || ''}
+                                          </p>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
                               </div>
-                            ) : typeof crmActivity.activity === 'object' ? (
+                            ) : typeof crmActivity.activity === 'object' && crmActivity.activity ? (
                               <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-48">
                                 {JSON.stringify(crmActivity.activity, null, 2)}
                               </pre>
