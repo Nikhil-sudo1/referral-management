@@ -1,7 +1,7 @@
 # TeamLease EdTech Referral Portal - Frontend Dockerfile
 
 # ---------- Build stage ----------
-FROM node:18-alpine AS build
+FROM 163742846785.dkr.ecr.ap-south-1.amazonaws.com/node18-alpine-base-image@sha256:d5e0c888cddec92e5410bb40a67b14ebfc08cd4d4f97c9bf7b374d56b9f5c1f4 AS build
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN npm run build
 
 
 # ---------- Runtime stage ----------
-FROM nginx:1.28-alpine
+FROM 163742846785.dkr.ecr.ap-south-1.amazonaws.com/nginx-alpine@sha256:60e48a050b6408d0c5dd59b98b6e36bf0937a0bbe99304e3e9c0e63b7563443a
 
 RUN rm /etc/nginx/conf.d/default.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
