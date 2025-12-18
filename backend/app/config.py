@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
     
     # CORS - Production + Local development
-    CORS_ORIGINS: str = "https://devreferral.tledtech.com,http://localhost:3001,http://localhost:3000,http://localhost:80"
+    CORS_ORIGINS: str = "https://devreferral.tledtech.com,http://localhost:5173,http://localhost:3001,http://localhost:3000,http://localhost:80"
     
     # SMTP Email Configuration (ZeptoMail for teamleaseedtech.com)
     SMTP_HOST: str = "smtp.zeptomail.in"
