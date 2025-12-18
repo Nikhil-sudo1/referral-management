@@ -117,25 +117,8 @@ const AddUniversity = () => {
         title: 'Validation Error',
         description: 'Please correct the errors below',
         variant: 'destructive',
-          title: 'Validation Error',
-          description: 'Please enter a valid URL for the website',
-          variant: 'destructive',
-        });
-        return;
-      }
-    }
-
-    // Email validation if provided
-    if (formData.contact_email && formData.contact_email.trim() !== '') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.contact_email)) {
-        toast({
-          title: 'Validation Error',
-          description: 'Please enter a valid email address',
-          variant: 'destructive',
-        });
-        return;
-      }
+      });
+      return;
     }
 
     setIsSubmitting(true);

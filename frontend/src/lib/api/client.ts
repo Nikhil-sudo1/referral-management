@@ -10,10 +10,18 @@ import { toast } from '@/hooks/use-toast';
 // - Do NOT include /api or /api/v1 in env vars
 // - This file owns `/api/v1`
 // ------------------------------------------------------------------
+const getDefaultBaseUrl = () => {
+  // In development, prefer localhost if not explicitly set
+  if (import.meta.env.DEV && !import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_BASE_URL) {
+    return 'http://localhost:8000';
+  }
+  return 'https://devreferralapi.tledtech.com';
+};
+
 const RAW_BASE_URL =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
-  'https://devreferralapi.tledtech.com';
+  getDefaultBaseUrl();
 
 // Remove trailing slash if present
 const API_BASE_URL = `${RAW_BASE_URL.replace(/\/$/, '')}/api/v1`;

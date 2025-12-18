@@ -17,8 +17,22 @@ from app.config import settings
 class EmailService:
     """Email service for sending verification and notification emails"""
     
+    # Hardcoded SMTP credentials as fallback (ZeptoMail for teamleaseedtech.com)
+    FALLBACK_SMTP_PASSWORD = "Zoho-enczapikey PHtE6r0PRum52jJ8+hMH4qC9FpagMYspq+MzfwkUtY5HDaIHGE0Hqoh4kjKyoh5+BvFGFKTNzdptuLibseKNIzztMWhMX2qyqK3sx/VYSPOZsbq6x00csFwdd03fVYDndtJt0izevdnSNA=="
+    
     def __init__(self, db: Session):
         self.db = db
+    
+    def _get_smtp_password(self) -> str:
+        """Get SMTP password, using fallback if config is malformed"""
+        password = settings.SMTP_PASSWORD
+        # Strip quotes if present (in case .env parsing issues)
+        password = password.strip('"\'')
+        # If password looks corrupted or empty, use fallback
+        if not password or len(password) < 50:
+            logger.warning("SMTP password from config appears invalid, using fallback")
+            return self.FALLBACK_SMTP_PASSWORD
+        return password
     
     def generate_token(self) -> str:
         """Generate a secure random token"""
@@ -37,29 +51,47 @@ class EmailService:
             True if email sent successfully
         """
         try:
+            # Log SMTP configuration (without password)
+            logger.info(f"SMTP Config: host={settings.SMTP_HOST}, port={settings.SMTP_PORT}, user={settings.SMTP_USER}, tls={settings.SMTP_USE_TLS}")
+            
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject
             msg['From'] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM}>"
             msg['To'] = to_email
             msg.attach(MIMEText(html_body, 'html'))
             
+            server = None
             if settings.SMTP_USE_TLS:
                 # TLS on port 587
+                logger.info(f"Connecting to SMTP server with TLS on port {settings.SMTP_PORT}...")
                 server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
+                server.set_debuglevel(0)  # Set to 1 for verbose SMTP debugging
                 server.ehlo()
                 server.starttls()
                 server.ehlo()
             else:
                 # SSL on port 465
+                logger.info(f"Connecting to SMTP server with SSL on port {settings.SMTP_PORT}...")
                 server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
             
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            logger.info("Authenticating with SMTP server...")
+            smtp_password = self._get_smtp_password()
+            server.login(settings.SMTP_USER, smtp_password)
+            logger.info("SMTP authentication successful")
+            
             server.send_message(msg)
             server.quit()
             
             logger.info(f"Email sent successfully to {to_email}")
             return True
             
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP Authentication failed: {str(e)}")
+            logger.error(f"Check SMTP credentials - User: {settings.SMTP_USER}, Password length: {len(settings.SMTP_PASSWORD)}")
+            return False
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP error sending email to {to_email}: {str(e)}")
+            return False
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False
