@@ -34,6 +34,7 @@ import RefereeRegister from "./pages/RefereeRegister";
 import ResetPassword from "./pages/ResetPassword";
 import EmailConfirmation from "./pages/EmailConfirmation";
 import VerifyEmail from "./pages/VerifyEmail";
+import Leadership from "./pages/Leadership";
 import NotFound from "./pages/NotFound";
 
 // Initialize theme from localStorage on app load
@@ -69,6 +70,7 @@ const App = () => (
           <Routes>
             {/* All Routes - No Auth for Competition Demo */}
           <Route path="/" element={<PublicPortal />} />
+          <Route path="/leadership" element={<Leadership />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<RefereeRegister />} />
           <Route path="/register/referee" element={<RefereeRegister />} />

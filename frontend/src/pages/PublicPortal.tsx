@@ -73,7 +73,7 @@ const PublicPortal = () => {
     { label: 'How It Works', id: 'how-it-works' },
     { label: 'Features', id: 'features' },
     { label: 'Universities', id: 'universities' },
-    { label: 'Testimonials', id: 'testimonials' },
+    { label: 'Leadership', id: 'leadership', isLink: true, href: '/leadership' },
   ];
 
   const statsData = [
@@ -193,13 +193,23 @@ const PublicPortal = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id)}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-200"
-              >
-                {item.label}
-              </button>
+              'isLink' in item && item.isLink ? (
+                <Link
+                  key={item.id}
+                  to={item.href || '/'}
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-200"
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-200"
+                >
+                  {item.label}
+                </button>
+              )
             ))}
           </div>
           
@@ -244,13 +254,24 @@ const PublicPortal = () => {
           >
             <div className="px-6 py-4 space-y-2">
               {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  className="block w-full text-left px-4 py-3 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                >
-                  {item.label}
-                </button>
+                'isLink' in item && item.isLink ? (
+                  <Link
+                    key={item.id}
+                    to={item.href || '/'}
+                    className="block w-full text-left px-4 py-3 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={item.id}
+                    onClick={() => scrollToSection(item.id)}
+                    className="block w-full text-left px-4 py-3 text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                  >
+                    {item.label}
+                  </button>
+                )
               ))}
               <Link to="/login" className="block">
                 <Button variant="outline" className="w-full mt-2 hover:bg-primary/10 hover:text-primary hover:border-primary">
