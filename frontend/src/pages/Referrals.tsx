@@ -621,7 +621,7 @@ const Referrals = () => {
                               size="sm"
                               variant="outline"
                               onClick={handleSyncToCRM}
-                              disabled={syncingCRM}
+                              disabled={syncingCRM || loadingCRM}
                               className="h-8"
                             >
                               {syncingCRM ? (
@@ -637,6 +637,7 @@ const Referrals = () => {
                           {loadingCRM ? (
                             <div className="flex items-center justify-center py-8">
                               <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                              <span className="ml-2 text-muted-foreground">Loading CRM status...</span>
                             </div>
                           ) : crmActivity ? (
                             <div className="space-y-4">
@@ -663,7 +664,14 @@ const Referrals = () => {
                                   )}
                                   {crmActivity.synced_at && (
                                     <p className="text-xs text-muted-foreground">
-                                      Synced: {format(new Date(crmActivity.synced_at), 'MMM d, yyyy HH:mm')}
+                                      Synced: {(() => {
+                                        try {
+                                          const date = new Date(crmActivity.synced_at);
+                                          return isNaN(date.getTime()) ? 'Unknown' : format(date, 'MMM d, yyyy HH:mm');
+                                        } catch {
+                                          return 'Unknown';
+                                        }
+                                      })()}
                                     </p>
                                   )}
                                   {crmActivity.sync_error && (
@@ -705,7 +713,15 @@ const Referrals = () => {
                                       )}
                                       {(item.created_at || item.date || item.timestamp) && (
                                         <p className="text-xs text-muted-foreground mt-1">
-                                          {format(new Date(item.created_at || item.date || item.timestamp), 'MMM d, yyyy HH:mm')}
+                                          {(() => {
+                                            try {
+                                              const dateStr = item.created_at || item.date || item.timestamp;
+                                              const date = new Date(dateStr);
+                                              return isNaN(date.getTime()) ? dateStr : format(date, 'MMM d, yyyy HH:mm');
+                                            } catch {
+                                              return 'Unknown';
+                                            }
+                                          })()}
                                         </p>
                                       )}
                                     </div>
