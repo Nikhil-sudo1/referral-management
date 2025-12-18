@@ -29,11 +29,28 @@ const Leadership = () => {
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
+  // Helper function to get image with fallback
+  const getLeaderImage = (name: string, localPath: string, gradient: string) => {
+    // Check if local image exists by trying to load it
+    // Fallback to professional placeholder
+    const initials = name.split(' ').map(n => n[0]).join('');
+    const colors: { [key: string]: { bg: string; fg: string } } = {
+      'from-primary to-cyan-500': { bg: '6366f1', fg: 'ffffff' },
+      'from-violet-500 to-purple-500': { bg: '8b5cf6', fg: 'ffffff' },
+      'from-emerald-500 to-teal-500': { bg: '10b981', fg: 'ffffff' },
+    };
+    const color = colors[gradient] || { bg: '6366f1', fg: 'ffffff' };
+    return {
+      src: localPath,
+      fallback: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=500&background=${color.bg}&color=${color.fg}&bold=true&font-size=0.35`
+    };
+  };
+
   const leaders = [
     {
       name: 'Shantanu Rooj',
       role: 'Founder & CEO',
-      image: '/images/leadership/shantanu-rooj.jpg',
+      image: getLeaderImage('Shantanu Rooj', '/images/leadership/shantanu-rooj.png', 'from-primary to-cyan-500'),
       gradient: 'from-primary to-cyan-500',
       badges: ['IIT BHU', 'IIM Calcutta', 'Serial Entrepreneur'],
       quote: "Making Every Learner Employable",
@@ -56,7 +73,7 @@ An IIT (BHU) and IIM Calcutta alumnus, Shantanu is widely recognized as a serial
       name: 'Jaideep Kewalramani',
       role: 'Chief Operating Officer',
       subtitle: 'Head of Employability Business',
-      image: '/images/leadership/jaideep-kewalramani.jpg',
+      image: getLeaderImage('Jaideep Kewalramani', '/images/leadership/jaideep-kewalramani.png', 'from-violet-500 to-purple-500'),
       gradient: 'from-violet-500 to-purple-500',
       badges: ['Stanford Executive', 'AI Patents Holder', '25+ Years Experience'],
       quote: "Bridging Education with Employment through Innovation",
@@ -79,7 +96,7 @@ He is an executive program graduate from Stanford University, MBA in Internation
       name: 'Anmol Mathur',
       role: 'Chief Technology Officer',
       subtitle: 'Head of Product & Innovation',
-      image: '/images/leadership/anmol-mathur.jpg',
+      image: getLeaderImage('Anmol Mathur', '/images/leadership/anmol-mathur.jfif', 'from-emerald-500 to-teal-500'),
       gradient: 'from-emerald-500 to-teal-500',
       badges: ['Tech Visionary', 'Product Innovator', 'Digital Transformer'],
       quote: "Building Technology that Empowers Every Student's Journey",
@@ -246,14 +263,14 @@ Anmol's approach combines technical excellence with a human-centered design phil
                   <div className={`absolute inset-0 bg-gradient-to-r ${leader.gradient} rounded-3xl transform rotate-3 group-hover:rotate-6 transition-transform duration-500`} />
                   <Card className="relative overflow-hidden rounded-3xl border-0 shadow-2xl">
                     <img 
-                      src={leader.image} 
+                      src={leader.image.src} 
                       alt={leader.name}
                       className="w-full aspect-[4/5] object-cover object-top"
                       onError={(e) => {
                         // Fallback to placeholder with initials
                         const target = e.target as HTMLImageElement;
                         target.onerror = null;
-                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(leader.name)}&size=400&background=6366f1&color=fff&bold=true`;
+                        target.src = leader.image.fallback;
                       }}
                     />
                     <div className={`absolute inset-0 bg-gradient-to-t ${leader.gradient} opacity-10`} />
