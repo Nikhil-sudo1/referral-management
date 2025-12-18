@@ -1,11 +1,26 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  AxiosInstance,
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from 'axios';
 import { toast } from '@/hooks/use-toast';
 
-// API Base URL - can be configured via environment variable
-// Supports both VITE_API_URL (Docker) and VITE_API_BASE_URL (local)
-const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://devreferralapi.tledtech.com/';
+// ------------------------------------------------------------------
+// API Base URL
+// - Do NOT include /api or /api/v1 in env vars
+// - This file owns `/api/v1`
+// ------------------------------------------------------------------
+const RAW_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'https://devreferralapi.tledtech.com';
 
-// Create axios instance
+// Remove trailing slash if present
+const API_BASE_URL = `${RAW_BASE_URL.replace(/\/$/, '')}/api/v1`;
+
+// ------------------------------------------------------------------
+// Axios instance
+// ------------------------------------------------------------------
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -14,7 +29,9 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 30000, // 30 seconds
 });
 
-// Request interceptor - Add auth token to requests
+// ------------------------------------------------------------------
+// Request interceptor – attach JWT token
+// ------------------------------------------------------------------
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('authToken');
@@ -23,24 +40,22 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
+  (error: AxiosError) => Promise.reject(error)
 );
 
-// Response interceptor - Handle errors globally
+// ------------------------------------------------------------------
+// Response interceptor – global error handling
+// ------------------------------------------------------------------
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response) {
       const status = error.response.status;
-      const data = error.response.data as any;
+      const data: any = error.response.data;
 
-      // Handle different error statuses
       switch (status) {
         case 401:
-          // Unauthorized - clear auth and redirect to login
-          console.error('401 Unauthorized error:', error.config?.url, data);
+          console.error('401 Unauthorized:', error.config?.url, data);
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
           window.location.href = '/login';
@@ -50,6 +65,7 @@ apiClient.interceptors.response.use(
             variant: 'destructive',
           });
           break;
+
         case 403:
           toast({
             title: 'Access Denied',
@@ -57,6 +73,7 @@ apiClient.interceptors.response.use(
             variant: 'destructive',
           });
           break;
+
         case 404:
           toast({
             title: 'Not Found',
@@ -64,16 +81,15 @@ apiClient.interceptors.response.use(
             variant: 'destructive',
           });
           break;
+
         case 422:
-          // Validation errors
-          const validationErrors = data?.detail || [];
-          if (Array.isArray(validationErrors)) {
-            const errorMessages = validationErrors
+          if (Array.isArray(data?.detail)) {
+            const message = data.detail
               .map((err: any) => `${err.loc?.join('.')}: ${err.msg}`)
               .join(', ');
             toast({
               title: 'Validation Error',
-              description: errorMessages,
+              description: message,
               variant: 'destructive',
             });
           } else {
@@ -84,13 +100,15 @@ apiClient.interceptors.response.use(
             });
           }
           break;
+
         case 500:
           toast({
             title: 'Server Error',
-            description: 'An unexpected error occurred. Please try again later.',
+            description: 'Something went wrong. Please try again later.',
             variant: 'destructive',
           });
           break;
+
         default:
           toast({
             title: 'Error',
@@ -99,18 +117,17 @@ apiClient.interceptors.response.use(
           });
       }
     } else if (error.request) {
-      // Network error
       console.error('Network error:', error.request);
       toast({
         title: 'Network Error',
-        description: 'Unable to connect to the server. Please check your connection.',
+        description: 'Unable to connect to the server',
         variant: 'destructive',
       });
     } else {
-      console.error('Request error:', error.message, error);
+      console.error('Axios error:', error.message);
       toast({
         title: 'Error',
-        description: error.message || 'An unexpected error occurred',
+        description: error.message || 'Unexpected error',
         variant: 'destructive',
       });
     }
@@ -120,4 +137,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-
