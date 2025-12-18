@@ -11,10 +11,8 @@ import { toast } from '@/hooks/use-toast';
 // - This file owns `/api/v1`
 // ------------------------------------------------------------------
 const getDefaultBaseUrl = () => {
-  // In development, prefer localhost if not explicitly set
-  if (import.meta.env.DEV && !import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_BASE_URL) {
-    return 'http://localhost:8000';
-  }
+  // Always use the deployed API unless explicitly overridden
+  // Local backend requires database access which may not be available
   return 'https://devreferralapi.tledtech.com';
 };
 
