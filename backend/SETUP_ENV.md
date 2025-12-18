@@ -24,17 +24,20 @@ APP_VERSION=1.0.0
 DEBUG=False
 ENVIRONMENT=production
 
-# CORS Origins (comma-separated)
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+# CORS Origins (comma-separated) - Frontend: 3001, Backend: 80
+CORS_ORIGINS=http://localhost:3001,http://localhost:80
 
-# Email/SMTP Configuration (ZeptoMail)
+# Email/SMTP Configuration (ZeptoMail for teamleaseedtech.com)
 SMTP_HOST=smtp.zeptomail.in
 SMTP_PORT=587
 SMTP_USER=emailapikey
 SMTP_PASSWORD=Zoho-enczapikey PHtE6r0PRum52jJ8+hMH4qC9FpagMYspq+MzfwkUtY5HDaIHGE0Hqoh4kjKyoh5+BvFGFKTNzdptuLibseKNIzztMWhMX2qyqK3sx/VYSPOZsbq6x00csFwdd03fVYDndtJt0izevdnSNA==
 SMTP_USE_TLS=True
 EMAIL_FROM=noreply@teamleaseedtech.com
-FRONTEND_URL=http://localhost:8080
+EMAIL_FROM_NAME=TeamLease EdTech
+
+# Frontend URL for email links (verification & password reset)
+FRONTEND_URL=http://localhost:3001
 
 # Logging
 LOG_LEVEL=INFO
@@ -54,11 +57,25 @@ cp env.example .env
 
 Then edit the `.env` file to ensure all values are correct.
 
+## Email Features
+
+The system sends emails for:
+1. **Email Verification** - Sent after signup to verify the user's email address
+2. **Password Reset** - Sent when user requests a password reset
+3. **Welcome Email** - Sent after successful registration
+
+## SMTP Configuration (ZeptoMail)
+
+- **Server**: smtp.zeptomail.in
+- **Ports**: 587 (TLS) or 465 (SSL)
+- **Authentication**: emailapikey + provided API key
+- **Domain**: teamleaseedtech.com
+
 ## Verification
 
 After creating the `.env` file, verify the configuration by:
 
 1. Starting the backend server
 2. Checking that database connection is successful
-3. Testing email sending (sign up a test user)
-
+3. Testing email sending (sign up a test user or use forgot password)
+4. Check the backend logs for email delivery status

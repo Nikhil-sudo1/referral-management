@@ -29,8 +29,20 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
     
-    # CORS
-    CORS_ORIGINS: str = "http://localhost:3001,http://localhost:5173,http://localhost:80"
+    # CORS - Frontend on 3001, Backend on 80
+    CORS_ORIGINS: str = "http://localhost:3001,http://localhost:80"
+    
+    # SMTP Email Configuration (ZeptoMail)
+    SMTP_HOST: str = "smtp.zeptomail.in"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "emailapikey"
+    SMTP_PASSWORD: str = ""
+    SMTP_USE_TLS: bool = True
+    EMAIL_FROM: str = "noreply@teamleaseedtech.com"
+    EMAIL_FROM_NAME: str = "TeamLease EdTech"
+    
+    # Frontend URL for email links
+    FRONTEND_URL: str = "http://localhost:3001"
     
     # Logging
     LOG_LEVEL: str = "INFO"

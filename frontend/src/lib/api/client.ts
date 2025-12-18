@@ -128,5 +128,9 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Named export for explicit imports
+export { apiClient };
+
+// Default export for backward compatibility
 export default apiClient;
 
