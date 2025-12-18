@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,7 +31,21 @@ import ReferrerLeaderboard from "./pages/ReferrerLeaderboard";
 import ReferrerAnalytics from "./pages/ReferrerAnalytics";
 import ReferrerAddReferral from "./pages/ReferrerAddReferral";
 import RefereeRegister from "./pages/RefereeRegister";
+import ResetPassword from "./pages/ResetPassword";
+import EmailConfirmation from "./pages/EmailConfirmation";
+import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
+
+// Initialize theme from localStorage on app load
+const initializeTheme = () => {
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+};
+
+// Run immediately to prevent flash
+initializeTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +73,9 @@ const App = () => (
           <Route path="/register" element={<RefereeRegister />} />
           <Route path="/register/referee" element={<RefereeRegister />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/email-confirmation" element={<EmailConfirmation />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/referees" element={<Counselors />} />

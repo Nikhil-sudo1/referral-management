@@ -55,15 +55,26 @@ apiClient.interceptors.response.use(
 
       switch (status) {
         case 401:
+          // Unauthorized - only redirect to login if user was previously logged in
+          // Don't redirect for public pages (/, /login, /register, /forgot-password)
+          const publicPaths = ['/', '/login', '/register', '/forgot-password', '/register/referee'];
+          const currentPath = window.location.pathname;
+          const isPublicPage = publicPaths.includes(currentPath);
+          const hadToken = localStorage.getItem('authToken');
+          
           console.error('401 Unauthorized:', error.config?.url, data);
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
-          window.location.href = '/login';
-          toast({
-            title: 'Session Expired',
-            description: 'Please login again',
-            variant: 'destructive',
-          });
+          
+          // Only redirect if user was logged in and is not on a public page
+          if (hadToken && !isPublicPage) {
+            window.location.href = '/login';
+            toast({
+              title: 'Session Expired',
+              description: 'Please login again',
+              variant: 'destructive',
+            });
+          }
           break;
 
         case 403:
@@ -120,7 +131,7 @@ apiClient.interceptors.response.use(
       console.error('Network error:', error.request);
       toast({
         title: 'Network Error',
-        description: 'Unable to connect to the server',
+        description: 'Unable to connect to the server. Please check your connection.',
         variant: 'destructive',
       });
     } else {
@@ -136,4 +147,8 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Named export for explicit imports
+export { apiClient };
+
+// Default export for backward compatibility
 export default apiClient;

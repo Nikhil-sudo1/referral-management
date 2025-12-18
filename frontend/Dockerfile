@@ -1,9 +1,11 @@
+# TeamLease EdTech Referral Portal - Frontend Dockerfile
+
 # ---------- Build stage ----------
 FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# ✅ Correct: accept the SAME variable name
+# Accept build-time variable for API URL
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
@@ -12,8 +14,10 @@ COPY package.json package-lock.json ./
 
 RUN npm ci --no-audit --no-fund
 
+# Copy source code
 COPY . .
 
+# Build for production
 RUN npm run build
 
 

@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, UserPlus, Users, Building2, Loader2 } from 'lucide-react';
+import { ArrowLeft, UserPlus, Users, Building2, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { universitiesAPI, referralsAPI } from '@/lib/api';
+import { isValidEmail, isValidPhone, isValidName, hasErrors, FormErrors } from '@/lib/validations';
 
 const AddReferee = () => {
   const navigate = useNavigate();
@@ -26,6 +27,18 @@ const AddReferee = () => {
     programId: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  // Helper to render field error
+  const FieldError = ({ error }: { error?: string }) => {
+    if (!error) return null;
+    return (
+      <div className="flex items-center gap-1 text-red-500 text-xs mt-1">
+        <AlertCircle className="w-3 h-3" />
+        <span>{error}</span>
+      </div>
+    );
+  };
 
   // Fetch universities on mount
   useEffect(() => {
@@ -80,23 +93,47 @@ const AddReferee = () => {
     });
   };
 
+  const validateForm = (): FormErrors => {
+    const newErrors: FormErrors = {};
+    
+    // Referee validations
+    const refNameResult = isValidName(formData.refereeName, 'Student name');
+    if (!refNameResult.isValid) newErrors.refereeName = refNameResult.error!;
+    
+    const refEmailResult = isValidEmail(formData.refereeEmail);
+    if (!refEmailResult.isValid) newErrors.refereeEmail = refEmailResult.error!;
+    
+    const refPhoneResult = isValidPhone(formData.refereePhone);
+    if (!refPhoneResult.isValid) newErrors.refereePhone = refPhoneResult.error!;
+    
+    // Referrer validations
+    const referrerNameResult = isValidName(formData.referrerName, 'Referrer name');
+    if (!referrerNameResult.isValid) newErrors.referrerName = referrerNameResult.error!;
+    
+    const referrerEmailResult = isValidEmail(formData.referrerEmail);
+    if (!referrerEmailResult.isValid) newErrors.referrerEmail = referrerEmailResult.error!;
+    
+    const referrerPhoneResult = isValidPhone(formData.referrerPhone);
+    if (!referrerPhoneResult.isValid) newErrors.referrerPhone = referrerPhoneResult.error!;
+    
+    // University & Program
+    if (!formData.universityId) newErrors.universityId = 'Please select a university';
+    if (!formData.programId) newErrors.programId = 'Please select a program';
+    
+    return newErrors;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
-    if (
-      !formData.refereeName ||
-      !formData.refereeEmail ||
-      !formData.refereePhone ||
-      !formData.referrerName ||
-      !formData.referrerEmail ||
-      !formData.referrerPhone ||
-      !formData.universityId ||
-      !formData.programId
-    ) {
+    const newErrors = validateForm();
+    setErrors(newErrors);
+    
+    if (hasErrors(newErrors)) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in all required fields',
+        description: 'Please correct the errors below',
         variant: 'destructive',
       });
       return;

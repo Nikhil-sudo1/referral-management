@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,18 +20,37 @@ const Settings = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <motion.div 
+        className="space-y-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl gradient-primary">
+        <motion.div 
+          className="flex items-center gap-4"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <motion.div 
+            className="p-3 rounded-xl gradient-primary"
+            whileHover={{ scale: 1.1, rotate: 10 }}
+            transition={{ type: 'spring', stiffness: 300 }}
+          >
             <SettingsIcon className="w-8 h-8 text-primary-foreground" />
-          </div>
+          </motion.div>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Settings</h1>
             <p className="text-muted-foreground mt-1">Configure system preferences and policies</p>
           </div>
-        </div>
+        </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
         <Tabs defaultValue="general" className="w-full">
           <TabsList className="grid w-full max-w-2xl grid-cols-5 mb-6">
             <TabsTrigger value="general">General</TabsTrigger>
@@ -290,14 +310,22 @@ const Settings = () => {
             </div>
           </TabsContent>
         </Tabs>
+        </motion.div>
 
         {/* Save Button */}
-        <div className="flex justify-end max-w-2xl">
-          <Button onClick={handleSave} className="gradient-primary">
-            Save Changes
-          </Button>
-        </div>
-      </div>
+        <motion.div 
+          className="flex justify-end max-w-2xl"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button onClick={handleSave} className="gradient-primary">
+              Save Changes
+            </Button>
+          </motion.div>
+        </motion.div>
+      </motion.div>
     </DashboardLayout>
   );
 };
