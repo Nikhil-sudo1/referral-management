@@ -13,9 +13,13 @@ from app.api.routes import (
     leaderboard,
     analytics,
     notifications,
+    public,
 )
 
 router = APIRouter()
+
+# Public routes (no authentication required)
+router.include_router(public.router, prefix="/public", tags=["Public"])
 
 # Include all route modules
 router.include_router(auth.router, prefix="/auth", tags=["Authentication"])

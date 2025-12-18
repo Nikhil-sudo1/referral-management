@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { analyticsAPI, leaderboardAPI, referralsAPI } from '@/lib/api';
 import { SkeletonCard } from '@/components/dashboard/SkeletonCard';
+import { motion } from 'framer-motion';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -137,25 +138,44 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <motion.div 
+        className="space-y-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <motion.div 
+          className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
           <div className="space-y-2">
             <div className="flex items-center gap-4">
-              <div className="relative">
+              <motion.div 
+                className="relative"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+              >
                 <div className="w-14 h-14 rounded-2xl gradient-primary flex items-center justify-center shadow-xl glow-primary">
                   <BarChart3 className="w-7 h-7 text-white" />
                 </div>
                 <Badge className="absolute -top-2 -right-2 h-6 px-2 bg-success text-white border-2 border-background text-[10px] font-bold animate-pulse-soft">
                   LIVE
                 </Badge>
-              </div>
-              <div>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
                 <h1 className="text-4xl font-display text-foreground">
                   Dashboard
                 </h1>
                 <p className="text-muted-foreground mt-1">Welcome to TeamLease EdTech Platform</p>
-              </div>
+              </motion.div>
             </div>
             <div className="flex items-center gap-3 text-sm text-muted-foreground mt-4">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50">
@@ -183,16 +203,18 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
-            <Button 
-              size="lg"
-              className="gradient-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all hover:-translate-y-0.5 h-auto py-4 px-6"
-              onClick={() => navigate('/referees/add')}
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              New Referral
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                size="lg"
+                className="gradient-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all h-auto py-4 px-6"
+                onClick={() => navigate('/referees/add')}
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                New Referral
+              </Button>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stats Grid */}
         {isLoading ? (
@@ -202,11 +224,35 @@ const Dashboard = () => {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <motion.div 
+            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.08, delayChildren: 0.2 }
+              }
+            }}
+          >
             {statsCards.map((stat, index) => (
-            <Card 
+            <motion.div
               key={stat.label}
-              className={`card-interactive group overflow-hidden animate-fade-in stagger-${index + 1}`}
+              variants={{
+                hidden: { opacity: 0, y: 20, scale: 0.95 },
+                visible: { 
+                  opacity: 1, 
+                  y: 0, 
+                  scale: 1,
+                  transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
+                }
+              }}
+              whileHover={{ y: -5, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+            <Card 
+              className="card-interactive group overflow-hidden cursor-pointer h-full"
               onClick={() => navigate(stat.path)}
             >
               <CardContent className="p-5 relative">
@@ -244,27 +290,44 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
           <div className="lg:col-span-2">
             <ReferralChart data={dashboardData?.time_series} />
           </div>
           <UniversityPieChart data={dashboardData?.university_performance} />
-        </div>
+        </motion.div>
 
         {/* Leaderboards & Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
           <LeaderboardCard title="Top Referees" entries={referrerLeaderboard.length > 0 ? referrerLeaderboard : leaderboard} />
           <ActivityTimeline />
-        </div>
+        </motion.div>
 
         {/* Recent Referrals */}
-        <RecentReferrals referrals={recentReferrals.length > 0 ? recentReferrals : referrals} />
-      </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <RecentReferrals referrals={recentReferrals.length > 0 ? recentReferrals : referrals} />
+        </motion.div>
+      </motion.div>
     </DashboardLayout>
   );
 };

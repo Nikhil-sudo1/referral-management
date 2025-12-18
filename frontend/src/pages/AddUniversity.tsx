@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Building2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Building2, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { universitiesAPI } from '@/lib/api';
+import { validateUniversityForm, hasErrors, FormErrors, isRequired, minLength } from '@/lib/validations';
 
 const AddUniversity = () => {
   const navigate = useNavigate();
@@ -25,8 +26,24 @@ const AddUniversity = () => {
     status: 'active' as 'active' | 'inactive',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  // Helper to render field error
+  const FieldError = ({ error }: { error?: string }) => {
+    if (!error) return null;
+    return (
+      <div className="flex items-center gap-1 text-red-500 text-xs mt-1">
+        <AlertCircle className="w-3 h-3" />
+        <span>{error}</span>
+      </div>
+    );
+  };
 
   const handleInputChange = (field: string, value: string) => {
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -38,65 +55,70 @@ const AddUniversity = () => {
     
     console.log('Form submitted with data:', formData);
     
-    // Validation
-    if (!formData.name || !formData.code) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in university name and code',
-        variant: 'destructive',
-      });
-      return;
+    // Validation using centralized validators
+    const newErrors: FormErrors = {};
+    
+    // Required fields
+    const nameRequired = isRequired(formData.name, 'University name');
+    if (!nameRequired.isValid) newErrors.name = nameRequired.error!;
+    else {
+      const nameLength = minLength(formData.name, 3, 'University name');
+      if (!nameLength.isValid) newErrors.name = nameLength.error!;
     }
-
-    // Code validation - should be uppercase and alphanumeric
-    const codeRegex = /^[A-Z0-9]+$/;
-    if (!codeRegex.test(formData.code.toUpperCase())) {
-      toast({
-        title: 'Validation Error',
-        description: 'University code must contain only uppercase letters and numbers',
-        variant: 'destructive',
-      });
-      return;
+    
+    const codeRequired = isRequired(formData.code, 'University code');
+    if (!codeRequired.isValid) newErrors.code = codeRequired.error!;
+    else {
+      // Code validation - should be uppercase and alphanumeric
+      const codeRegex = /^[A-Z0-9]+$/;
+      if (!codeRegex.test(formData.code.toUpperCase())) {
+        newErrors.code = 'Code must contain only uppercase letters and numbers';
+      }
     }
-
-    // URL validation if provided
+    
+    // URL validations
     if (formData.logo_url && formData.logo_url.trim() !== '') {
       try {
         new URL(formData.logo_url);
       } catch {
-        toast({
-          title: 'Validation Error',
-          description: 'Please enter a valid URL for the logo',
-          variant: 'destructive',
-        });
-        return;
+        newErrors.logo_url = 'Please enter a valid URL for the logo';
       }
     }
-
+    
     if (formData.website && formData.website.trim() !== '') {
       try {
         new URL(formData.website);
       } catch {
-        toast({
-          title: 'Validation Error',
-          description: 'Please enter a valid URL for the website',
-          variant: 'destructive',
-        });
-        return;
+        newErrors.website = 'Please enter a valid website URL';
       }
     }
-
-    // Email validation if provided
+    
+    // Email validation
     if (formData.contact_email && formData.contact_email.trim() !== '') {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.contact_email)) {
-        toast({
-          title: 'Validation Error',
-          description: 'Please enter a valid email address',
-          variant: 'destructive',
-        });
-        return;
+        newErrors.contact_email = 'Please enter a valid email address';
       }
+    }
+    
+    // Phone validation
+    if (formData.contact_phone && formData.contact_phone.trim() !== '') {
+      const cleanPhone = formData.contact_phone.replace(/[\s\-()]/g, '');
+      const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
+      if (!phoneRegex.test(cleanPhone)) {
+        newErrors.contact_phone = 'Please enter a valid 10-digit phone number';
+      }
+    }
+    
+    setErrors(newErrors);
+    
+    if (hasErrors(newErrors)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please correct the errors below',
+        variant: 'destructive',
+      });
+      return;
     }
 
     setIsSubmitting(true);

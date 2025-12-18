@@ -29,8 +29,20 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
     
-    # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080"
+    # CORS - Production + Local development
+    CORS_ORIGINS: str = "https://devreferral.tledtech.com,http://localhost:3001,http://localhost:3000,http://localhost:80"
+    
+    # SMTP Email Configuration (ZeptoMail for teamleaseedtech.com)
+    SMTP_HOST: str = "smtp.zeptomail.in"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "emailapikey"
+    SMTP_PASSWORD: str = "Zoho-enczapikey PHtE6r0PRum52jJ8+hMH4qC9FpagMYspq+MzfwkUtY5HDaIHGE0Hqoh4kjKyoh5+BvFGFKTNzdptuLibseKNIzztMWhMX2qyqK3sx/VYSPOZsbq6x00csFwdd03fVYDndtJt0izevdnSNA=="
+    SMTP_USE_TLS: bool = True
+    EMAIL_FROM: str = "noreply@teamleaseedtech.com"
+    EMAIL_FROM_NAME: str = "TeamLease EdTech"
+    
+    # Frontend URL for email links
+    FRONTEND_URL: str = "https://devreferral.tledtech.com"
     
     # Logging
     LOG_LEVEL: str = "INFO"

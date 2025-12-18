@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, UserPlus, Users, Building2, GraduationCap, Mail, Phone, Loader2 } from 'lucide-react';
+import { ArrowLeft, UserPlus, Users, Building2, GraduationCap, Mail, Phone, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { universitiesAPI, referralsAPI } from '@/lib/api';
+import { validateReferralForm, hasErrors, FormErrors } from '@/lib/validations';
 
 const ReferrerAddReferral = () => {
   const navigate = useNavigate();
@@ -23,6 +24,18 @@ const ReferrerAddReferral = () => {
     programId: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  // Helper to render field error
+  const FieldError = ({ error }: { error?: string }) => {
+    if (!error) return null;
+    return (
+      <div className="flex items-center gap-1 text-red-500 text-xs mt-1">
+        <AlertCircle className="w-3 h-3" />
+        <span>{error}</span>
+      </div>
+    );
+  };
 
   // Fetch universities on mount
   useEffect(() => {
@@ -80,29 +93,18 @@ const ReferrerAddReferral = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
-    if (!formData.refereeName || formData.refereeName.length < 2) {
-      toast({ title: 'Validation Error', description: 'Please enter a valid student name', variant: 'destructive' });
-      return;
-    }
+    // Validate using centralized validation
+    const newErrors = validateReferralForm({
+      studentName: formData.refereeName,
+      studentEmail: formData.refereeEmail,
+      studentPhone: formData.refereePhone,
+      universityId: formData.universityId,
+      programId: formData.programId,
+    });
+    setErrors(newErrors);
 
-    if (!formData.refereeEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.refereeEmail)) {
-      toast({ title: 'Validation Error', description: 'Please enter a valid email address', variant: 'destructive' });
-      return;
-    }
-
-    if (!formData.refereePhone || !/^\+?[\d\s-]{10,}$/.test(formData.refereePhone)) {
-      toast({ title: 'Validation Error', description: 'Please enter a valid phone number', variant: 'destructive' });
-      return;
-    }
-
-    if (!formData.universityId) {
-      toast({ title: 'Validation Error', description: 'Please select a university', variant: 'destructive' });
-      return;
-    }
-
-    if (!formData.programId) {
-      toast({ title: 'Validation Error', description: 'Please select a program', variant: 'destructive' });
+    if (hasErrors(newErrors)) {
+      toast({ title: 'Validation Error', description: 'Please correct the errors below', variant: 'destructive' });
       return;
     }
 

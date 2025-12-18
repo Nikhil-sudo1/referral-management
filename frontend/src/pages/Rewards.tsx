@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Award, CheckCircle, Clock, Gift, TrendingUp, DollarSign, Loader2 } from 'lucide-react';
+import { Award, CheckCircle, Clock, Gift, TrendingUp, DollarSign, Loader2, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -134,70 +135,92 @@ const Rewards = () => {
     );
   }
 
+  const statsData = [
+    { label: 'Pending Approval', value: `₹${totalPending.toLocaleString()}`, icon: Clock, gradient: 'from-warning to-orange-500', bgColor: 'bg-warning/10' },
+    { label: 'Disbursed This Month', value: `₹${totalDisbursed.toLocaleString()}`, icon: CheckCircle, gradient: 'from-success to-emerald-500', bgColor: 'bg-success/10' },
+    { label: 'Total Rewards', value: rewardsList.length, icon: Gift, gradient: 'from-primary to-cyan-500', bgColor: 'bg-primary/10' },
+    { label: 'Avg. Reward', value: `₹${avgReward.toLocaleString()}`, icon: TrendingUp, gradient: 'from-info to-blue-500', bgColor: 'bg-info/10' },
+  ];
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <motion.div 
+        className="space-y-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Rewards Management</h1>
-          <p className="text-muted-foreground mt-1">Track and manage reward distributions</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <div className="flex items-center gap-3">
+            <motion.div 
+              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-warning to-orange-500 flex items-center justify-center shadow-lg"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
+              <Award className="w-6 h-6 text-white" />
+            </motion.div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Rewards Management</h1>
+              <p className="text-muted-foreground mt-1">Track and manage reward distributions</p>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-warning/10">
-                  <Clock className="w-6 h-6 text-warning" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending Approval</p>
-                  <p className="text-2xl font-bold text-card-foreground">₹{totalPending.toLocaleString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-success/10">
-                  <CheckCircle className="w-6 h-6 text-success" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Disbursed This Month</p>
-                  <p className="text-2xl font-bold text-card-foreground">₹{totalDisbursed.toLocaleString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-primary/10">
-                  <Gift className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Rewards</p>
-                  <p className="text-2xl font-bold text-card-foreground">{rewardsList.length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-info/10">
-                  <TrendingUp className="w-6 h-6 text-info" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Avg. Reward</p>
-                  <p className="text-2xl font-bold text-card-foreground">₹{avgReward.toLocaleString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <motion.div 
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+            }
+          }}
+        >
+          {statsData.map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              variants={{
+                hidden: { opacity: 0, y: 20, scale: 0.95 },
+                visible: { 
+                  opacity: 1, 
+                  y: 0, 
+                  scale: 1,
+                  transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
+                }
+              }}
+              whileHover={{ y: -5, scale: 1.02 }}
+            >
+              <Card className="overflow-hidden group">
+                <CardContent className="p-6 relative">
+                  <motion.div 
+                    className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-5 transition-opacity`}
+                  />
+                  <div className="flex items-center gap-4 relative">
+                    <motion.div 
+                      className={`p-3 rounded-xl ${stat.bgColor}`}
+                      whileHover={{ scale: 1.1, rotate: 10 }}
+                      transition={{ type: 'spring', stiffness: 300 }}
+                    >
+                      <stat.icon className="w-6 h-6" />
+                    </motion.div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">{stat.label}</p>
+                      <p className="text-2xl font-bold text-card-foreground">{stat.value}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* Rewards Table */}
         <Card>
@@ -313,7 +336,7 @@ const Rewards = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
     </DashboardLayout>
   );
 };

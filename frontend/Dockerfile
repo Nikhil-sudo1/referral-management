@@ -1,9 +1,11 @@
+# TeamLease EdTech Referral Portal - Frontend Dockerfile
+
 # ---------- Build stage ----------
 FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Accept VITE_API_URL from buildspec.yml
+# Accept VITE_API_URL from buildspec.yml (must match --build-arg name)
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_API_BASE_URL=$VITE_API_URL
@@ -13,8 +15,10 @@ COPY package.json package-lock.json ./
 
 RUN npm ci --no-audit --no-fund
 
+# Copy source code
 COPY . .
 
+# Build for production
 RUN npm run build
 
 

@@ -7,7 +7,8 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 3001,
+    strictPort: true, // Fail if port 3001 is already in use, don't auto-increment
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
