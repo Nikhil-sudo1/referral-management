@@ -688,6 +688,18 @@ const Referrals = () => {
                         </CardContent>
                       </Card>
 
+                      {/* CRM Activity Error */}
+                      {crmActivity?.activity_error && (
+                        <Card className="border-amber-500/50 bg-amber-50/10">
+                          <CardContent className="p-4">
+                            <div className="flex items-center gap-2 text-amber-600">
+                              <AlertCircle className="w-5 h-5" />
+                              <p className="text-sm font-medium">{crmActivity.activity_error}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
                       {/* CRM Activity Timeline */}
                       {crmActivity?.activity && (
                         <Card>

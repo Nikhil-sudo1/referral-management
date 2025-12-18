@@ -43,6 +43,7 @@ export interface CRMActivityResponse {
   synced_at: string | null;
   activity: any;
   sync_error?: string;
+  activity_error?: string;
 }
 
 export interface ReferralCreateRequest {

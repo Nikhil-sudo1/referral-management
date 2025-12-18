@@ -216,23 +216,40 @@ async def get_referral_crm_activity(
                 data={
                     "synced": False,
                     "crm_lead_id": None,
+                    "synced_at": None,
                     "activity": None,
                     "sync_error": referral.crm_sync_error
                 }
             )
         
-        # Get CRM activity
+        # Get CRM activity (may fail if token expired)
         crm_service = CRMService(db)
-        activity = await crm_service.get_lead_activity(referral.crm_lead_id)
+        activity = None
+        activity_error = None
+        
+        try:
+            activity = await crm_service.get_lead_activity(referral.crm_lead_id)
+            # Check if response indicates token error
+            if activity and isinstance(activity, dict) and activity.get("error"):
+                error_msg = activity.get("message", {})
+                if isinstance(error_msg, dict) and "401006" in error_msg:
+                    activity_error = "CRM token expired. Please update CRM credentials."
+                    activity = None
+                else:
+                    activity_error = str(error_msg)
+                    activity = None
+        except Exception as e:
+            activity_error = f"Failed to fetch CRM activity: {str(e)}"
         
         return BaseResponse(
             success=True,
-            message="CRM activity retrieved",
+            message="CRM status retrieved",
             data={
                 "synced": True,
                 "crm_lead_id": referral.crm_lead_id,
                 "synced_at": referral.crm_synced_at.isoformat() if referral.crm_synced_at else None,
-                "activity": activity
+                "activity": activity,
+                "activity_error": activity_error
             }
         )
     except AppException as e:
