@@ -80,12 +80,31 @@ export const authAPI = {
   },
 
   // Reset password
-  resetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
-    const response = await apiClient.post<{ message: string }>('/auth/reset-password', {
+  resetPassword: async (token: string, password: string, confirmPassword: string): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>('/auth/reset-password', {
       token,
-      new_password: newPassword,
+      password,
+      confirm_password: confirmPassword,
     });
     return response.data;
+  },
+
+  // Verify email
+  verifyEmail: async (token: string): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>(`/auth/verify-email?token=${token}`);
+    return response.data;
+  },
+
+  // Resend verification email
+  resendVerification: async (email: string): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>('/auth/resend-verification', { email });
+    return response.data;
+  },
+
+  // Check verification status
+  checkVerification: async (email: string): Promise<{ is_verified: boolean }> => {
+    const response = await apiClient.get<{ success: boolean; data: { is_verified: boolean } }>(`/auth/check-verification?email=${encodeURIComponent(email)}`);
+    return response.data.data;
   },
 };
 

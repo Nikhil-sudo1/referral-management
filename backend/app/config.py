@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
     
-    # CORS - Frontend on 3001, Backend on 80
-    CORS_ORIGINS: str = "http://localhost:3001,http://localhost:80"
+    # CORS - Production + Local development
+    CORS_ORIGINS: str = "https://devreferral.tledtech.com,http://localhost:3001,http://localhost:3000,http://localhost:80"
     
     # SMTP Email Configuration (ZeptoMail)
     SMTP_HOST: str = "smtp.zeptomail.in"
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     EMAIL_FROM_NAME: str = "TeamLease EdTech"
     
     # Frontend URL for email links
-    FRONTEND_URL: str = "http://localhost:3001"
+    FRONTEND_URL: str = "https://devreferral.tledtech.com"
     
     # Logging
     LOG_LEVEL: str = "INFO"
