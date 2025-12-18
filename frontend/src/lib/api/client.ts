@@ -11,8 +11,11 @@ import { toast } from '@/hooks/use-toast';
 // - This file owns `/api/v1`
 // ------------------------------------------------------------------
 const getDefaultBaseUrl = () => {
-  // Always use the deployed API unless explicitly overridden
-  // Local backend requires database access which may not be available
+  // Use local backend for development to test new CRM features
+  if (import.meta.env.DEV) {
+    return 'http://localhost:8000';
+  }
+  // Default to deployed API for production
   return 'https://devreferralapi.tledtech.com';
 };
 

@@ -162,8 +162,18 @@ const Referrals = () => {
     try {
       const activity = await referralsAPI.getCRMActivity(referral.id);
       setCrmActivity(activity);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching CRM activity:', error);
+      // Set a default state indicating CRM is not available
+      setCrmActivity({
+        synced: false,
+        crm_lead_id: null,
+        synced_at: null,
+        activity: null,
+        sync_error: error.response?.status === 404 
+          ? 'CRM endpoint not available on this server' 
+          : 'Failed to fetch CRM status'
+      });
     } finally {
       setLoadingCRM(false);
     }
@@ -181,14 +191,31 @@ const Referrals = () => {
         description: `Lead ID: ${result.crm_lead_id}`,
       });
       // Refresh CRM activity
-      const activity = await referralsAPI.getCRMActivity(selectedReferral.id);
-      setCrmActivity(activity);
+      try {
+        const activity = await referralsAPI.getCRMActivity(selectedReferral.id);
+        setCrmActivity(activity);
+      } catch (e) {
+        console.error('Error refreshing CRM activity:', e);
+      }
       fetchData(); // Refresh main data
     } catch (error: any) {
+      console.error('CRM Sync Error:', error);
+      const errorMsg = error.response?.data?.detail || error.response?.data?.message || 'Failed to sync to CRM';
       toast({
         title: 'CRM Sync Failed',
-        description: error.response?.data?.detail || 'Failed to sync to CRM',
+        description: typeof errorMsg === 'string' ? errorMsg : 'Failed to sync to CRM. The server may not support this feature yet.',
         variant: 'destructive',
+      });
+      // Update CRM activity state to show error
+      setCrmActivity(prev => prev ? {
+        ...prev,
+        sync_error: typeof errorMsg === 'string' ? errorMsg : 'Sync failed'
+      } : {
+        synced: false,
+        crm_lead_id: null,
+        synced_at: null,
+        activity: null,
+        sync_error: 'CRM sync endpoint not available'
       });
     } finally {
       setSyncingCRM(false);

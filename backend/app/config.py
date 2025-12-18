@@ -10,12 +10,13 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
     
-    # Database
-    DATABASE_HOST: str = "localhost"
+    # Database - defaults to production database for local development
+    # Override with environment variables or .env file if needed
+    DATABASE_HOST: str = "10.0.3.146"
     DATABASE_PORT: int = 5432
     DATABASE_NAME: str = "referral"
-    DATABASE_USER: str = "postgres"
-    DATABASE_PASSWORD: str = "password"
+    DATABASE_USER: str = "referral"
+    DATABASE_PASSWORD: str = "R@f@iia1@2026"
     
     # JWT
     JWT_SECRET_KEY: str = "change-this-secret-key"
