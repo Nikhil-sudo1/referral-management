@@ -23,7 +23,7 @@ def clear_database(db):
     db.query(User).filter(User.email != 'alex@example.com').delete()  # Keep test user
     db.query(RewardTier).delete()
     db.commit()
-    print("✓ Database cleared")
+    print("[OK] Database cleared")
 
 def seed_reward_tiers(db):
     """Create reward tiers"""
@@ -70,7 +70,7 @@ def seed_reward_tiers(db):
     for tier in tiers:
         db.add(tier)
     db.commit()
-    print(f"✓ Created {len(tiers)} reward tiers")
+    print(f"[OK] Created {len(tiers)} reward tiers")
 
 def seed_users(db):
     """Create users with different roles"""
@@ -121,7 +121,7 @@ def seed_users(db):
     for user in users:
         db.refresh(user)
     
-    print(f"✓ Created {len(users)} users")
+    print(f"[OK] Created {len(users)} users")
     return users
 
 def seed_universities(db):
@@ -161,7 +161,7 @@ def seed_universities(db):
     for uni in universities:
         db.refresh(uni)
     
-    print(f"✓ Created {len(universities)} universities")
+    print(f"[OK] Created {len(universities)} universities")
     return universities
 
 def seed_programs(db, universities):
@@ -208,7 +208,7 @@ def seed_programs(db, universities):
     for program in programs:
         db.refresh(program)
     
-    print(f"✓ Created {len(programs)} programs across {len(universities)} universities")
+    print(f"[OK] Created {len(programs)} programs across {len(universities)} universities")
     return programs
 
 def seed_referrals(db, users, universities, programs):
@@ -290,7 +290,7 @@ def seed_referrals(db, users, universities, programs):
     for ref in referrals:
         db.refresh(ref)
     
-    print(f"✓ Created {len(referrals)} referrals")
+    print(f"[OK] Created {len(referrals)} referrals")
     return referrals
 
 def seed_rewards(db, referrals, users):
@@ -336,7 +336,7 @@ def seed_rewards(db, referrals, users):
             rewards.append(counselor_reward)
     
     db.commit()
-    print(f"✓ Created {len(rewards)} rewards")
+    print(f"[OK] Created {len(rewards)} rewards")
     return rewards
 
 def main():
@@ -362,14 +362,14 @@ def main():
         print("\n" + "="*70)
         print("  SEEDING COMPLETE!")
         print("="*70)
-        print(f"\n✓ Reward Tiers: 4")
-        print(f"✓ Users: {len(users)}")
-        print(f"✓ Universities: {len(universities)}")
-        print(f"✓ Programs: {len(programs)}")
-        print(f"✓ Referrals: {len(referrals)}")
-        print(f"✓ Rewards: {len(rewards)}")
+        print(f"\n[OK] Reward Tiers: 4")
+        print(f"[OK] Users: {len(users)}")
+        print(f"[OK] Universities: {len(universities)}")
+        print(f"[OK] Programs: {len(programs)}")
+        print(f"[OK] Referrals: {len(referrals)}")
+        print(f"[OK] Rewards: {len(rewards)}")
         print("\n" + "="*70)
-        print("\n✅ Database is now populated with realistic data!")
+        print("\n[SUCCESS] Database is now populated with realistic data!")
         print("\nLogin credentials for testing:")
         print("  Admin:     admin@teamlease.com / Password123!")
         print("  Manager:   rajesh.kumar@teamlease.com / Password123!")
@@ -378,7 +378,7 @@ def main():
         print("\n" + "="*70 + "\n")
         
     except Exception as e:
-        print(f"\n❌ Error during seeding: {e}")
+        print(f"\n[ERROR] Error during seeding: {e}")
         db.rollback()
         raise
     finally:
