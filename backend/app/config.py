@@ -44,6 +44,14 @@ class Settings(BaseSettings):
     # Frontend URL for email links
     FRONTEND_URL: str = "https://devreferral.tledtech.com"
     
+    # CRM Integration (Digivarsity)
+    CRM_BASE_URL: str = "https://uatcrmapi.digivarsity.com"
+    CRM_SESSION_TOKEN: str = "KS3B3MephTVmLVKorFWCRECexRwI1gZ9iiGXxM02Xsy1bhTP5Arc49nU0i0E"
+    CRM_BEARER_TOKEN: str = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiMzEyYjExNzk0NTU0NDI2NTY5NTAzNTgyMGFjMTgzOTY0YjA1OTZhMTBkNjM3NTBmMTYwZjc2N2JkYjk3MDlkOTFmMDdkMmE3OWViM2QxYzgiLCJpYXQiOjE3NjYwNjMwNDQuNzkwNjk5LCJuYmYiOjE3NjYwNjMwNDQuNzkwNzAyLCJleHAiOjE3NjYwOTkwNDQuNzgyNDY0LCJzdWIiOiIiLCJzY29wZXMiOltdfQ.cz76YYuLkJu-6GPm0pasPddNDFbgU6IzG2MyT3Feoe_Ij3_8I6zTQkdeH_LmYFgWja1Wmv0CBRT-st6mFUdjlhmk8wFlKRdzLcyivlQQIhNdBKvS_XyE2cbEIChrkHalczszHT5cWLuxRhDTOhXPqoo1e7lVUXepes8AkhcSWqpHjwuHIEW1TUxKVVLBneyv_ojoHMqVLUXXSmWyxqImnE-t6mV37o9DcF5wHBTutqE0VXxqpOSfytKgkh1HhGH0PhHKIAxhCkBT5bvCvnOXgCqTMYG1kRZFm3GGrVxp0TTlBGoFb5U0VihMmOL2NArewp_89PXuPkLFppeleDE-VYnuELwgYSNwbrVd9ho5q5-RAIsLiaiK3ukYayTjm2-ndipLJQV9dfjgZMPooj8WDyu2cJU9mNCvwkKJUUASwt7tau5o6zmexuEiyU6JBNLKcK4lSa9qqsYa6WrxkenMBq1xGWphYp9GHR5UOEYLko4SfhkAQZLNDq_7bKpuyEWARxZEmFSuH2ofcLqyG7WH9J0Rd0wqQhhgd-X32xPHaCnED3SXQBiYv_-MxAZBsKr0mBtBDqtS2HI8D21vSJZWNJ6G81-Yqe7Q0TbveexEgyrlHy3GsV-AUK5Ta8aX_HPjz2CHig5jYxWijOoQusvSAeYXNCjWVNFapl1g7gzdyt4"
+    CRM_ENABLED: bool = True
+    CRM_DEFAULT_LEAD_CHANNEL: int = 0
+    CRM_DEFAULT_SOURCE_MEDIUM: int = 0
+    
     # Logging
     LOG_LEVEL: str = "INFO"
     

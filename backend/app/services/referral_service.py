@@ -6,6 +6,7 @@ from typing import List, Optional, Dict
 from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
+import asyncio
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from app.models.referral import Referral
@@ -30,6 +31,7 @@ from app.schemas.referral import (
 )
 from app.core.exceptions import NotFoundException, ValidationException, ConflictException
 from app.core.logging import logger
+from app.config import settings
 import math
 import random
 import string
@@ -222,6 +224,10 @@ class ReferralService:
             expected_reward=referral.expected_reward,
             created_at=referral.created_at,
             updated_at=referral.updated_at,
+            # CRM fields
+            crm_lead_id=referral.crm_lead_id,
+            crm_synced_at=referral.crm_synced_at,
+            crm_sync_error=referral.crm_sync_error,
         )
     
     def create_referral(self, data: ReferralCreate, referrer_user: Optional[User] = None) -> Referral:
@@ -281,6 +287,10 @@ class ReferralService:
         self.db.refresh(referral)
         
         logger.info(f"Referral created: {referral.referral_code}")
+        
+        # Sync to CRM asynchronously
+        self._sync_referral_to_crm(referral)
+        
         return referral
     
     def submit_referral(self, data: ReferralSubmit, referrer: User) -> Referral:
@@ -327,6 +337,10 @@ class ReferralService:
         self.db.refresh(referral)
         
         logger.info(f"Referral submitted by {referrer.email}: {referral.referral_code}")
+        
+        # Sync to CRM asynchronously
+        self._sync_referral_to_crm(referral)
+        
         return referral
     
     def update_referral(self, referral_id: UUID, data: ReferralUpdate) -> Referral:
@@ -462,4 +476,41 @@ class ReferralService:
                 stats[status] = count
         
         return stats
+    
+    def _sync_referral_to_crm(self, referral: Referral) -> None:
+        """
+        Sync referral to CRM (Digivarsity) asynchronously
+        This runs in the background and doesn't block the main request
+        """
+        if not settings.CRM_ENABLED:
+            logger.info("CRM sync disabled, skipping")
+            return
+        
+        try:
+            from app.services.crm_service import CRMService
+            crm_service = CRMService(self.db)
+            
+            # Run async CRM sync
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            
+            # Create lead in CRM
+            if loop.is_running():
+                # If we're already in an async context, create a task
+                asyncio.create_task(crm_service.create_lead(referral))
+            else:
+                # If not in async context, run synchronously
+                loop.run_until_complete(crm_service.create_lead(referral))
+            
+            logger.info(f"CRM sync initiated for referral: {referral.referral_code}")
+            
+        except Exception as e:
+            # Log error but don't fail the main operation
+            logger.error(f"Failed to sync referral to CRM: {str(e)}")
+            # Store error in referral
+            referral.crm_sync_error = str(e)[:500]
+            self.db.commit()
 

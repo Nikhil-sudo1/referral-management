@@ -74,6 +74,11 @@ class Referral(Base):
     utm_source = Column(String(255))
     utm_medium = Column(String(255))
     
+    # CRM Integration
+    crm_lead_id = Column(Integer, nullable=True, index=True)  # Digivarsity CRM Lead ID
+    crm_synced_at = Column(DateTime, nullable=True)  # When the referral was synced to CRM
+    crm_sync_error = Column(Text, nullable=True)  # Error message if sync failed
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

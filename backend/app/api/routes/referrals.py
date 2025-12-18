@@ -191,6 +191,101 @@ async def get_referral_stats(
     )
 
 
+@router.get("/{referral_id}/crm-activity", response_model=BaseResponse)
+async def get_referral_crm_activity(
+    referral_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get CRM activity for a referral
+    Returns activity history from Digivarsity CRM
+    """
+    from app.services.crm_service import CRMService
+    from app.services.referral_service import ReferralService
+    
+    try:
+        # Get referral first
+        referral_service = ReferralService(db)
+        referral = referral_service.get_referral_by_id(referral_id)
+        
+        if not referral.crm_lead_id:
+            return BaseResponse(
+                success=True,
+                message="Referral not synced to CRM yet",
+                data={
+                    "synced": False,
+                    "crm_lead_id": None,
+                    "activity": None,
+                    "sync_error": referral.crm_sync_error
+                }
+            )
+        
+        # Get CRM activity
+        crm_service = CRMService(db)
+        activity = await crm_service.get_lead_activity(referral.crm_lead_id)
+        
+        return BaseResponse(
+            success=True,
+            message="CRM activity retrieved",
+            data={
+                "synced": True,
+                "crm_lead_id": referral.crm_lead_id,
+                "synced_at": referral.crm_synced_at.isoformat() if referral.crm_synced_at else None,
+                "activity": activity
+            }
+        )
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching CRM activity: {str(e)}")
+
+
+@router.post("/{referral_id}/sync-crm", response_model=BaseResponse)
+async def sync_referral_to_crm(
+    referral_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    """
+    Manually sync a referral to CRM (admin only)
+    Use this to retry failed syncs or sync older referrals
+    """
+    from app.services.crm_service import CRMService
+    from app.services.referral_service import ReferralService
+    
+    try:
+        # Get referral
+        referral_service = ReferralService(db)
+        referral = referral_service.get_referral_by_id(referral_id)
+        
+        # Sync to CRM
+        crm_service = CRMService(db)
+        crm_lead_id = await crm_service.create_lead(referral)
+        
+        if crm_lead_id:
+            return BaseResponse(
+                success=True,
+                message="Referral synced to CRM successfully",
+                data={
+                    "crm_lead_id": crm_lead_id,
+                    "synced_at": referral.crm_synced_at.isoformat() if referral.crm_synced_at else None
+                }
+            )
+        else:
+            return BaseResponse(
+                success=False,
+                message="Failed to sync referral to CRM",
+                data={
+                    "error": referral.crm_sync_error
+                }
+            )
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error syncing to CRM: {str(e)}")
+
+
 @router.get("/{referral_id}", response_model=BaseResponse)
 async def get_referral(
     referral_id: UUID,

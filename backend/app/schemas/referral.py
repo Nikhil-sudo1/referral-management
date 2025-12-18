@@ -105,6 +105,10 @@ class ReferralResponse(BaseModel):
     expected_reward: Optional[Decimal] = None
     created_at: datetime
     updated_at: datetime
+    # CRM Integration fields
+    crm_lead_id: Optional[int] = None
+    crm_synced_at: Optional[datetime] = None
+    crm_sync_error: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
