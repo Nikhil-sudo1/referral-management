@@ -4,11 +4,11 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { Search, Filter, UserPlus, Eye, MoreHorizontal, Download, FileText, Users, CheckCircle, Clock, Loader2 } from 'lucide-react';
+import { Search, Filter, UserPlus, Eye, MoreHorizontal, Download, FileText, Users, CheckCircle, Clock, Loader2, RefreshCw, ExternalLink, Activity, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import {
@@ -17,9 +17,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { referralsAPI, universitiesAPI, usersAPI } from '@/lib/api';
+import type { CRMActivityResponse } from '@/lib/api/referrals';
 
 type ReferralStatus = 'submitted' | 'assigned' | 'contacted' | 'admitted' | 'rejected';
 
@@ -45,6 +48,13 @@ const Referrals = () => {
     admitted: 0,
     conversionRate: 0
   });
+  
+  // Referral Details Dialog state
+  const [selectedReferral, setSelectedReferral] = useState<any>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [crmActivity, setCrmActivity] = useState<CRMActivityResponse | null>(null);
+  const [loadingCRM, setLoadingCRM] = useState(false);
+  const [syncingCRM, setSyncingCRM] = useState(false);
 
   // Fetch data on mount
   useEffect(() => {
@@ -138,6 +148,50 @@ const Referrals = () => {
         description: 'Failed to assign counselor',
         variant: 'destructive',
       });
+    }
+  };
+
+  // Open referral details and fetch CRM activity
+  const handleViewDetails = async (referral: any) => {
+    setSelectedReferral(referral);
+    setDetailsOpen(true);
+    setCrmActivity(null);
+    
+    // Fetch CRM activity
+    setLoadingCRM(true);
+    try {
+      const activity = await referralsAPI.getCRMActivity(referral.id);
+      setCrmActivity(activity);
+    } catch (error) {
+      console.error('Error fetching CRM activity:', error);
+    } finally {
+      setLoadingCRM(false);
+    }
+  };
+
+  // Sync referral to CRM
+  const handleSyncToCRM = async () => {
+    if (!selectedReferral) return;
+    
+    setSyncingCRM(true);
+    try {
+      const result = await referralsAPI.syncToCRM(selectedReferral.id);
+      toast({
+        title: 'CRM Sync Successful',
+        description: `Lead ID: ${result.crm_lead_id}`,
+      });
+      // Refresh CRM activity
+      const activity = await referralsAPI.getCRMActivity(selectedReferral.id);
+      setCrmActivity(activity);
+      fetchData(); // Refresh main data
+    } catch (error: any) {
+      toast({
+        title: 'CRM Sync Failed',
+        description: error.response?.data?.detail || 'Failed to sync to CRM',
+        variant: 'destructive',
+      });
+    } finally {
+      setSyncingCRM(false);
     }
   };
 
@@ -416,9 +470,9 @@ const Referrals = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => toast({ title: 'View Details', description: `Viewing details for ${referral.referee_name}` })}>
+                            <DropdownMenuItem onClick={() => handleViewDetails(referral)}>
                               <Eye className="w-4 h-4 mr-2" />
-                              View Details
+                              View Details & CRM
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => toast({ title: 'Update Status', description: `Status update dialog for ${referral.referral_code}` })}>
                               Update Status
@@ -436,6 +490,237 @@ const Referrals = () => {
             </TableBody>
           </Table>
         </Card>
+
+        {/* Referral Details Dialog with CRM Activity */}
+        <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="font-display text-xl flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Referral Details
+                {selectedReferral && (
+                  <Badge variant="outline" className="ml-2 font-mono">
+                    {selectedReferral.referral_code}
+                  </Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                View referral information and CRM activity
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedReferral && (
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="details">Referral Info</TabsTrigger>
+                  <TabsTrigger value="crm" className="flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    CRM Activity
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="details" className="mt-4">
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-6">
+                      {/* Referee Info */}
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                            Referee (Student)
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-bold">
+                              {selectedReferral.referee_name?.split(' ').map((n: string) => n[0]).join('') || '??'}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-lg">{selectedReferral.referee_name}</p>
+                              <p className="text-sm text-muted-foreground">{selectedReferral.referee_email}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Referrer Info */}
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                            Referrer
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="font-medium">{selectedReferral.referrer_name}</p>
+                          <p className="text-sm text-muted-foreground">{selectedReferral.referrer_phone}</p>
+                        </CardContent>
+                      </Card>
+
+                      {/* Status & Dates */}
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                            Status & Timeline
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Status</span>
+                            <Badge className={cn(
+                              statusConfig[selectedReferral.status as ReferralStatus]?.bg,
+                              statusConfig[selectedReferral.status as ReferralStatus]?.text
+                            )}>
+                              {selectedReferral.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Submitted</span>
+                            <span>{selectedReferral.submission_date ? format(new Date(selectedReferral.submission_date), 'MMM d, yyyy HH:mm') : 'N/A'}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="crm" className="mt-4">
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-4">
+                      {/* CRM Sync Status */}
+                      <Card>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center justify-between">
+                            <span>CRM Sync Status</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleSyncToCRM}
+                              disabled={syncingCRM}
+                              className="h-8"
+                            >
+                              {syncingCRM ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                              )}
+                              {crmActivity?.synced ? 'Re-sync' : 'Sync to CRM'}
+                            </Button>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {loadingCRM ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            </div>
+                          ) : crmActivity ? (
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                                {crmActivity.synced ? (
+                                  <CheckCircle2 className="w-6 h-6 text-success" />
+                                ) : crmActivity.sync_error ? (
+                                  <XCircle className="w-6 h-6 text-destructive" />
+                                ) : (
+                                  <AlertCircle className="w-6 h-6 text-warning" />
+                                )}
+                                <div>
+                                  <p className="font-medium">
+                                    {crmActivity.synced 
+                                      ? 'Synced to Digivarsity CRM' 
+                                      : crmActivity.sync_error 
+                                        ? 'Sync Failed' 
+                                        : 'Not Synced'}
+                                  </p>
+                                  {crmActivity.synced && crmActivity.crm_lead_id && (
+                                    <p className="text-sm text-muted-foreground">
+                                      Lead ID: <span className="font-mono font-bold text-primary">{crmActivity.crm_lead_id}</span>
+                                    </p>
+                                  )}
+                                  {crmActivity.synced_at && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Synced: {format(new Date(crmActivity.synced_at), 'MMM d, yyyy HH:mm')}
+                                    </p>
+                                  )}
+                                  {crmActivity.sync_error && (
+                                    <p className="text-sm text-destructive mt-1">{crmActivity.sync_error}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-muted-foreground text-center py-4">
+                              Unable to fetch CRM status
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      {/* CRM Activity Timeline */}
+                      {crmActivity?.activity && (
+                        <Card>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                              <Activity className="w-4 h-4" />
+                              Activity Timeline
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            {Array.isArray(crmActivity.activity) && crmActivity.activity.length > 0 ? (
+                              <div className="space-y-3">
+                                {crmActivity.activity.map((item: any, index: number) => (
+                                  <div key={index} className="flex gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                                    <div className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="font-medium text-sm">{item.activity || item.action || item.type || 'Activity'}</p>
+                                      {item.description && (
+                                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                                      )}
+                                      {item.remarks && (
+                                        <p className="text-sm text-muted-foreground">{item.remarks}</p>
+                                      )}
+                                      {(item.created_at || item.date || item.timestamp) && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          {format(new Date(item.created_at || item.date || item.timestamp), 'MMM d, yyyy HH:mm')}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : typeof crmActivity.activity === 'object' ? (
+                              <pre className="text-xs bg-muted/50 p-3 rounded-lg overflow-auto max-h-48">
+                                {JSON.stringify(crmActivity.activity, null, 2)}
+                              </pre>
+                            ) : (
+                              <p className="text-muted-foreground text-center py-4">
+                                No activity data available
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* CRM Link */}
+                      {crmActivity?.synced && crmActivity.crm_lead_id && (
+                        <Card>
+                          <CardContent className="p-4">
+                            <a 
+                              href={`https://uatcrm.digivarsity.com/leads/${crmActivity.crm_lead_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-2 text-primary hover:underline"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              Open in Digivarsity CRM
+                            </a>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+            )}
+          </DialogContent>
+        </Dialog>
       </motion.div>
     </DashboardLayout>
   );

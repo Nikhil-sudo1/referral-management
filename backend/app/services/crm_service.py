@@ -65,6 +65,7 @@ class CRMService:
             # Prepare lead data for CRM
             # Note: university_interested and course are master IDs in CRM
             # You may need to map these to actual CRM IDs
+            now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             lead_data = {
                 "full_name": referral.referee_name,
                 "mobile_number": referral.referee_phone,
@@ -73,7 +74,7 @@ class CRMService:
                 "course": program.crm_course_id if hasattr(program, 'crm_course_id') and program.crm_course_id else 4463,  # Default if not mapped
                 "lead_channel": settings.CRM_DEFAULT_LEAD_CHANNEL,
                 "source_medium": settings.CRM_DEFAULT_SOURCE_MEDIUM,
-                "lead_owner": None,  # Will be assigned by CRM
+                "lead_owner": settings.CRM_DEFAULT_LEAD_OWNER,  # Required field for CRM
                 "dob": None,
                 "gender": None,
                 "alternate_email": None,
@@ -94,8 +95,8 @@ class CRMService:
                     "enquiryid": None,
                     "enrollmentno": referral.referral_code
                 },
-                "lead_date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-                "lead_updated_date": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                "lead_date": now,
+                "lead_updated_date": now
             }
             
             logger.info(f"Creating CRM lead for referral {referral.referral_code}")

@@ -13,6 +13,10 @@ export interface Referral {
   notes?: string;
   created_at: string;
   updated_at: string;
+  // CRM Integration fields
+  crm_lead_id?: number;
+  crm_synced_at?: string;
+  crm_sync_error?: string;
   referrer?: {
     id: string;
     name: string;
@@ -31,6 +35,14 @@ export interface Referral {
     name: string;
     email: string;
   };
+}
+
+export interface CRMActivityResponse {
+  synced: boolean;
+  crm_lead_id: number | null;
+  synced_at: string | null;
+  activity: any;
+  sync_error?: string;
 }
 
 export interface ReferralCreateRequest {
@@ -173,6 +185,18 @@ export const referralsAPI = {
   // Assign counselor to referral
   assignCounselor: async (id: string, counselorId: string): Promise<Referral> => {
     const response = await apiClient.post<{ success: boolean; data: Referral }>(`/referrals/${id}/assign`, { counselor_id: counselorId });
+    return response.data.data;
+  },
+
+  // Get CRM activity for a referral
+  getCRMActivity: async (id: string): Promise<CRMActivityResponse> => {
+    const response = await apiClient.get<{ success: boolean; data: CRMActivityResponse }>(`/referrals/${id}/crm-activity`);
+    return response.data.data;
+  },
+
+  // Manually sync referral to CRM
+  syncToCRM: async (id: string): Promise<{ crm_lead_id: number; synced_at: string }> => {
+    const response = await apiClient.post<{ success: boolean; data: { crm_lead_id: number; synced_at: string } }>(`/referrals/${id}/sync-crm`);
     return response.data.data;
   },
 };

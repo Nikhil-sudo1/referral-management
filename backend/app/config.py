@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     CRM_ENABLED: bool = True
     CRM_DEFAULT_LEAD_CHANNEL: int = 0
     CRM_DEFAULT_SOURCE_MEDIUM: int = 0
+    CRM_DEFAULT_LEAD_OWNER: str = "46deaf9b-1f42-498f-99c3-959af742a021"  # Default counselor UUID in CRM
     
     # Logging
     LOG_LEVEL: str = "INFO"
