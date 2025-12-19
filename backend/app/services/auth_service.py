@@ -140,7 +140,6 @@ class AuthService:
             role="referral_partner",  # Changed from "referrer" to "referral_partner"
             partner_type_id=request.partner_type_id,
             organization=request.organization,
-            region_id=request.region_id,
             university_id=university_id,
             referral_code=referral_code,
             tier="Bronze",

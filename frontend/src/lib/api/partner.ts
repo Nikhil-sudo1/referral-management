@@ -1,19 +1,10 @@
 /**
  * Partner API
- * Handles partner types, regions, and related data
+ * Handles partner types, organizations, and universities
  */
 import apiClient from './client';
 
 export interface PartnerType {
-  id: number;
-  name: string;
-  code: string;
-  description?: string;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface Region {
   id: number;
   name: string;
   code: string;
@@ -41,15 +32,9 @@ export const partnerAPI = {
     return response.data.data;
   },
 
-  // Get all regions
-  getRegions: async (): Promise<Region[]> => {
-    const response = await apiClient.get<{ success: boolean; data: Region[] }>('/partner/regions');
-    return response.data.data;
-  },
-
-  // Get universities by region
-  getUniversitiesByRegion: async (regionId: number): Promise<University[]> => {
-    const response = await apiClient.get<{ success: boolean; data: University[] }>(`/partner/regions/${regionId}/universities`);
+  // Get all universities
+  getUniversities: async (): Promise<University[]> => {
+    const response = await apiClient.get<{ success: boolean; data: University[] }>('/partner/universities');
     return response.data.data;
   },
 

@@ -1,17 +1,14 @@
 """
-Partner Type and Region Routes
-Endpoints for fetching partner types, regions, and related data
+Partner Type Routes
+Endpoints for fetching partner types and organizations
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import List
-from uuid import UUID
 
 from app.database import get_db
 from app.schemas.common import BaseResponse
-from app.schemas.partner_type import PartnerTypeResponse, RegionResponse
+from app.schemas.partner_type import PartnerTypeResponse
 from app.models.partner_type import PartnerType
-from app.models.region import Region
 from app.models.university import University
 
 router = APIRouter(tags=["Partner"])
@@ -36,36 +33,15 @@ def get_partner_types(
     )
 
 
-@router.get("/regions", response_model=BaseResponse)
-def get_regions(
+@router.get("/universities", response_model=BaseResponse)
+def get_all_universities(
     db: Session = Depends(get_db)
 ):
     """
-    Get all active regions
-    Public endpoint - no auth required for signup
-    """
-    regions = db.query(Region).filter(
-        Region.is_active == True
-    ).all()
-    
-    return BaseResponse(
-        success=True,
-        message="Regions retrieved successfully",
-        data=[RegionResponse.model_validate(r) for r in regions]
-    )
-
-
-@router.get("/regions/{region_id}/universities", response_model=BaseResponse)
-def get_universities_by_region(
-    region_id: int,
-    db: Session = Depends(get_db)
-):
-    """
-    Get all active universities in a specific region
+    Get all active universities
     Public endpoint - no auth required for signup
     """
     universities = db.query(University).filter(
-        University.region_id == region_id,
         University.status == "active"
     ).all()
     

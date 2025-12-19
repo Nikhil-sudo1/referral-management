@@ -12,7 +12,7 @@ import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, Graduation
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { validateLoginForm, validateSignupForm, hasErrors, FormErrors } from '@/lib/validations';
-import { partnerAPI, PartnerType, Region, Organization, University } from '@/lib/api/partner';
+import { partnerAPI, PartnerType, Organization, University } from '@/lib/api/partner';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -54,7 +54,6 @@ const Login = () => {
     phone: '', 
     partnerTypeId: '',
     organization: '', 
-    regionId: '',
     universityId: '',
     password: '', 
     confirmPassword: '',
@@ -64,7 +63,6 @@ const Login = () => {
   
   // Partner data states
   const [partnerTypes, setPartnerTypes] = useState<PartnerType[]>([]);
-  const [regions, setRegions] = useState<Region[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [universities, setUniversities] = useState<University[]>([]);
   const [loadingData, setLoadingData] = useState(false);
@@ -75,18 +73,18 @@ const Login = () => {
     setSignupErrors({});
   }, [activeTab]);
 
-  // Load partner types, regions, and organizations on mount
+  // Load partner types, organizations, and universities on mount
   useEffect(() => {
     const loadPartnerData = async () => {
       try {
-        const [typesData, regionsData, orgsData] = await Promise.all([
+        const [typesData, orgsData, universitiesData] = await Promise.all([
           partnerAPI.getPartnerTypes(),
-          partnerAPI.getRegions(),
           partnerAPI.getOrganizations(),
+          partnerAPI.getUniversities(),
         ]);
         setPartnerTypes(typesData);
-        setRegions(regionsData);
         setOrganizations(orgsData);
+        setUniversities(universitiesData);
       } catch (error) {
         console.error('Failed to load partner data:', error);
         toast({
@@ -101,32 +99,6 @@ const Login = () => {
       loadPartnerData();
     }
   }, [activeTab]);
-
-  // Load universities when region is selected
-  useEffect(() => {
-    const loadUniversities = async () => {
-      if (signupData.regionId) {
-        setLoadingData(true);
-        try {
-          const universitiesData = await partnerAPI.getUniversitiesByRegion(parseInt(signupData.regionId));
-          setUniversities(universitiesData);
-        } catch (error) {
-          console.error('Failed to load universities:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to load universities for selected region.',
-            variant: 'destructive',
-          });
-        } finally {
-          setLoadingData(false);
-        }
-      } else {
-        setUniversities([]);
-      }
-    };
-
-    loadUniversities();
-  }, [signupData.regionId]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,7 +159,6 @@ const Login = () => {
         confirmPassword: signupData.confirmPassword,
         partner_type_id: parseInt(signupData.partnerTypeId),
         organization: signupData.organization || undefined,
-        region_id: signupData.regionId ? parseInt(signupData.regionId) : undefined,
         university_id: signupData.universityId || undefined,
       });
       if (success) {
@@ -587,7 +558,6 @@ const Login = () => {
                             ...signupData, 
                             partnerTypeId: value,
                             organization: '',
-                            regionId: '',
                             universityId: ''
                           });
                           if (signupErrors.partnerTypeId) setSignupErrors({ ...signupErrors, partnerTypeId: '' });
@@ -642,65 +612,34 @@ const Login = () => {
                       </div>
                     )}
 
-                    {/* Conditional: Region (for Student Referrer) */}
+                    {/* Conditional: University (for Student Referrer) */}
                     {signupData.partnerTypeId === '2' && (
-                      <>
-                        <div className="space-y-2">
-                          <Label className="text-muted-foreground">Region *</Label>
-                          <Select
-                            value={signupData.regionId}
-                            onValueChange={(value) => {
-                              setSignupData({ ...signupData, regionId: value, universityId: '' });
-                              if (signupErrors.regionId) setSignupErrors({ ...signupErrors, regionId: '' });
-                            }}
-                          >
-                            <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
-                              <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-muted-foreground" />
-                                <SelectValue placeholder="Select region" />
-                              </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                              {regions.map((region) => (
-                                <SelectItem key={region.id} value={region.id.toString()}>
-                                  {region.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FieldError error={signupErrors.regionId} />
-                        </div>
-
-                        {/* Conditional: University (shown after region selection) */}
-                        {signupData.regionId && (
-                          <div className="space-y-2">
-                            <Label className="text-muted-foreground">University *</Label>
-                            <Select
-                              value={signupData.universityId}
-                              onValueChange={(value) => {
-                                setSignupData({ ...signupData, universityId: value });
-                                if (signupErrors.universityId) setSignupErrors({ ...signupErrors, universityId: '' });
-                              }}
-                              disabled={loadingData}
-                            >
-                              <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
-                                <div className="flex items-center gap-2">
-                                  <GraduationCap className="w-4 h-4 text-muted-foreground" />
-                                  <SelectValue placeholder={loadingData ? "Loading universities..." : "Select university"} />
-                                </div>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {universities.map((uni) => (
-                                  <SelectItem key={uni.id} value={uni.id}>
-                                    {uni.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FieldError error={signupErrors.universityId} />
-                          </div>
-                        )}
-                      </>
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground">University *</Label>
+                        <Select
+                          value={signupData.universityId}
+                          onValueChange={(value) => {
+                            setSignupData({ ...signupData, universityId: value });
+                            if (signupErrors.universityId) setSignupErrors({ ...signupErrors, universityId: '' });
+                          }}
+                          disabled={loadingData}
+                        >
+                          <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
+                            <div className="flex items-center gap-2">
+                              <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                              <SelectValue placeholder={loadingData ? "Loading universities..." : "Select university"} />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {universities.map((uni) => (
+                              <SelectItem key={uni.id} value={uni.id}>
+                                {uni.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldError error={signupErrors.universityId} />
+                      </div>
                     )}
 
                     <div className="space-y-2">

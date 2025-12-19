@@ -52,7 +52,6 @@ class RegisterRequest(BaseModel):
     confirm_password: str = Field(..., min_length=6)
     partner_type_id: int = Field(..., description="Partner type: Employee or Student Referrer")
     organization: Optional[str] = None  # For employees
-    region_id: Optional[int] = None  # For student referrers
     university_id: Optional[str] = None  # For student referrers
 
 

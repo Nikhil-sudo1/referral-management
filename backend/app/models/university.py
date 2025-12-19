@@ -23,13 +23,11 @@ class University(Base):
     contact_email = Column(String(255))
     contact_phone = Column(String(20))
     address = Column(Text)
-    region_id = Column(ForeignKey("regions.id", ondelete="SET NULL"))  # Region grouping
     status = Column(String(20), default="active", index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    region = relationship("Region", back_populates="universities")
     programs = relationship("Program", back_populates="university", cascade="all, delete-orphan")
     counselors = relationship("User", back_populates="university")
     referrals = relationship("Referral", back_populates="university")
