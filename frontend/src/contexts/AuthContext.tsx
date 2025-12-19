@@ -25,7 +25,10 @@ interface SignupData {
   name: string;
   email: string;
   phone: string;
+  partner_type_id: number;
   organization?: string;
+  region_id?: number;
+  university_id?: string;
   password: string;
   confirmPassword?: string;
 }

@@ -7,10 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap, Moon, Sun, CheckCircle, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap, Moon, Sun, CheckCircle, AlertCircle, MapPin, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { validateLoginForm, validateSignupForm, hasErrors, FormErrors } from '@/lib/validations';
+import { partnerAPI, PartnerType, Region, Organization, University } from '@/lib/api/partner';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -47,16 +49,84 @@ const Login = () => {
 
   const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [signupData, setSignupData] = useState({
-    name: '', email: '', phone: '', organization: '', password: '', confirmPassword: '',
+    name: '', 
+    email: '', 
+    phone: '', 
+    partnerTypeId: '',
+    organization: '', 
+    regionId: '',
+    universityId: '',
+    password: '', 
+    confirmPassword: '',
   });
   const [loginErrors, setLoginErrors] = useState<FormErrors>({});
   const [signupErrors, setSignupErrors] = useState<FormErrors>({});
+  
+  // Partner data states
+  const [partnerTypes, setPartnerTypes] = useState<PartnerType[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
 
   // Clear errors when switching tabs
   useEffect(() => {
     setLoginErrors({});
     setSignupErrors({});
   }, [activeTab]);
+
+  // Load partner types, regions, and organizations on mount
+  useEffect(() => {
+    const loadPartnerData = async () => {
+      try {
+        const [typesData, regionsData, orgsData] = await Promise.all([
+          partnerAPI.getPartnerTypes(),
+          partnerAPI.getRegions(),
+          partnerAPI.getOrganizations(),
+        ]);
+        setPartnerTypes(typesData);
+        setRegions(regionsData);
+        setOrganizations(orgsData);
+      } catch (error) {
+        console.error('Failed to load partner data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load form options. Please refresh the page.',
+          variant: 'destructive',
+        });
+      }
+    };
+    
+    if (activeTab === 'signup') {
+      loadPartnerData();
+    }
+  }, [activeTab]);
+
+  // Load universities when region is selected
+  useEffect(() => {
+    const loadUniversities = async () => {
+      if (signupData.regionId) {
+        setLoadingData(true);
+        try {
+          const universitiesData = await partnerAPI.getUniversitiesByRegion(parseInt(signupData.regionId));
+          setUniversities(universitiesData);
+        } catch (error) {
+          console.error('Failed to load universities:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load universities for selected region.',
+            variant: 'destructive',
+          });
+        } finally {
+          setLoadingData(false);
+        }
+      } else {
+        setUniversities([]);
+      }
+    };
+
+    loadUniversities();
+  }, [signupData.regionId]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,7 +185,10 @@ const Login = () => {
         phone: signupData.phone,
         password: signupData.password,
         confirmPassword: signupData.confirmPassword,
-        organization: signupData.organization,
+        partner_type_id: parseInt(signupData.partnerTypeId),
+        organization: signupData.organization || undefined,
+        region_id: signupData.regionId ? parseInt(signupData.regionId) : undefined,
+        university_id: signupData.universityId || undefined,
       });
       if (success) {
         // Redirect to email confirmation page instead of dashboard
@@ -516,19 +589,131 @@ const Login = () => {
                       <FieldError error={signupErrors.phone} />
                     </div>
 
+                    {/* Partner Type Selection */}
                     <div className="space-y-2">
-                      <Label className="text-muted-foreground">Organization</Label>
-                      <div className="relative">
-                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          placeholder="University or Company Name"
-                          className={`pl-10 bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary transition-all ${signupErrors.organization ? 'border-red-500 focus:border-red-500' : ''}`}
-                          value={signupData.organization}
-                          onChange={(e) => setSignupData({ ...signupData, organization: e.target.value })}
-                        />
-                      </div>
-                      <FieldError error={signupErrors.organization} />
+                      <Label className="text-muted-foreground">Partner Type *</Label>
+                      <Select
+                        value={signupData.partnerTypeId}
+                        onValueChange={(value) => {
+                          setSignupData({ 
+                            ...signupData, 
+                            partnerTypeId: value,
+                            organization: '',
+                            regionId: '',
+                            universityId: ''
+                          });
+                          if (signupErrors.partnerTypeId) setSignupErrors({ ...signupErrors, partnerTypeId: '' });
+                        }}
+                      >
+                        <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-muted-foreground" />
+                            <SelectValue placeholder="Select partner type" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {partnerTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                {type.code === 'employee' ? <Building2 className="w-4 h-4" /> : <GraduationCap className="w-4 h-4" />}
+                                {type.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldError error={signupErrors.partnerTypeId} />
                     </div>
+
+                    {/* Conditional: Organization (for Employee) */}
+                    {signupData.partnerTypeId === '1' && (
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground">Organization *</Label>
+                        <Select
+                          value={signupData.organization}
+                          onValueChange={(value) => {
+                            setSignupData({ ...signupData, organization: value });
+                            if (signupErrors.organization) setSignupErrors({ ...signupErrors, organization: '' });
+                          }}
+                        >
+                          <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4 text-muted-foreground" />
+                              <SelectValue placeholder="Select organization" />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {organizations.map((org) => (
+                              <SelectItem key={org.id} value={org.name}>
+                                {org.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldError error={signupErrors.organization} />
+                      </div>
+                    )}
+
+                    {/* Conditional: Region (for Student Referrer) */}
+                    {signupData.partnerTypeId === '2' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="text-muted-foreground">Region *</Label>
+                          <Select
+                            value={signupData.regionId}
+                            onValueChange={(value) => {
+                              setSignupData({ ...signupData, regionId: value, universityId: '' });
+                              if (signupErrors.regionId) setSignupErrors({ ...signupErrors, regionId: '' });
+                            }}
+                          >
+                            <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-muted-foreground" />
+                                <SelectValue placeholder="Select region" />
+                              </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {regions.map((region) => (
+                                <SelectItem key={region.id} value={region.id.toString()}>
+                                  {region.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FieldError error={signupErrors.regionId} />
+                        </div>
+
+                        {/* Conditional: University (shown after region selection) */}
+                        {signupData.regionId && (
+                          <div className="space-y-2">
+                            <Label className="text-muted-foreground">University *</Label>
+                            <Select
+                              value={signupData.universityId}
+                              onValueChange={(value) => {
+                                setSignupData({ ...signupData, universityId: value });
+                                if (signupErrors.universityId) setSignupErrors({ ...signupErrors, universityId: '' });
+                              }}
+                              disabled={loadingData}
+                            >
+                              <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
+                                <div className="flex items-center gap-2">
+                                  <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                                  <SelectValue placeholder={loadingData ? "Loading universities..." : "Select university"} />
+                                </div>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {universities.map((uni) => (
+                                  <SelectItem key={uni.id} value={uni.id}>
+                                    {uni.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FieldError error={signupErrors.universityId} />
+                          </div>
+                        )}
+                      </>
+                    )}
 
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-4">
