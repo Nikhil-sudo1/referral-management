@@ -10,40 +10,36 @@ from app.database import Base
 
 
 class User(Base):
-    """User table model"""
+    """User table model - Restructured for role-based access"""
     
     __tablename__ = "users"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    full_name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
-    name = Column(String(255), nullable=False)
-    phone = Column(String(20))
-    role_id = Column(Integer, ForeignKey("role_master.id", ondelete="SET NULL"), nullable=True, index=True)
-    # Legacy role field for backward compatibility - keep as string for now
-    role = Column(String(50), nullable=True, index=True)
-    avatar_url = Column(String(500))
-    organization = Column(String(255))
-    university_id = Column(UUID(as_uuid=True), ForeignKey("universities.id", ondelete="SET NULL"))
-    referral_code = Column(String(50), unique=True, index=True)
-    tier = Column(String(50), default="Bronze")
+    mobile_number = Column(String(20), nullable=False)
+    password = Column(String(255), nullable=False)  # Hashed password
+    email_verification = Column(Boolean, default=False)
+    user_type_id = Column(Integer, ForeignKey("user_type_master.id", ondelete="CASCADE"), nullable=False, index=True)
+    role_id = Column(Integer, ForeignKey("role_master.id", ondelete="CASCADE"), nullable=False, index=True)
     is_active = Column(Boolean, default=True)
-    is_verified = Column(Boolean, default=False)
-    last_login_at = Column(DateTime)
+    univ_id = Column(UUID(as_uuid=True), ForeignKey("universities.id", ondelete="SET NULL"), nullable=True)  # For Student Referrer
+    org_id = Column(Integer, nullable=True)  # For Employee
+    referral_code = Column(String(50), unique=True, index=True)
+    
+    # Bank details for reward payouts
+    bank_acc = Column(String(50))
+    bank_ifsc = Column(String(20))
+    bank_name = Column(String(100))
+    account_holder_name = Column(String(255))
+    
+    # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Email verification tokens
-    verification_token = Column(String(255), nullable=True)
-    verification_token_expires = Column(DateTime, nullable=True)
-    
-    # Password reset tokens
-    reset_token = Column(String(255), nullable=True)
-    reset_token_expires = Column(DateTime, nullable=True)
-    
     # Relationships
-    # Note: role_details is the relationship, role is the legacy string column
-    role_details = relationship("Role", back_populates="users")
+    user_type = relationship("UserType")
+    role = relationship("Role", back_populates="users")
     university = relationship("University", back_populates="counselors")
     referrals_made = relationship(
         "Referral",
