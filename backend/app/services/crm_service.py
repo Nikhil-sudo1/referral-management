@@ -75,6 +75,7 @@ class CRMService:
                 "lead_channel": settings.CRM_DEFAULT_LEAD_CHANNEL,
                 "source_medium": settings.CRM_DEFAULT_SOURCE_MEDIUM,
                 "lead_owner": settings.CRM_DEFAULT_LEAD_OWNER,  # Required field for CRM
+                "tag": settings.CRM_REFERRAL_TAG,  # Tag to identify referrals from AI system
                 "dob": None,
                 "gender": None,
                 "alternate_email": None,
