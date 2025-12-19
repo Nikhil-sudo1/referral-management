@@ -22,7 +22,7 @@ import { NotificationBell } from './NotificationBell';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Define menu items with role access
-// Roles: super_admin (all access), manager (day-to-day operations), referrer (only own referrals)
+// Roles: admin (all access), referral_partner (only own referrals)
 const menuItems = [
   { 
     label: 'Dashboard', 
@@ -70,19 +70,19 @@ const menuItems = [
     label: 'My Referrals', 
     icon: FileText, 
     path: '/referrer/referrals',
-    roles: ['referrer'] // Only referrer can see their own referrals
+    roles: ['referrer', 'referral_partner'] // Referral partners can see their own referrals
   },
   { 
     label: 'Add Referral', 
     icon: Users, 
     path: '/referrer/add',
-    roles: ['referrer'] // Only referrer can add referrals
+    roles: ['referrer', 'referral_partner'] // Referral partners can add referrals
   },
   { 
     label: 'Settings', 
     icon: Settings, 
     path: '/settings',
-    roles: ['super_admin', 'manager', 'referrer'] // All roles can access settings
+    roles: ['super_admin', 'manager', 'admin', 'referrer', 'referral_partner'] // All roles can access settings
   },
 ];
 
@@ -93,7 +93,7 @@ export const Sidebar = () => {
   const { user, logout } = useAuth();
 
   // Filter menu items based on user role
-  const userRole = user?.role || 'referrer';
+  const userRole = user?.role || 'referral_partner';
   const filteredMenuItems = menuItems.filter(item => 
     item.roles.includes(userRole)
   );
@@ -108,9 +108,11 @@ export const Sidebar = () => {
     const name = user?.name || 'User';
     const roleLabels: Record<string, string> = {
       super_admin: 'Super Admin',
+      admin: 'Admin',
       manager: 'Manager',
       counselor: 'Counselor',
-      referrer: 'Referrer'
+      referrer: 'Referrer',
+      referral_partner: 'Referral Partner'
     };
     return {
       name,

@@ -149,7 +149,7 @@ const Login = () => {
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           const userRole = userData.role;
-          if (userRole === 'referrer') {
+          if (userRole === 'referrer' || userRole === 'referral_partner') {
             navigate('/referrer/referrals');
           } else {
             navigate('/dashboard');
@@ -213,7 +213,7 @@ const Login = () => {
   const stats = [
     { value: '600K+', label: 'Students Impacted', color: 'from-primary to-cyan-500' },
     { value: '60+', label: 'Partner Universities', color: 'from-emerald-500 to-green-500' },
-    { value: '50K+', label: 'Active Referrers', color: 'from-amber-500 to-orange-500' },
+    { value: '50K+', label: 'Referral Partners', color: 'from-amber-500 to-orange-500' },
     { value: '85%', label: 'Success Rate', color: 'from-violet-500 to-purple-500' },
   ];
 
@@ -420,7 +420,7 @@ const Login = () => {
                     {/* Quick Login Buttons for Testing */}
                     <div className="space-y-2">
                       <Label className="text-muted-foreground text-xs">Quick Login (Demo)</Label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         <Button
                           type="button"
                           variant="outline"
@@ -438,24 +438,12 @@ const Login = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setLoginData({ email: 'rajesh.kumar@teamlease.com', password: 'Password123!' });
-                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
-                          }}
-                          className="text-xs bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
-                        >
-                          Counselor
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
                             setLoginData({ email: 'arjun.mehta@gmail.com', password: 'Password123!' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50"
                         >
-                          Referrer
+                          Referral Partner
                         </Button>
                       </div>
                     </div>
