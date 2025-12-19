@@ -3,7 +3,7 @@ User Model
 """
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -19,13 +19,9 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
     phone = Column(String(20))
-    role = Column(
-        String(50),
-        nullable=False,
-        index=True
-    )
-    admin_sub_role = Column(String(50))  # For admin: 'human_resource' or 'business_head'
-    partner_type_id = Column(ForeignKey("referral_partner_master.id", ondelete="SET NULL"))  # For referral_partner
+    role_id = Column(Integer, ForeignKey("role_master.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Legacy role field for backward compatibility - keep as string for now
+    role = Column(String(50), nullable=True, index=True)
     avatar_url = Column(String(500))
     organization = Column(String(255))
     university_id = Column(UUID(as_uuid=True), ForeignKey("universities.id", ondelete="SET NULL"))
@@ -46,7 +42,8 @@ class User(Base):
     reset_token_expires = Column(DateTime, nullable=True)
     
     # Relationships
-    partner_type = relationship("PartnerType", back_populates="users")
+    # Note: role_details is the relationship, role is the legacy string column
+    role_details = relationship("Role", back_populates="users")
     university = relationship("University", back_populates="counselors")
     referrals_made = relationship(
         "Referral",

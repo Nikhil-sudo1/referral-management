@@ -24,7 +24,7 @@ class PartnerType(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    users = relationship("User", back_populates="partner_type")
+    # users = relationship("User", back_populates="partner_type")  # Deprecated - now using role_master
     
     def __repr__(self):
         return f"<PartnerType {self.name}>"

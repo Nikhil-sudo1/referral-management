@@ -252,8 +252,128 @@ def seed_jobs_data():
     
     db.close()
 
+def create_role_hierarchy():
+    """Create user_type_master and role_master tables with data"""
+    import sys
+    sys.path.insert(0, '.')
+    from app.database import engine
+    from sqlalchemy import text
+    
+    print('Creating User Type and Role Master tables...')
+    print('=' * 70)
+    print()
+    
+    with engine.connect() as conn:
+        # Create user_type_master table
+        print('1. Creating user_type_master table...')
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS user_type_master (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100) NOT NULL UNIQUE,
+                code VARCHAR(50) NOT NULL UNIQUE,
+                description VARCHAR(255),
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        '''))
+        conn.commit()
+        print('   [OK]')
+        
+        # Create role_master table
+        print('2. Creating role_master table...')
+        conn.execute(text('''
+            CREATE TABLE IF NOT EXISTS role_master (
+                id SERIAL PRIMARY KEY,
+                user_type_id INTEGER NOT NULL,
+                name VARCHAR(100) NOT NULL,
+                code VARCHAR(50) NOT NULL UNIQUE,
+                description VARCHAR(255),
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                FOREIGN KEY (user_type_id) REFERENCES user_type_master(id) ON DELETE CASCADE
+            )
+        '''))
+        conn.commit()
+        print('   [OK]')
+        
+        # Add role_id to users table
+        print('3. Adding role_id to users table...')
+        try:
+            conn.execute(text('ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id INTEGER'))
+            conn.execute(text('''
+                ALTER TABLE users ADD CONSTRAINT fk_users_role_id 
+                FOREIGN KEY (role_id) REFERENCES role_master(id) ON DELETE SET NULL
+            '''))
+            conn.commit()
+            print('   [OK]')
+        except Exception as e:
+            print(f'   [INFO] Already exists')
+            conn.rollback()
+        
+        # Insert user types
+        print('4. Inserting user types...')
+        conn.execute(text('''
+            INSERT INTO user_type_master (id, name, code, description)
+            VALUES 
+                (1, 'Admin', 'admin', 'Administrative users with full access'),
+                (2, 'Referral Partner', 'referral_partner', 'External partners who refer students')
+            ON CONFLICT (code) DO NOTHING
+        '''))
+        conn.commit()
+        print('   [OK] - Admin, Referral Partner')
+        
+        # Insert roles
+        print('5. Inserting roles...')
+        conn.execute(text('''
+            INSERT INTO role_master (id, user_type_id, name, code, description)
+            VALUES 
+                -- Admin Roles (user_type_id = 1)
+                (1, 1, 'Human Resources', 'human_resources', 'HR and recruitment management'),
+                (2, 1, 'Business Head', 'business_head', 'Business operations and strategy'),
+                (3, 1, 'Student Admin', 'student_admin', 'Student services and administration'),
+                
+                -- Referral Partner Roles (user_type_id = 2)
+                (4, 2, 'Employee', 'employee', 'Company employee referrer'),
+                (5, 2, 'Student Referrer', 'student_referrer', 'Student who refers peers')
+            ON CONFLICT (code) DO NOTHING
+        '''))
+        conn.commit()
+        print('   [OK] - 5 roles created')
+        print()
+        
+        # Display hierarchy
+        print('=' * 70)
+        print('USER TYPE & ROLE HIERARCHY')
+        print('=' * 70)
+        print()
+        
+        result = conn.execute(text('''
+            SELECT 
+                ut.name as user_type,
+                r.id as role_id,
+                r.name as role_name,
+                r.code as role_code
+            FROM user_type_master ut
+            LEFT JOIN role_master r ON r.user_type_id = ut.id
+            ORDER BY ut.id, r.id
+        '''))
+        
+        current_type = None
+        for row in result:
+            if row[0] != current_type:
+                current_type = row[0]
+                print(f'[{row[0]}]')
+            print(f'  -> ID: {row[1]} | {row[2]:20s} ({row[3]})')
+        
+        print()
+        print('=' * 70)
+        print('Role hierarchy created successfully!')
+        print('=' * 70)
+
 if __name__ == '__main__':
     try:
+        create_role_hierarchy()
+        print()
         seed_jobs_data()
     except Exception as e:
         print(f'ERROR: {e}')

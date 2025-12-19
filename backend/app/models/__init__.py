@@ -2,6 +2,8 @@
 SQLAlchemy Models
 Database table definitions
 """
+from app.models.user_type import UserType
+from app.models.role import Role
 from app.models.user import User
 from app.models.university import University
 from app.models.program import Program
@@ -15,6 +17,8 @@ from app.models.company import Company
 from app.models.job import Job
 
 __all__ = [
+    "UserType",
+    "Role",
     "User",
     "University",
     "Program",
