@@ -8,7 +8,7 @@ from typing import List
 from uuid import UUID
 
 from app.database import get_db
-from app.schemas.base import BaseResponse
+from app.schemas.common import BaseResponse
 from app.schemas.partner_type import PartnerTypeResponse, RegionResponse
 from app.models.partner_type import PartnerType
 from app.models.region import Region
