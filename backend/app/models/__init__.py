@@ -10,6 +10,9 @@ from app.models.reward import Reward, RewardTier
 from app.models.settings import Settings
 from app.models.audit import AuditLog
 from app.models.partner_type import PartnerType
+from app.models.industry import Industry
+from app.models.company import Company
+from app.models.job import Job
 
 __all__ = [
     "User",
@@ -21,5 +24,8 @@ __all__ = [
     "Settings",
     "AuditLog",
     "PartnerType",
+    "Industry",
+    "Company",
+    "Job",
 ]
 

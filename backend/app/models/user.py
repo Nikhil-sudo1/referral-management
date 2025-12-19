@@ -59,7 +59,6 @@ class User(Base):
         foreign_keys="Referral.counselor_id"
     )
     rewards = relationship("Reward", back_populates="user", foreign_keys="Reward.user_id")
-    notifications = relationship("Notification", back_populates="user")
     
     def __repr__(self):
         return f"<User {self.email}>"
