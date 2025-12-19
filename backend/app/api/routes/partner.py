@@ -14,7 +14,7 @@ from app.models.partner_type import PartnerType
 from app.models.region import Region
 from app.models.university import University
 
-router = APIRouter(prefix="/partner", tags=["Partner"])
+router = APIRouter(tags=["Partner"])
 
 
 @router.get("/types", response_model=BaseResponse)
