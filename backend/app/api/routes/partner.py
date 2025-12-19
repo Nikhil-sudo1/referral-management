@@ -1,36 +1,17 @@
 """
 Partner Type Routes
-Endpoints for fetching partner types and organizations
+Endpoints for fetching partner types, organizations, and universities
+Updated to fetch from database tables
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.common import BaseResponse
-from app.schemas.partner_type import PartnerTypeResponse
-from app.models.partner_type import PartnerType
 from app.models.university import University
+from app.models.company import Company
 
 router = APIRouter(tags=["Partner"])
-
-
-@router.get("/types", response_model=BaseResponse)
-def get_partner_types(
-    db: Session = Depends(get_db)
-):
-    """
-    Get all active partner types (Employee, Student Referrer)
-    Public endpoint - no auth required for signup
-    """
-    partner_types = db.query(PartnerType).filter(
-        PartnerType.is_active == True
-    ).all()
-    
-    return BaseResponse(
-        success=True,
-        message="Partner types retrieved successfully",
-        data=[PartnerTypeResponse.model_validate(pt) for pt in partner_types]
-    )
 
 
 @router.get("/universities", response_model=BaseResponse)
@@ -62,22 +43,18 @@ def get_organizations(
     db: Session = Depends(get_db)
 ):
     """
-    Get list of organizations
-    For employee partner type
+    Get list of organizations (companies) for employee partner type
     Public endpoint - no auth required for signup
     """
-    # This could be from a separate organizations table or hardcoded list
-    # For now, returning a default list
-    organizations = [
-        {"id": "teamlease", "name": "TeamLease EdTech"},
-        {"id": "partner1", "name": "Partner Organization 1"},
-        {"id": "partner2", "name": "Partner Organization 2"},
-        {"id": "other", "name": "Other Organization"},
-    ]
+    companies = db.query(Company).filter(
+        Company.is_active == True
+    ).all()
     
     return BaseResponse(
         success=True,
         message="Organizations retrieved successfully",
-        data=organizations
+        data=[{
+            "id": comp.id,
+            "name": comp.name
+        } for comp in companies]
     )
-

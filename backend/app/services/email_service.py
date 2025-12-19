@@ -144,7 +144,7 @@ class EmailService:
                 </div>
                 
                 <div style="background: white; padding: 40px 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <h2 style="color: #1f2937; margin: 0 0 20px;">Welcome, {user.name}! 👋</h2>
+                    <h2 style="color: #1f2937; margin: 0 0 20px;">Welcome, {user.full_name}! 👋</h2>
                     
                     <p style="color: #4b5563; line-height: 1.6; margin: 0 0 20px;">
                         Thank you for joining TeamLease EdTech Referral Program. Please verify your email address to activate your account.
@@ -215,12 +215,12 @@ class EmailService:
             logger.warning(f"Expired verification token for user: {user.email}")
             return None
         
-        if user.is_verified:
+        if user.email_verification:
             logger.info(f"User already verified: {user.email}")
             return user
         
         # Mark user as verified
-        user.is_verified = True
+        user.email_verification = True
         user.verification_token = None
         user.verification_token_expires = None
         self.db.commit()
@@ -279,7 +279,7 @@ class EmailService:
                     <h2 style="color: #1f2937; margin: 0 0 20px;">Reset Your Password 🔐</h2>
                     
                     <p style="color: #4b5563; line-height: 1.6; margin: 0 0 20px;">
-                        Hello <strong>{user.name}</strong>,
+                        Hello <strong>{user.full_name}</strong>,
                     </p>
                     
                     <p style="color: #4b5563; line-height: 1.6; margin: 0 0 20px;">
@@ -400,7 +400,7 @@ class EmailService:
                 </div>
                 
                 <div style="background: white; padding: 40px 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <h2 style="color: #1f2937; margin: 0 0 20px;">Welcome aboard, {user.name}! 🎉</h2>
+                    <h2 style="color: #1f2937; margin: 0 0 20px;">Welcome aboard, {user.full_name}! 🎉</h2>
                     
                     <p style="color: #4b5563; line-height: 1.6; margin: 0 0 20px;">
                         Congratulations! Your account has been successfully created. You're now part of India's largest education referral network.

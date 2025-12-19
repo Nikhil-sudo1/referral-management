@@ -1,16 +1,25 @@
 /**
  * Partner API
- * Handles partner types, organizations, and universities
+ * Handles user types, roles, organizations, and universities
  */
 import apiClient from './client';
 
-export interface PartnerType {
+export interface Role {
+  id: number;
+  user_type_id: number;
+  name: string;
+  code: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UserType {
   id: number;
   name: string;
   code: string;
   description?: string;
-  is_active: boolean;
-  created_at: string;
+  roles: Role[];
 }
 
 export interface University {
@@ -21,14 +30,23 @@ export interface University {
 }
 
 export interface Organization {
-  id: string;
+  id: number;
   name: string;
 }
 
 export const partnerAPI = {
-  // Get all partner types (Employee, Student Referrer)
-  getPartnerTypes: async (): Promise<PartnerType[]> => {
-    const response = await apiClient.get<{ success: boolean; data: PartnerType[] }>('/partner/types');
+  // Get all user types with their roles (Admin, Referral Partner)
+  getUserTypes: async (): Promise<UserType[]> => {
+    const response = await apiClient.get<{ success: boolean; data: UserType[] }>('/auth/user-types');
+    return response.data.data;
+  },
+
+  // Get roles by user type id
+  getRoles: async (userTypeId?: number): Promise<Role[]> => {
+    const url = userTypeId 
+      ? `/auth/roles?user_type_id=${userTypeId}`
+      : '/auth/roles';
+    const response = await apiClient.get<{ success: boolean; data: Role[] }>(url);
     return response.data.data;
   },
 
@@ -38,10 +56,9 @@ export const partnerAPI = {
     return response.data.data;
   },
 
-  // Get organizations (for employees)
+  // Get organizations (companies for employees)
   getOrganizations: async (): Promise<Organization[]> => {
     const response = await apiClient.get<{ success: boolean; data: Organization[] }>('/partner/organizations');
     return response.data.data;
   },
 };
-

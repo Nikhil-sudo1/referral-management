@@ -33,14 +33,22 @@ class User(Base):
     bank_name = Column(String(100))
     account_holder_name = Column(String(255))
     
+    # Email verification tokens (for email service)
+    verification_token = Column(String(255), nullable=True)
+    verification_token_expires = Column(DateTime, nullable=True)
+    
+    # Password reset tokens
+    reset_token = Column(String(255), nullable=True)
+    reset_token_expires = Column(DateTime, nullable=True)
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     user_type = relationship("UserType")
-    role = relationship("Role", back_populates="users")
-    university = relationship("University", back_populates="counselors")
+    role_details = relationship("Role", back_populates="users")
+    university = relationship("University", back_populates="users")
     referrals_made = relationship(
         "Referral",
         back_populates="referrer",

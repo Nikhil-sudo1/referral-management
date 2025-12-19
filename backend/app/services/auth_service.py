@@ -1,12 +1,15 @@
 """
 Authentication Service
 Handles login, registration, password management
+Updated for new user table structure
 """
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
 from app.models.user import User
+from app.models.user_type import UserType
+from app.models.role import Role
 from app.schemas.auth import (
     LoginRequest,
     RegisterRequest,
@@ -55,8 +58,8 @@ class AuthService:
             logger.warning(f"Login failed: User not found - {request.email}")
             raise UnauthorizedException("Invalid email or password")
         
-        # Verify password
-        if not verify_password(request.password, user.password_hash):
+        # Verify password (field is now 'password' not 'password_hash')
+        if not verify_password(request.password, user.password):
             logger.warning(f"Login failed: Invalid password - {request.email}")
             raise UnauthorizedException("Invalid email or password")
         
@@ -65,19 +68,20 @@ class AuthService:
             logger.warning(f"Login failed: User inactive - {request.email}")
             raise UnauthorizedException("Account is deactivated")
         
-        # Validate role if specified (optional - allows any role to login if not specified)
-        if request.role:
-            if request.role == "admin" and user.role not in ["super_admin", "manager", "counselor"]:
-                raise UnauthorizedException("Invalid credentials for admin login")
-            if request.role == "referrer" and user.role != "referrer":
-                raise UnauthorizedException("Invalid credentials for referrer login")
+        # Get user type and role names for response
+        user_type = self.db.query(UserType).filter(UserType.id == user.user_type_id).first()
+        role = self.db.query(Role).filter(Role.id == user.role_id).first()
         
-        # Update last login
-        user.last_login_at = datetime.utcnow()
-        self.db.commit()
+        user_type_name = user_type.name if user_type else None
+        role_name = role.name if role else None
         
         # Create tokens
-        token_data = {"sub": str(user.id), "email": user.email, "role": user.role}
+        token_data = {
+            "sub": str(user.id),
+            "email": user.email,
+            "user_type_id": user.user_type_id,
+            "role_id": user.role_id
+        }
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
         
@@ -91,18 +95,21 @@ class AuthService:
             user=UserInToken(
                 id=user.id,
                 email=user.email,
-                name=user.name,
-                role=user.role,
-                avatar_url=user.avatar_url
+                full_name=user.full_name,
+                user_type_id=user.user_type_id,
+                role_id=user.role_id,
+                user_type_name=user_type_name,
+                role_name=role_name,
+                referral_code=user.referral_code
             )
         )
     
     def register(self, request: RegisterRequest) -> LoginResponse:
         """
-        Register a new referrer
+        Register a new user
         
         Args:
-            request: Registration data
+            request: Registration data with new structure
         
         Returns:
             LoginResponse with tokens and user info
@@ -119,42 +126,64 @@ class AuthService:
         if existing_user:
             raise ConflictException("Email already registered")
         
-        # Generate referral code
-        referral_code = self._generate_referral_code(request.name)
+        # Validate user_type_id exists
+        user_type = self.db.query(UserType).filter(UserType.id == request.user_type_id).first()
+        if not user_type:
+            raise ValidationException("Invalid user type")
         
-        # Validate university_id if provided
-        university_id = None
-        if request.university_id:
+        # Validate role_id exists and belongs to user_type
+        role = self.db.query(Role).filter(
+            Role.id == request.role_id,
+            Role.user_type_id == request.user_type_id
+        ).first()
+        if not role:
+            raise ValidationException("Invalid role for this user type")
+        
+        # Generate referral code for referral partners
+        referral_code = None
+        if user_type.code == "referral_partner":
+            referral_code = self._generate_referral_code(request.full_name)
+        
+        # Validate university_id if provided (for Student Referrer role)
+        univ_id = None
+        if request.univ_id:
             try:
-                from uuid import UUID
-                university_id = UUID(request.university_id)
+                univ_id = UUID(request.univ_id)
             except ValueError:
                 raise ValidationException("Invalid university ID format")
         
-        # Create user
+        # Create user with new structure
         user = User(
             email=request.email.lower(),
-            password_hash=get_password_hash(request.password),
-            name=request.name,
-            phone=request.phone,
-            role="referral_partner",  # Changed from "referrer" to "referral_partner"
-            partner_type_id=request.partner_type_id,
-            organization=request.organization,
-            university_id=university_id,
+            password=get_password_hash(request.password),
+            full_name=request.full_name,
+            mobile_number=request.mobile_number,
+            user_type_id=request.user_type_id,
+            role_id=request.role_id,
+            univ_id=univ_id,
+            org_id=request.org_id,
             referral_code=referral_code,
-            tier="Bronze",
+            bank_acc=request.bank_acc,
+            bank_ifsc=request.bank_ifsc,
+            bank_name=request.bank_name,
+            account_holder_name=request.account_holder_name,
             is_active=True,
-            is_verified=False,
+            email_verification=False,
         )
         
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)
         
-        logger.info(f"New referrer registered: {user.email}")
+        logger.info(f"New user registered: {user.email} (Role: {role.name})")
         
         # Create tokens for automatic login
-        token_data = {"sub": str(user.id), "email": user.email, "role": user.role}
+        token_data = {
+            "sub": str(user.id),
+            "email": user.email,
+            "user_type_id": user.user_type_id,
+            "role_id": user.role_id
+        }
         access_token = create_access_token(token_data)
         refresh_token = create_refresh_token(token_data)
         
@@ -166,9 +195,12 @@ class AuthService:
             user=UserInToken(
                 id=user.id,
                 email=user.email,
-                name=user.name,
-                role=user.role,
-                avatar_url=user.avatar_url
+                full_name=user.full_name,
+                user_type_id=user.user_type_id,
+                role_id=user.role_id,
+                user_type_name=user_type.name,
+                role_name=role.name,
+                referral_code=user.referral_code
             )
         )
     
@@ -193,7 +225,12 @@ class AuthService:
         if not user or not user.is_active:
             raise UnauthorizedException("User not found or inactive")
         
-        token_data = {"sub": str(user.id), "email": user.email, "role": user.role}
+        token_data = {
+            "sub": str(user.id),
+            "email": user.email,
+            "user_type_id": user.user_type_id,
+            "role_id": user.role_id
+        }
         new_access_token = create_access_token(token_data)
         new_refresh_token = create_refresh_token(token_data)
         
@@ -237,11 +274,15 @@ class AuthService:
         import string
         
         # Clean name and take first part
-        clean_name = re.sub(r'[^A-Za-z]', '', name.split()[0]).upper()[:4]
+        name_parts = name.split()
+        first_name = name_parts[0] if name_parts else "USER"
+        clean_name = re.sub(r'[^A-Za-z]', '', first_name).upper()[:4]
+        if not clean_name:
+            clean_name = "REF"
         year = datetime.now().year
         
         # Generate base code
-        base_code = f"{clean_name}-REF-{year}"
+        base_code = f"{clean_name}-{year}"
         
         # Check for uniqueness and add suffix if needed
         existing = self.db.query(User).filter(
@@ -249,8 +290,10 @@ class AuthService:
         ).count()
         
         if existing > 0:
-            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=2))
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            base_code = f"{base_code}-{suffix}"
+        else:
+            suffix = ''.join(random.choices(string.digits, k=3))
             base_code = f"{base_code}-{suffix}"
         
         return base_code
-

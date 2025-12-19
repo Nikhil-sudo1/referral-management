@@ -4,11 +4,22 @@ import { authAPI } from '@/lib/api';
 
 interface User {
   id: string;
-  name: string;
   email: string;
-  role: string;
-  organization?: string;
-  phone?: string;
+  full_name: string;
+  mobile_number?: string;
+  user_type_id: number;
+  role_id: number;
+  user_type_name?: string;
+  role_name?: string;
+  is_active: boolean;
+  email_verification: boolean;
+  univ_id?: string;
+  org_id?: number;
+  referral_code?: string;
+  bank_acc?: string;
+  bank_ifsc?: string;
+  bank_name?: string;
+  account_holder_name?: string;
 }
 
 interface AuthContextType {
@@ -22,14 +33,19 @@ interface AuthContextType {
 }
 
 interface SignupData {
-  name: string;
+  full_name: string;
   email: string;
-  phone: string;
-  partner_type_id: number;
-  organization?: string;
-  university_id?: string;
+  mobile_number: string;
   password: string;
-  confirmPassword?: string;
+  confirm_password: string;
+  user_type_id: number;
+  role_id: number;
+  univ_id?: string;
+  org_id?: number;
+  bank_acc?: string;
+  bank_ifsc?: string;
+  bank_name?: string;
+  account_holder_name?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,11 +75,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('User data received:', userData);
           const user: User = {
             id: userData.id,
-            name: userData.name,
             email: userData.email,
-            role: userData.role,
-            organization: userData.organization,
-            phone: userData.phone,
+            full_name: userData.full_name,
+            mobile_number: userData.mobile_number,
+            user_type_id: userData.user_type_id,
+            role_id: userData.role_id,
+            user_type_name: userData.user_type_name,
+            role_name: userData.role_name,
+            is_active: userData.is_active,
+            email_verification: userData.email_verification,
+            univ_id: userData.univ_id,
+            org_id: userData.org_id,
+            referral_code: userData.referral_code,
+            bank_acc: userData.bank_acc,
+            bank_ifsc: userData.bank_ifsc,
+            bank_name: userData.bank_name,
+            account_holder_name: userData.account_holder_name,
           };
           setUser(user);
           localStorage.setItem('user', JSON.stringify(user));
@@ -94,14 +121,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('refreshToken', response.refresh_token);
       }
       
-      // Store user data
+      // Store user data with new structure
       const user: User = {
         id: response.user.id,
-        name: response.user.name,
         email: response.user.email,
-        role: response.user.role,
-        organization: response.user.organization,
-        phone: response.user.phone,
+        full_name: response.user.full_name,
+        user_type_id: response.user.user_type_id,
+        role_id: response.user.role_id,
+        user_type_name: response.user.user_type_name,
+        role_name: response.user.role_name,
+        is_active: true,
+        email_verification: true,
+        referral_code: response.user.referral_code,
       };
       
       localStorage.setItem('user', JSON.stringify(user));
@@ -109,7 +140,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       toast({
         title: 'Login Successful',
-        description: `Welcome back, ${user.name}!`,
+        description: `Welcome back, ${user.full_name}!`,
       });
 
       return true;
@@ -126,12 +157,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       const response = await authAPI.register({
-        name: data.name,
+        full_name: data.full_name,
         email: data.email,
-        phone: data.phone,
+        mobile_number: data.mobile_number,
         password: data.password,
-        confirm_password: data.confirmPassword || data.password, // Use confirmPassword if provided, otherwise use password
-        organization: data.organization,
+        confirm_password: data.confirm_password,
+        user_type_id: data.user_type_id,
+        role_id: data.role_id,
+        univ_id: data.univ_id,
+        org_id: data.org_id,
+        bank_acc: data.bank_acc,
+        bank_ifsc: data.bank_ifsc,
+        bank_name: data.bank_name,
+        account_holder_name: data.account_holder_name,
       });
       
       // Store tokens
@@ -143,11 +181,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Store user data
       const user: User = {
         id: response.user.id,
-        name: response.user.name,
         email: response.user.email,
-        role: response.user.role,
-        organization: response.user.organization,
-        phone: response.user.phone,
+        full_name: response.user.full_name,
+        user_type_id: response.user.user_type_id,
+        role_id: response.user.role_id,
+        user_type_name: response.user.user_type_name,
+        role_name: response.user.role_name,
+        is_active: true,
+        email_verification: false,
+        referral_code: response.user.referral_code,
       };
       
       localStorage.setItem('user', JSON.stringify(user));
@@ -155,7 +197,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       toast({
         title: 'Account Created',
-        description: `Welcome to TeamLease EdTech, ${user.name}!`,
+        description: `Welcome to TeamLease EdTech, ${user.full_name}!`,
       });
 
       return true;
@@ -194,11 +236,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = await authAPI.getMe();
       const user: User = {
         id: userData.id,
-        name: userData.name,
         email: userData.email,
-        role: userData.role,
-        organization: userData.organization,
-        phone: userData.phone,
+        full_name: userData.full_name,
+        mobile_number: userData.mobile_number,
+        user_type_id: userData.user_type_id,
+        role_id: userData.role_id,
+        user_type_name: userData.user_type_name,
+        role_name: userData.role_name,
+        is_active: userData.is_active,
+        email_verification: userData.email_verification,
+        univ_id: userData.univ_id,
+        org_id: userData.org_id,
+        referral_code: userData.referral_code,
+        bank_acc: userData.bank_acc,
+        bank_ifsc: userData.bank_ifsc,
+        bank_name: userData.bank_name,
+        account_holder_name: userData.account_holder_name,
       };
       setUser(user);
       localStorage.setItem('user', JSON.stringify(user));
@@ -219,4 +272,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

@@ -1,5 +1,6 @@
 """
 Authentication Routes
+Updated for new user table structure with user_type_id and role_id
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,8 +14,11 @@ from app.schemas.auth import (
     ResetPasswordRequest,
 )
 from app.schemas.common import BaseResponse
+from app.schemas.user_type import UserTypeListResponse, RoleResponse
 from app.dependencies import get_current_user
 from app.models.user import User
+from app.models.user_type import UserType
+from app.models.role import Role
 from app.core.exceptions import AppException
 from app.services.email_service import EmailService
 from app.core.security import get_password_hash
@@ -46,7 +50,7 @@ async def register(
     db: Session = Depends(get_db),
 ):
     """
-    Register a new referrer account
+    Register a new user account
     
     Sends verification email after registration
     """
@@ -105,25 +109,36 @@ async def logout(
 @router.get("/me", response_model=BaseResponse)
 async def get_me(
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
-    Get current user profile
+    Get current user profile with new structure
     """
+    # Get user type and role names
+    user_type = db.query(UserType).filter(UserType.id == current_user.user_type_id).first()
+    role = db.query(Role).filter(Role.id == current_user.role_id).first()
+    
     return BaseResponse(
         success=True,
         message="Success",
         data={
             "id": str(current_user.id),
             "email": current_user.email,
-            "name": current_user.name,
-            "phone": current_user.phone,
-            "role": current_user.role,
-            "avatar_url": current_user.avatar_url,
-            "organization": current_user.organization,
-            "referral_code": current_user.referral_code,
-            "tier": current_user.tier,
+            "full_name": current_user.full_name,
+            "mobile_number": current_user.mobile_number,
+            "user_type_id": current_user.user_type_id,
+            "role_id": current_user.role_id,
+            "user_type_name": user_type.name if user_type else None,
+            "role_name": role.name if role else None,
             "is_active": current_user.is_active,
-            "is_verified": current_user.is_verified,
+            "email_verification": current_user.email_verification,
+            "univ_id": str(current_user.univ_id) if current_user.univ_id else None,
+            "org_id": current_user.org_id,
+            "referral_code": current_user.referral_code,
+            "bank_acc": current_user.bank_acc,
+            "bank_ifsc": current_user.bank_ifsc,
+            "bank_name": current_user.bank_name,
+            "account_holder_name": current_user.account_holder_name,
             "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
         }
     )
@@ -208,8 +223,8 @@ async def reset_password(
                 detail="Invalid or expired reset token. Please request a new password reset."
             )
         
-        # Update password
-        user.password_hash = get_password_hash(request.password)
+        # Update password (field is now 'password' not 'password_hash')
+        user.password = get_password_hash(request.password)
         
         # Clear the reset token
         email_service.clear_reset_token(user)
@@ -279,7 +294,7 @@ async def resend_verification(
         # Case-insensitive email lookup
         user = db.query(User).filter(func.lower(User.email) == request.email.lower()).first()
         
-        if user and not user.is_verified:
+        if user and not user.email_verification:
             email_service = EmailService(db)
             token = email_service.create_verification_token(user)
             email_service.send_verification_email(user, token)
@@ -323,7 +338,7 @@ async def check_verification(
             success=True,
             message="Verification status retrieved",
             data={
-                "is_verified": user.is_verified,
+                "is_verified": user.email_verification,
                 "email": user.email
             }
         )
@@ -334,4 +349,88 @@ async def check_verification(
             success=False,
             message="Error checking verification status",
             data={"is_verified": False}
+        )
+
+
+@router.get("/user-types", response_model=BaseResponse)
+async def get_user_types(
+    db: Session = Depends(get_db),
+):
+    """
+    Get all user types with their roles
+    Public endpoint - no auth required for signup
+    """
+    try:
+        user_types = db.query(UserType).all()
+        
+        result = []
+        for ut in user_types:
+            roles = db.query(Role).filter(
+                Role.user_type_id == ut.id
+            ).all()
+            
+            result.append({
+                "id": ut.id,
+                "name": ut.name,
+                "code": ut.code,
+                "description": ut.description,
+                "roles": [{
+                    "id": r.id,
+                    "user_type_id": r.user_type_id,
+                    "name": r.name,
+                    "code": r.code,
+                    "description": r.description,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                    "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+                } for r in roles]
+            })
+        
+        return BaseResponse(
+            success=True,
+            message="User types retrieved successfully",
+            data=result
+        )
+    except Exception as e:
+        logger.error(f"Error fetching user types: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch user types"
+        )
+
+
+@router.get("/roles", response_model=BaseResponse)
+async def get_roles(
+    user_type_id: int = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Get all roles, optionally filtered by user_type_id
+    Public endpoint - no auth required for signup
+    """
+    try:
+        query = db.query(Role)
+        
+        if user_type_id:
+            query = query.filter(Role.user_type_id == user_type_id)
+        
+        roles = query.all()
+        
+        return BaseResponse(
+            success=True,
+            message="Roles retrieved successfully",
+            data=[{
+                "id": r.id,
+                "user_type_id": r.user_type_id,
+                "name": r.name,
+                "code": r.code,
+                "description": r.description,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+            } for r in roles]
+        )
+    except Exception as e:
+        logger.error(f"Error fetching roles: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch roles"
         )

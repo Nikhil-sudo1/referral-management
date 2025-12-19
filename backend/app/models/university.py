@@ -29,7 +29,7 @@ class University(Base):
     
     # Relationships
     programs = relationship("Program", back_populates="university", cascade="all, delete-orphan")
-    counselors = relationship("User", back_populates="university")
+    users = relationship("User", back_populates="university")
     referrals = relationship("Referral", back_populates="university")
     
     def __repr__(self):
