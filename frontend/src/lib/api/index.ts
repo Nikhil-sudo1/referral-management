@@ -9,4 +9,5 @@ export * from './leaderboard';
 export * from './analytics';
 export * from './users';
 export * from './notifications';
+export * from './partner';
 

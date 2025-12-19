@@ -11,7 +11,8 @@ class LoginRequest(BaseModel):
     """Login request schema"""
     email: EmailStr
     password: str = Field(..., min_length=6)
-    role: Optional[str] = Field(default=None, pattern="^(admin|referrer)$")
+    role: Optional[str] = Field(default=None, pattern="^(admin|referral_partner)$")
+    admin_sub_role: Optional[str] = Field(default=None, pattern="^(human_resource|business_head)$")
 
 
 class TokenResponse(BaseModel):
@@ -49,7 +50,10 @@ class RegisterRequest(BaseModel):
     phone: str = Field(..., min_length=10, max_length=20)
     password: str = Field(..., min_length=6)
     confirm_password: str = Field(..., min_length=6)
-    organization: Optional[str] = None
+    partner_type_id: int = Field(..., description="Partner type: Employee or Student Referrer")
+    organization: Optional[str] = None  # For employees
+    region_id: Optional[int] = None  # For student referrers
+    university_id: Optional[str] = None  # For student referrers
 
 
 class RefreshTokenRequest(BaseModel):

@@ -122,14 +122,26 @@ class AuthService:
         # Generate referral code
         referral_code = self._generate_referral_code(request.name)
         
+        # Validate university_id if provided
+        university_id = None
+        if request.university_id:
+            try:
+                from uuid import UUID
+                university_id = UUID(request.university_id)
+            except ValueError:
+                raise ValidationException("Invalid university ID format")
+        
         # Create user
         user = User(
             email=request.email.lower(),
             password_hash=get_password_hash(request.password),
             name=request.name,
             phone=request.phone,
-            role="referrer",
+            role="referral_partner",  # Changed from "referrer" to "referral_partner"
+            partner_type_id=request.partner_type_id,
             organization=request.organization,
+            region_id=request.region_id,
+            university_id=university_id,
             referral_code=referral_code,
             tier="Bronze",
             is_active=True,

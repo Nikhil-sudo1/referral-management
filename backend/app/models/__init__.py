@@ -10,6 +10,8 @@ from app.models.reward import Reward, RewardTier
 from app.models.notification import Notification
 from app.models.settings import Settings
 from app.models.audit import AuditLog
+from app.models.partner_type import PartnerType
+from app.models.region import Region
 
 __all__ = [
     "User",
@@ -21,5 +23,7 @@ __all__ = [
     "Notification",
     "Settings",
     "AuditLog",
+    "PartnerType",
+    "Region",
 ]
 

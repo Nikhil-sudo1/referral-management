@@ -24,8 +24,11 @@ class User(Base):
         nullable=False,
         index=True
     )
+    admin_sub_role = Column(String(50))  # For admin: 'human_resource' or 'business_head'
+    partner_type_id = Column(ForeignKey("referral_partner_master.id", ondelete="SET NULL"))  # For referral_partner
     avatar_url = Column(String(500))
     organization = Column(String(255))
+    region_id = Column(ForeignKey("regions.id", ondelete="SET NULL"))  # For student referrers
     university_id = Column(UUID(as_uuid=True), ForeignKey("universities.id", ondelete="SET NULL"))
     referral_code = Column(String(50), unique=True, index=True)
     tier = Column(String(50), default="Bronze")
@@ -44,6 +47,8 @@ class User(Base):
     reset_token_expires = Column(DateTime, nullable=True)
     
     # Relationships
+    partner_type = relationship("PartnerType", back_populates="users")
+    region = relationship("Region")
     university = relationship("University", back_populates="counselors")
     referrals_made = relationship(
         "Referral",

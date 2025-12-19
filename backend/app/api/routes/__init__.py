@@ -14,12 +14,14 @@ from app.api.routes import (
     analytics,
     notifications,
     public,
+    partner,
 )
 
 router = APIRouter()
 
 # Public routes (no authentication required)
 router.include_router(public.router, prefix="/public", tags=["Public"])
+router.include_router(partner.router, prefix="/partner", tags=["Partner"])
 
 # Include all route modules
 router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
