@@ -7,11 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap, Moon, Sun, CheckCircle, AlertCircle, Users, Shield, Briefcase } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap, Moon, Sun, CheckCircle, AlertCircle, Users, Shield, Briefcase, Factory, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { validateLoginForm, validateSignupForm, hasErrors, FormErrors } from '@/lib/validations';
-import { partnerAPI, UserType, Role, Organization, University } from '@/lib/api/partner';
+import { validateLoginForm, hasErrors, FormErrors } from '@/lib/validations';
+import { partnerAPI, Industry, Organization, University } from '@/lib/api/partner';
+
+// Referrer types for simplified signup
+type ReferrerType = 'student' | 'employee';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -22,7 +26,7 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState('login');
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
-  // Initialize theme from localStorage (persists from landing page)
+  // Initialize theme from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -51,10 +55,11 @@ const Login = () => {
     fullName: '', 
     email: '', 
     mobileNumber: '', 
-    userTypeId: '',
-    roleId: '',
+    referrerType: '' as ReferrerType | '',
+    industryId: '',
     orgId: '', 
     univId: '',
+    newOrgName: '',
     password: '', 
     confirmPassword: '',
   });
@@ -62,19 +67,14 @@ const Login = () => {
   const [signupErrors, setSignupErrors] = useState<FormErrors>({});
   
   // Dropdown data states
-  const [userTypes, setUserTypes] = useState<UserType[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [industries, setIndustries] = useState<Industry[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [universities, setUniversities] = useState<University[]>([]);
   const [loadingData, setLoadingData] = useState(false);
-
-  // Get selected user type and role
-  const selectedUserType = userTypes.find(ut => ut.id.toString() === signupData.userTypeId);
-  const selectedRole = roles.find(r => r.id.toString() === signupData.roleId);
-
-  // Determine if we need to show org or university dropdown
-  const isEmployeeRole = selectedRole?.code === 'employee';
-  const isStudentReferrerRole = selectedRole?.code === 'student_referrer';
+  
+  // Modal for adding new organization
+  const [showNewOrgDialog, setShowNewOrgDialog] = useState(false);
+  const [creatingOrg, setCreatingOrg] = useState(false);
 
   // Clear errors when switching tabs
   useEffect(() => {
@@ -82,66 +82,99 @@ const Login = () => {
     setSignupErrors({});
   }, [activeTab]);
 
-  // Load user types on mount
+  // Load universities when signup tab is active and student type is selected
   useEffect(() => {
-    const loadUserTypes = async () => {
-      try {
-        setLoadingData(true);
-        const data = await partnerAPI.getUserTypes();
-        setUserTypes(data);
-      } catch (error) {
-        console.error('Failed to load user types:', error);
-      } finally {
-        setLoadingData(false);
+    const loadUniversities = async () => {
+      if (activeTab === 'signup' && signupData.referrerType === 'student') {
+        try {
+          setLoadingData(true);
+          const data = await partnerAPI.getUniversities();
+          setUniversities(data);
+        } catch (error) {
+          console.error('Failed to load universities:', error);
+          toast({ title: 'Error', description: 'Failed to load universities', variant: 'destructive' });
+        } finally {
+          setLoadingData(false);
+        }
       }
     };
-    
-    if (activeTab === 'signup') {
-      loadUserTypes();
-    }
-  }, [activeTab]);
+    loadUniversities();
+  }, [activeTab, signupData.referrerType]);
 
-  // Load roles when user type changes
+  // Load industries when employee type is selected
   useEffect(() => {
-    if (signupData.userTypeId) {
-      const userType = userTypes.find(ut => ut.id.toString() === signupData.userTypeId);
-      if (userType) {
-        setRoles(userType.roles);
-        // Reset role selection when user type changes
-        setSignupData(prev => ({ ...prev, roleId: '', orgId: '', univId: '' }));
-      }
-    } else {
-      setRoles([]);
-    }
-  }, [signupData.userTypeId, userTypes]);
-
-  // Load organizations and universities when needed
-  useEffect(() => {
-    const loadOrgsAndUnis = async () => {
-      try {
-        setLoadingData(true);
-        const [orgsData, unisData] = await Promise.all([
-          partnerAPI.getOrganizations(),
-          partnerAPI.getUniversities(),
-        ]);
-        setOrganizations(orgsData);
-        setUniversities(unisData);
-      } catch (error) {
-        console.error('Failed to load organizations/universities:', error);
-      } finally {
-        setLoadingData(false);
+    const loadIndustries = async () => {
+      if (activeTab === 'signup' && signupData.referrerType === 'employee') {
+        try {
+          setLoadingData(true);
+          const data = await partnerAPI.getIndustries();
+          setIndustries(data);
+        } catch (error) {
+          console.error('Failed to load industries:', error);
+          toast({ title: 'Error', description: 'Failed to load industries', variant: 'destructive' });
+        } finally {
+          setLoadingData(false);
+        }
       }
     };
-    
-    if (activeTab === 'signup' && signupData.roleId) {
-      loadOrgsAndUnis();
+    loadIndustries();
+  }, [activeTab, signupData.referrerType]);
+
+  // Load organizations when industry is selected
+  useEffect(() => {
+    const loadOrganizations = async () => {
+      if (signupData.industryId) {
+        try {
+          setLoadingData(true);
+          const data = await partnerAPI.getOrganizationsByIndustry(parseInt(signupData.industryId));
+          setOrganizations(data);
+        } catch (error) {
+          console.error('Failed to load organizations:', error);
+          toast({ title: 'Error', description: 'Failed to load organizations', variant: 'destructive' });
+        } finally {
+          setLoadingData(false);
+        }
+      } else {
+        setOrganizations([]);
+      }
+    };
+    loadOrganizations();
+  }, [signupData.industryId]);
+
+  // Handle creating new organization
+  const handleCreateOrganization = async () => {
+    if (!signupData.newOrgName.trim()) {
+      toast({ title: 'Error', description: 'Please enter organization name', variant: 'destructive' });
+      return;
     }
-  }, [activeTab, signupData.roleId]);
+    if (!signupData.industryId) {
+      toast({ title: 'Error', description: 'Please select an industry first', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      setCreatingOrg(true);
+      const newOrg = await partnerAPI.createOrganization({
+        name: signupData.newOrgName.trim(),
+        industry_id: parseInt(signupData.industryId),
+      });
+      
+      // Add to organizations list and select it
+      setOrganizations(prev => [...prev, newOrg]);
+      setSignupData(prev => ({ ...prev, orgId: newOrg.id.toString(), newOrgName: '' }));
+      setShowNewOrgDialog(false);
+      toast({ title: 'Success', description: 'Organization added successfully' });
+    } catch (error) {
+      console.error('Failed to create organization:', error);
+      toast({ title: 'Error', description: 'Failed to create organization', variant: 'destructive' });
+    } finally {
+      setCreatingOrg(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form
     const errors = validateLoginForm(loginData);
     setLoginErrors(errors);
     
@@ -178,10 +211,10 @@ const Login = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Custom validation for new fields
+    // Validation
     const errors: FormErrors = {};
     if (!signupData.fullName || signupData.fullName.length < 2) {
-      errors.name = 'Full name is required';
+      errors.name = 'Full name is required (min 2 characters)';
     }
     if (!signupData.email) {
       errors.email = 'Email is required';
@@ -189,19 +222,21 @@ const Login = () => {
       errors.email = 'Invalid email format';
     }
     if (!signupData.mobileNumber || signupData.mobileNumber.length < 10) {
-      errors.phone = 'Valid mobile number is required';
+      errors.phone = 'Valid mobile number is required (min 10 digits)';
     }
-    if (!signupData.userTypeId) {
-      errors.userTypeId = 'User type is required';
+    if (!signupData.referrerType) {
+      errors.referrerType = 'Please select referrer type';
     }
-    if (!signupData.roleId) {
-      errors.roleId = 'Role is required';
+    if (signupData.referrerType === 'student' && !signupData.univId) {
+      errors.universityId = 'Please select your university';
     }
-    if (isEmployeeRole && !signupData.orgId) {
-      errors.organization = 'Organization is required for employees';
-    }
-    if (isStudentReferrerRole && !signupData.univId) {
-      errors.universityId = 'University is required for student referrers';
+    if (signupData.referrerType === 'employee') {
+      if (!signupData.industryId) {
+        errors.industryId = 'Please select your industry';
+      }
+      if (!signupData.orgId) {
+        errors.organization = 'Please select your organization';
+      }
     }
     if (!signupData.password || signupData.password.length < 6) {
       errors.password = 'Password must be at least 6 characters';
@@ -219,19 +254,24 @@ const Login = () => {
     
     setIsLoading(true);
     try {
+      // Map referrer type to user_type_id and role_id
+      // Student Referrer: user_type_id=2, role_id=5
+      // Employee: user_type_id=2, role_id=4
+      const userTypeId = 2; // Referral Partner
+      const roleId = signupData.referrerType === 'student' ? 5 : 4;
+      
       const success = await signup({
         full_name: signupData.fullName,
         email: signupData.email,
         mobile_number: signupData.mobileNumber,
         password: signupData.password,
         confirm_password: signupData.confirmPassword,
-        user_type_id: parseInt(signupData.userTypeId),
-        role_id: parseInt(signupData.roleId),
+        user_type_id: userTypeId,
+        role_id: roleId,
         org_id: signupData.orgId ? parseInt(signupData.orgId) : undefined,
         univ_id: signupData.univId || undefined,
       });
       if (success) {
-        // Redirect to email confirmation page instead of dashboard
         navigate(`/email-confirmation?email=${encodeURIComponent(signupData.email)}&from=signup`);
       }
     } finally {
@@ -257,41 +297,10 @@ const Login = () => {
     { value: '85%', label: 'Success Rate', color: 'from-violet-500 to-purple-500' },
   ];
 
-  // Get icon for user type
-  const getUserTypeIcon = (code: string) => {
-    switch (code) {
-      case 'admin':
-        return <Shield className="w-4 h-4" />;
-      case 'referral_partner':
-        return <Users className="w-4 h-4" />;
-      default:
-        return <User className="w-4 h-4" />;
-    }
-  };
-
-  // Get icon for role
-  const getRoleIcon = (code: string) => {
-    switch (code) {
-      case 'human_resources':
-        return <Users className="w-4 h-4" />;
-      case 'business_head':
-        return <Briefcase className="w-4 h-4" />;
-      case 'student_admin':
-        return <GraduationCap className="w-4 h-4" />;
-      case 'employee':
-        return <Building2 className="w-4 h-4" />;
-      case 'student_referrer':
-        return <GraduationCap className="w-4 h-4" />;
-      default:
-        return <User className="w-4 h-4" />;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Background - Same as Landing Page */}
+      {/* Animated Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Network Connection Lines SVG */}
         <svg className="absolute inset-0 w-full h-full opacity-[0.07] dark:opacity-[0.05]" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <pattern id="network-pattern" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
@@ -310,7 +319,6 @@ const Login = () => {
           <rect width="100%" height="100%" fill="url(#network-pattern)" />
         </svg>
 
-        {/* Floating Gradient Orbs */}
         <motion.div 
           className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-primary/25 to-cyan-500/25 dark:from-primary/15 dark:to-cyan-500/15 blur-[120px]"
           animate={{ x: [0, 40, 0], y: [0, -30, 0], scale: [1, 1.15, 1] }}
@@ -327,7 +335,7 @@ const Login = () => {
           transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 4 }}
         />
 
-        {/* Animated Icons */}
+        {/* Floating Icons */}
         <motion.div className="absolute top-[15%] left-[8%]" animate={{ y: [0, -15, 0], opacity: [0.1, 0.2, 0.1] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}>
           <svg className="w-16 h-16 text-primary" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M12 14c-6 0-8 3-8 5v1h16v-1c0-2-2-5-8-5z" /></svg>
         </motion.div>
@@ -342,7 +350,7 @@ const Login = () => {
         </motion.div>
       </div>
 
-      {/* Theme Toggle - Fixed Position */}
+      {/* Theme Toggle */}
       <motion.div 
         className="fixed top-4 right-4 z-50"
         initial={{ opacity: 0, y: -20 }}
@@ -359,7 +367,7 @@ const Login = () => {
         </Button>
       </motion.div>
 
-      {/* Back to Home - Fixed Position */}
+      {/* Back to Home */}
       <motion.div 
         className="fixed top-4 left-4 z-50"
         initial={{ opacity: 0, x: -20 }}
@@ -417,7 +425,6 @@ const Login = () => {
               Streamline student referrals, track admissions, and maximize your earnings.
             </p>
 
-            {/* Benefits */}
             <div className="flex flex-wrap gap-4 text-sm">
               <span className="flex items-center gap-2 text-muted-foreground"><CheckCircle className="w-4 h-4 text-emerald-500" /> Free to Join</span>
               <span className="flex items-center gap-2 text-muted-foreground"><CheckCircle className="w-4 h-4 text-emerald-500" /> Weekly Payouts</span>
@@ -487,7 +494,7 @@ const Login = () => {
                 {/* Login Tab */}
                 <TabsContent value="login">
                   <form onSubmit={handleLogin} className="space-y-4">
-                    {/* Quick Login Buttons for Testing */}
+                    {/* Quick Login Buttons */}
                     <div className="space-y-2">
                       <Label className="text-muted-foreground text-xs">Quick Login (Demo)</Label>
                       <div className="grid grid-cols-2 gap-2">
@@ -508,7 +515,7 @@ const Login = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setLoginData({ email: 'vikram.employee@company.com', password: 'Password@123' });
+                            setLoginData({ email: 'student@test.com', password: 'Test@123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50"
@@ -594,6 +601,7 @@ const Login = () => {
                 {/* Signup Tab */}
                 <TabsContent value="signup">
                   <form onSubmit={handleSignup} className="space-y-4">
+                    {/* Full Name */}
                     <div className="space-y-2">
                       <Label className="text-muted-foreground">Full Name *</Label>
                       <div className="relative">
@@ -611,6 +619,7 @@ const Login = () => {
                       <FieldError error={signupErrors.name} />
                     </div>
 
+                    {/* Email */}
                     <div className="space-y-2">
                       <Label className="text-muted-foreground">Email Address *</Label>
                       <div className="relative">
@@ -629,6 +638,7 @@ const Login = () => {
                       <FieldError error={signupErrors.email} />
                     </div>
 
+                    {/* Mobile Number */}
                     <div className="space-y-2">
                       <Label className="text-muted-foreground">Mobile Number *</Label>
                       <div className="relative">
@@ -647,112 +657,48 @@ const Login = () => {
                       <FieldError error={signupErrors.phone} />
                     </div>
 
-                    {/* User Type Selection */}
+                    {/* Referrer Type Selection */}
                     <div className="space-y-2">
-                      <Label className="text-muted-foreground">User Type *</Label>
+                      <Label className="text-muted-foreground">I am a *</Label>
                       <Select
-                        value={signupData.userTypeId}
-                        onValueChange={(value) => {
+                        value={signupData.referrerType}
+                        onValueChange={(value: ReferrerType) => {
                           setSignupData({ 
                             ...signupData, 
-                            userTypeId: value,
-                            roleId: '',
+                            referrerType: value,
+                            industryId: '',
                             orgId: '',
                             univId: ''
                           });
-                          if (signupErrors.userTypeId) setSignupErrors({ ...signupErrors, userTypeId: '' });
+                          if (signupErrors.referrerType) setSignupErrors({ ...signupErrors, referrerType: '' });
                         }}
-                        disabled={loadingData}
                       >
                         <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
                           <div className="flex items-center gap-2">
-                            <Shield className="w-4 h-4 text-muted-foreground" />
-                            <SelectValue placeholder={loadingData ? "Loading..." : "Select user type"} />
+                            <Users className="w-4 h-4 text-muted-foreground" />
+                            <SelectValue placeholder="Select your type" />
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                          {userTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.id.toString()}>
-                              <div className="flex items-center gap-2">
-                                {getUserTypeIcon(type.code)}
-                                {type.name}
-                              </div>
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="student">
+                            <div className="flex items-center gap-2">
+                              <GraduationCap className="w-4 h-4 text-violet-500" />
+                              Student Referral
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="employee">
+                            <div className="flex items-center gap-2">
+                              <Briefcase className="w-4 h-4 text-emerald-500" />
+                              Employee
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
-                      <FieldError error={signupErrors.userTypeId} />
+                      <FieldError error={signupErrors.referrerType} />
                     </div>
 
-                    {/* Role Selection (depends on User Type) */}
-                    {signupData.userTypeId && (
-                      <div className="space-y-2">
-                        <Label className="text-muted-foreground">Role *</Label>
-                        <Select
-                          value={signupData.roleId}
-                          onValueChange={(value) => {
-                            setSignupData({ 
-                              ...signupData, 
-                              roleId: value,
-                              orgId: '',
-                              univId: ''
-                            });
-                            if (signupErrors.roleId) setSignupErrors({ ...signupErrors, roleId: '' });
-                          }}
-                        >
-                          <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
-                            <div className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-muted-foreground" />
-                              <SelectValue placeholder="Select role" />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roles.map((role) => (
-                              <SelectItem key={role.id} value={role.id.toString()}>
-                                <div className="flex items-center gap-2">
-                                  {getRoleIcon(role.code)}
-                                  {role.name}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FieldError error={signupErrors.roleId} />
-                      </div>
-                    )}
-
-                    {/* Conditional: Organization (for Employee role) */}
-                    {isEmployeeRole && (
-                      <div className="space-y-2">
-                        <Label className="text-muted-foreground">Organization *</Label>
-                        <Select
-                          value={signupData.orgId}
-                          onValueChange={(value) => {
-                            setSignupData({ ...signupData, orgId: value });
-                            if (signupErrors.organization) setSignupErrors({ ...signupErrors, organization: '' });
-                          }}
-                          disabled={loadingData}
-                        >
-                          <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
-                            <div className="flex items-center gap-2">
-                              <Building2 className="w-4 h-4 text-muted-foreground" />
-                              <SelectValue placeholder={loadingData ? "Loading..." : "Select organization"} />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {organizations.map((org) => (
-                              <SelectItem key={org.id} value={org.id.toString()}>
-                                {org.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FieldError error={signupErrors.organization} />
-                      </div>
-                    )}
-
-                    {/* Conditional: University (for Student Referrer role) */}
-                    {isStudentReferrerRole && (
+                    {/* Conditional: University (for Student Referral) */}
+                    {signupData.referrerType === 'student' && (
                       <div className="space-y-2">
                         <Label className="text-muted-foreground">University *</Label>
                         <Select
@@ -766,7 +712,7 @@ const Login = () => {
                           <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
                             <div className="flex items-center gap-2">
                               <GraduationCap className="w-4 h-4 text-muted-foreground" />
-                              <SelectValue placeholder={loadingData ? "Loading..." : "Select university"} />
+                              <SelectValue placeholder={loadingData ? "Loading..." : "Select your university"} />
                             </div>
                           </SelectTrigger>
                           <SelectContent>
@@ -781,6 +727,87 @@ const Login = () => {
                       </div>
                     )}
 
+                    {/* Conditional: Industry and Organization (for Employee) */}
+                    {signupData.referrerType === 'employee' && (
+                      <>
+                        {/* Industry Selection */}
+                        <div className="space-y-2">
+                          <Label className="text-muted-foreground">Industry *</Label>
+                          <Select
+                            value={signupData.industryId}
+                            onValueChange={(value) => {
+                              setSignupData({ ...signupData, industryId: value, orgId: '' });
+                              if (signupErrors.industryId) setSignupErrors({ ...signupErrors, industryId: '' });
+                            }}
+                            disabled={loadingData}
+                          >
+                            <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
+                              <div className="flex items-center gap-2">
+                                <Factory className="w-4 h-4 text-muted-foreground" />
+                                <SelectValue placeholder={loadingData ? "Loading..." : "Select your industry"} />
+                              </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {industries.map((ind) => (
+                                <SelectItem key={ind.id} value={ind.id.toString()}>
+                                  {ind.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FieldError error={signupErrors.industryId} />
+                        </div>
+
+                        {/* Organization Selection (only after industry is selected) */}
+                        {signupData.industryId && (
+                          <div className="space-y-2">
+                            <Label className="text-muted-foreground">Organization *</Label>
+                            <div className="flex gap-2">
+                              <div className="flex-1">
+                                <Select
+                                  value={signupData.orgId}
+                                  onValueChange={(value) => {
+                                    setSignupData({ ...signupData, orgId: value });
+                                    if (signupErrors.organization) setSignupErrors({ ...signupErrors, organization: '' });
+                                  }}
+                                  disabled={loadingData}
+                                >
+                                  <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
+                                    <div className="flex items-center gap-2">
+                                      <Building2 className="w-4 h-4 text-muted-foreground" />
+                                      <SelectValue placeholder={loadingData ? "Loading..." : "Select organization"} />
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {organizations.map((org) => (
+                                      <SelectItem key={org.id} value={org.id.toString()}>
+                                        {org.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setShowNewOrgDialog(true)}
+                                className="h-12 w-12 rounded-xl border-border/50 hover:bg-primary/10 hover:border-primary/50"
+                                title="Add new organization"
+                              >
+                                <Plus className="w-5 h-5" />
+                              </Button>
+                            </div>
+                            <FieldError error={signupErrors.organization} />
+                            <p className="text-xs text-muted-foreground">
+                              Can't find your organization? Click + to add it.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Password Fields */}
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -801,16 +828,25 @@ const Login = () => {
                         </div>
                         <div className="space-y-2">
                           <Label className="text-muted-foreground">Confirm *</Label>
-                          <Input
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="••••••••"
-                            className={`bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary transition-all ${signupErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
-                            value={signupData.confirmPassword}
-                            onChange={(e) => {
-                              setSignupData({ ...signupData, confirmPassword: e.target.value });
-                              if (signupErrors.confirmPassword) setSignupErrors({ ...signupErrors, confirmPassword: '' });
-                            }}
-                          />
+                          <div className="relative">
+                            <Input
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="••••••••"
+                              className={`bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary transition-all ${signupErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
+                              value={signupData.confirmPassword}
+                              onChange={(e) => {
+                                setSignupData({ ...signupData, confirmPassword: e.target.value });
+                                if (signupErrors.confirmPassword) setSignupErrors({ ...signupErrors, confirmPassword: '' });
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
                         </div>
                       </div>
                       {(signupErrors.password || signupErrors.confirmPassword) && (
@@ -865,6 +901,50 @@ const Login = () => {
           </Card>
         </motion.div>
       </motion.div>
+
+      {/* Dialog for Adding New Organization */}
+      <Dialog open={showNewOrgDialog} onOpenChange={setShowNewOrgDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
+              Add New Organization
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Organization Name *</Label>
+              <Input
+                placeholder="Enter organization name"
+                value={signupData.newOrgName}
+                onChange={(e) => setSignupData({ ...signupData, newOrgName: e.target.value })}
+                className="h-12"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This organization will be added to the selected industry: <strong>{industries.find(i => i.id.toString() === signupData.industryId)?.name}</strong>
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowNewOrgDialog(false);
+                setSignupData({ ...signupData, newOrgName: '' });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateOrganization}
+              disabled={creatingOrg || !signupData.newOrgName.trim()}
+              className="gradient-primary text-white"
+            >
+              {creatingOrg ? 'Adding...' : 'Add Organization'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

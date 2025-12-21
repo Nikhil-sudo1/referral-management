@@ -1,6 +1,6 @@
 /**
  * Partner API
- * Handles user types, roles, organizations, and universities
+ * Handles user types, roles, organizations, universities, and industries
  */
 import apiClient from './client';
 
@@ -29,9 +29,20 @@ export interface University {
   logo_url?: string;
 }
 
+export interface Industry {
+  id: number;
+  name: string;
+}
+
 export interface Organization {
   id: number;
   name: string;
+  industry_id?: number;
+}
+
+export interface CreateOrganizationRequest {
+  name: string;
+  industry_id: number;
 }
 
 export const partnerAPI = {
@@ -56,9 +67,35 @@ export const partnerAPI = {
     return response.data.data;
   },
 
-  // Get organizations (companies for employees)
-  getOrganizations: async (): Promise<Organization[]> => {
-    const response = await apiClient.get<{ success: boolean; data: Organization[] }>('/partner/organizations');
+  // Get all industries
+  getIndustries: async (): Promise<Industry[]> => {
+    const response = await apiClient.get<{ success: boolean; data: Industry[] }>('/partner/industries');
+    return response.data.data;
+  },
+
+  // Get organizations by industry
+  getOrganizationsByIndustry: async (industryId: number): Promise<Organization[]> => {
+    const response = await apiClient.get<{ success: boolean; data: Organization[] }>(
+      `/partner/industries/${industryId}/organizations`
+    );
+    return response.data.data;
+  },
+
+  // Get all organizations (optionally by industry)
+  getOrganizations: async (industryId?: number): Promise<Organization[]> => {
+    const url = industryId 
+      ? `/partner/organizations?industry_id=${industryId}`
+      : '/partner/organizations';
+    const response = await apiClient.get<{ success: boolean; data: Organization[] }>(url);
+    return response.data.data;
+  },
+
+  // Create a new organization (when user selects "Other")
+  createOrganization: async (data: CreateOrganizationRequest): Promise<Organization> => {
+    const response = await apiClient.post<{ success: boolean; data: Organization }>(
+      '/partner/organizations',
+      data
+    );
     return response.data.data;
   },
 };
