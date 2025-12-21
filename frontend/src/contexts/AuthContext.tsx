@@ -131,8 +131,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user_type_name: response.user.user_type_name,
         role_name: response.user.role_name,
         is_active: true,
-        email_verification: true,
+        email_verification: response.user.email_verification ?? false,
         referral_code: response.user.referral_code,
+        mobile_number: response.user.mobile_number,
+        bank_acc: response.user.bank_acc,
+        bank_ifsc: response.user.bank_ifsc,
+        bank_name: response.user.bank_name,
+        account_holder_name: response.user.account_holder_name,
       };
       
       localStorage.setItem('user', JSON.stringify(user));

@@ -319,9 +319,9 @@ class ReferralService:
         referral = Referral(
             referral_code=referral_code,
             referrer_id=referrer.id,
-            referrer_name=referrer.name,
+            referrer_name=referrer.full_name,
             referrer_email=referrer.email,
-            referrer_phone=referrer.phone or "",
+            referrer_phone=referrer.mobile_number or "",
             referee_name=data.referee_name,
             referee_email=data.referee_email.lower(),
             referee_phone=data.referee_phone,

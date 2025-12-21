@@ -352,6 +352,95 @@ async def check_verification(
         )
 
 
+@router.put("/me/profile", response_model=BaseResponse)
+async def update_profile(
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update current user's profile
+    """
+    try:
+        # Update allowed fields
+        if "full_name" in data:
+            current_user.full_name = data["full_name"]
+        if "mobile_number" in data:
+            current_user.mobile_number = data["mobile_number"]
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        # Get user type and role names
+        user_type = db.query(UserType).filter(UserType.id == current_user.user_type_id).first()
+        role = db.query(Role).filter(Role.id == current_user.role_id).first()
+        
+        return BaseResponse(
+            success=True,
+            message="Profile updated successfully",
+            data={
+                "id": str(current_user.id),
+                "email": current_user.email,
+                "full_name": current_user.full_name,
+                "mobile_number": current_user.mobile_number,
+                "user_type_id": current_user.user_type_id,
+                "role_id": current_user.role_id,
+                "user_type_name": user_type.name if user_type else None,
+                "role_name": role.name if role else None,
+                "is_active": current_user.is_active,
+                "email_verification": current_user.email_verification,
+                "referral_code": current_user.referral_code,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error updating profile: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update profile"
+        )
+
+
+@router.put("/me/bank-details", response_model=BaseResponse)
+async def update_bank_details(
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update current user's bank details
+    """
+    try:
+        # Update bank details
+        if "account_holder_name" in data:
+            current_user.account_holder_name = data["account_holder_name"]
+        if "bank_name" in data:
+            current_user.bank_name = data["bank_name"]
+        if "account_number" in data or "bank_acc" in data:
+            current_user.bank_acc = data.get("account_number") or data.get("bank_acc")
+        if "ifsc_code" in data or "bank_ifsc" in data:
+            current_user.bank_ifsc = data.get("ifsc_code") or data.get("bank_ifsc")
+        
+        db.commit()
+        db.refresh(current_user)
+        
+        return BaseResponse(
+            success=True,
+            message="Bank details updated successfully",
+            data={
+                "account_holder_name": current_user.account_holder_name,
+                "bank_name": current_user.bank_name,
+                "bank_acc": current_user.bank_acc,
+                "bank_ifsc": current_user.bank_ifsc,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error updating bank details: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update bank details"
+        )
+
+
 @router.get("/user-types", response_model=BaseResponse)
 async def get_user_types(
     db: Session = Depends(get_db),

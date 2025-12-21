@@ -140,6 +140,26 @@ export const authAPI = {
     return response.data;
   },
 
+  // Update profile
+  updateProfile: async (data: { full_name?: string; mobile_number?: string }): Promise<any> => {
+    const response = await apiClient.put<{ success: boolean; data: any }>('/auth/me/profile', data);
+    return response.data.data;
+  },
+
+  // Update bank details
+  updateBankDetails: async (data: {
+    account_holder_name?: string;
+    bank_name?: string;
+    account_number?: string;
+    ifsc_code?: string;
+  }): Promise<any> => {
+    const response = await apiClient.put<{ success: boolean; data: any }>('/auth/me/bank-details', data);
+    return response.data.data;
+  }, async (email: string): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ success: boolean; message: string }>('/auth/resend-verification', { email });
+    return response.data;
+  },
+
   // Check verification status
   checkVerification: async (email: string): Promise<{ is_verified: boolean }> => {
     const response = await apiClient.get<{ success: boolean; data: { is_verified: boolean } }>(`/auth/check-verification?email=${encodeURIComponent(email)}`);

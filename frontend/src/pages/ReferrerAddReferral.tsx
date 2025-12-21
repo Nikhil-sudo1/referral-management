@@ -112,10 +112,11 @@ const ReferrerAddReferral = () => {
 
     try {
       // Submit referral to backend using the referrer endpoint
+      // Backend expects referee_name, referee_email, referee_phone
       await referralsAPI.submitReferral({
-        student_name: formData.refereeName,
-        student_email: formData.refereeEmail,
-        student_phone: formData.refereePhone,
+        referee_name: formData.refereeName,
+        referee_email: formData.refereeEmail,
+        referee_phone: formData.refereePhone,
         university_id: formData.universityId,
         program_id: formData.programId,
       });

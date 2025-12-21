@@ -57,9 +57,9 @@ export interface ReferralCreateRequest {
 }
 
 export interface ReferralSubmitRequest {
-  student_name: string;
-  student_email: string;
-  student_phone: string;
+  referee_name: string;
+  referee_email: string;
+  referee_phone: string;
   university_id: string;
   program_id: string;
   notes?: string;

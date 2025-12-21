@@ -32,6 +32,12 @@ class UserInToken(BaseModel):
     user_type_name: Optional[str] = None
     role_name: Optional[str] = None
     referral_code: Optional[str] = None
+    email_verification: Optional[bool] = False
+    mobile_number: Optional[str] = None
+    bank_acc: Optional[str] = None
+    bank_ifsc: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 

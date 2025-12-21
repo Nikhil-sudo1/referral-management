@@ -100,7 +100,13 @@ class AuthService:
                 role_id=user.role_id,
                 user_type_name=user_type_name,
                 role_name=role_name,
-                referral_code=user.referral_code
+                referral_code=user.referral_code,
+                email_verification=user.email_verification,
+                mobile_number=user.mobile_number,
+                bank_acc=user.bank_acc,
+                bank_ifsc=user.bank_ifsc,
+                bank_name=user.bank_name,
+                account_holder_name=user.account_holder_name
             )
         )
     
@@ -200,7 +206,13 @@ class AuthService:
                 role_id=user.role_id,
                 user_type_name=user_type.name,
                 role_name=role.name,
-                referral_code=user.referral_code
+                referral_code=user.referral_code,
+                email_verification=user.email_verification,
+                mobile_number=user.mobile_number,
+                bank_acc=user.bank_acc,
+                bank_ifsc=user.bank_ifsc,
+                bank_name=user.bank_name,
+                account_holder_name=user.account_holder_name
             )
         )
     

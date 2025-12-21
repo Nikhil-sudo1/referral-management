@@ -74,24 +74,71 @@ const ReferrerSettings = () => {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      // API call would go here
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { authAPI } = await import('@/lib/api');
+      await authAPI.updateProfile({
+        full_name: profileData.fullName,
+        mobile_number: profileData.phone,
+      });
+      
       toast({ title: 'Success', description: 'Profile updated successfully' });
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update profile', variant: 'destructive' });
+      
+      // Refresh user data
+      const { useAuth } = await import('@/contexts/AuthContext');
+      // User data will be refreshed on next page load
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      const errorMessage = error?.response?.data?.detail || 
+                          error?.response?.data?.message || 
+                          'Failed to update profile. Please try again.';
+      toast({ 
+        title: 'Error', 
+        description: errorMessage, 
+        variant: 'destructive' 
+      });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSaveBank = async () => {
+    // Validate required fields
+    if (!bankData.accountHolderName || !bankData.bankName || !bankData.accountNumber || !bankData.ifscCode) {
+      toast({ 
+        title: 'Validation Error', 
+        description: 'Please fill in all bank details', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // API call would go here
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast({ title: 'Success', description: 'Bank details updated successfully' });
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to update bank details', variant: 'destructive' });
+      const { authAPI } = await import('@/lib/api');
+      await authAPI.updateBankDetails({
+        account_holder_name: bankData.accountHolderName,
+        bank_name: bankData.bankName,
+        account_number: bankData.accountNumber,
+        ifsc_code: bankData.ifscCode,
+      });
+      
+      toast({ 
+        title: 'Success', 
+        description: 'Bank details updated successfully' 
+      });
+      
+      // Refresh user data
+      const { useAuth } = await import('@/contexts/AuthContext');
+      // User data will be refreshed on next page load
+    } catch (error: any) {
+      console.error('Error updating bank details:', error);
+      const errorMessage = error?.response?.data?.detail || 
+                          error?.response?.data?.message || 
+                          'Failed to update bank details. Please try again.';
+      toast({ 
+        title: 'Error', 
+        description: errorMessage, 
+        variant: 'destructive' 
+      });
     } finally {
       setIsSaving(false);
     }
