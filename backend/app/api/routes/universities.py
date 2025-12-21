@@ -44,26 +44,14 @@ async def get_universities(
     try:
         controller = UniversityController(db)
         
-        # Apply role-based filtering
+        # Apply role-based filtering using new user_type_id
         university_filter_id = None
         
-        # Manager only sees their assigned university
-        if current_user.role == 'manager':
-            if current_user.university_id:
-                university_filter_id = current_user.university_id
-            else:
-                # No university assigned - return empty list
-                return BaseResponse(
-                    success=True,
-                    message="No university assigned to your account",
-                    data={
-                        "items": [],
-                        "total": 0,
-                        "page": page,
-                        "limit": limit,
-                        "pages": 0
-                    }
-                )
+        # Referral Partners (user_type_id = 2) only see their assigned university
+        if current_user.user_type_id == 2:
+            if current_user.univ_id:
+                university_filter_id = current_user.univ_id
+            # If no university assigned, they can still see all (for browsing)
         
         return controller.get_universities(
             page=page,

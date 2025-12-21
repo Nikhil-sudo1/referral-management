@@ -80,10 +80,8 @@ class LeaderboardService:
         # Main query joining users with aggregated referral and reward data
         results = self.db.query(
             User.id,
-            User.name,
+            User.full_name,
             User.email,
-            User.avatar_url,
-            User.tier,
             func.coalesce(referral_subquery.c.total_referrals, 0).label('total_referrals'),
             func.coalesce(referral_subquery.c.total_admissions, 0).label('total_admissions'),
             func.coalesce(reward_subquery.c.total_rewards, 0).label('total_rewards'),
@@ -92,7 +90,7 @@ class LeaderboardService:
         ).outerjoin(
             reward_subquery, User.id == reward_subquery.c.user_id
         ).filter(
-            User.role == "referrer",
+            User.user_type_id == 2,
             User.is_active == True
         ).all()
         
@@ -109,10 +107,10 @@ class LeaderboardService:
             
             entries.append({
                 "user_id": row.id,
-                "user_name": row.name,
+                "user_name": row.full_name,
                 "user_email": row.email,
-                "avatar_url": row.avatar_url,
-                "tier": row.tier,
+                "avatar_url": None,
+                "tier": "Bronze",
                 "total_referrals": total_referrals,
                 "total_admissions": total_admissions,
                 "conversion_rate": conversion_rate,
@@ -130,7 +128,7 @@ class LeaderboardService:
                 user_id=entry["user_id"],
                 user_name=entry["user_name"],
                 user_email=entry.get("user_email", ""),
-                avatar_url=entry["avatar_url"],
+                avatar_url=None,
                 total_referrals=entry["total_referrals"],
                 total_admissions=entry["total_admissions"],
                 conversion_rate=entry["conversion_rate"],
@@ -206,8 +204,7 @@ class LeaderboardService:
         # Main query
         results = self.db.query(
             User.id,
-            User.name,
-            User.avatar_url,
+            User.full_name,
             func.coalesce(referral_subquery.c.total_referrals, 0).label('total_referrals'),
             func.coalesce(referral_subquery.c.total_admissions, 0).label('total_admissions'),
             func.coalesce(reward_subquery.c.total_rewards, 0).label('total_rewards'),
@@ -216,7 +213,7 @@ class LeaderboardService:
         ).outerjoin(
             reward_subquery, User.id == reward_subquery.c.user_id
         ).filter(
-            User.role == "counselor",
+            User.user_type_id == 1,
             User.is_active == True
         ).all()
         
@@ -233,8 +230,8 @@ class LeaderboardService:
             
             entries.append({
                 "user_id": row.id,
-                "user_name": row.name,
-                "avatar_url": row.avatar_url,
+                "user_name": row.full_name,
+                "avatar_url": None,
                 "tier": None,
                 "total_referrals": total_referrals,
                 "total_admissions": total_admissions,
@@ -251,7 +248,7 @@ class LeaderboardService:
                 rank=i,
                 user_id=entry["user_id"],
                 user_name=entry["user_name"],
-                avatar_url=entry["avatar_url"],
+                avatar_url=None,
                 total_referrals=entry["total_referrals"],
                 total_admissions=entry["total_admissions"],
                 conversion_rate=entry["conversion_rate"],
@@ -302,7 +299,7 @@ class LeaderboardService:
         # Count how many referrers have better stats (conversion_rate, admissions, referrals)
         # This is a simplified rank calculation based on conversion rate
         better_performers = self.db.query(func.count(User.id)).filter(
-            User.role == "referrer",
+            User.user_type_id == 2,
             User.is_active == True,
             User.id != user_id
         ).scalar() or 0
@@ -315,7 +312,7 @@ class LeaderboardService:
             rank = leaderboard.current_user.rank if leaderboard.current_user else better_performers + 1
         
         total_referrers = self.db.query(func.count(User.id)).filter(
-            User.role == "referrer",
+            User.user_type_id == 2,
             User.is_active == True
         ).scalar() or 0
         
@@ -344,4 +341,6 @@ class LeaderboardService:
             next_tier=next_tier,
             referrals_to_next_tier=referrals_to_next,
         )
+
+
 

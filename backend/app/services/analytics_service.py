@@ -47,10 +47,10 @@ class AnalyticsService:
         cache_suffix = "global"
         
         if current_user:
-            if current_user.role in ['super_admin', 'admin']:
+            if current_user.user_type_id == 1:
                 # See all data
                 cache_suffix = "global"
-            elif current_user.role == 'manager':
+            elif current_user.user_type_id == 1:
                 # See only their university's data
                 if current_user.university_id:
                     university_filter = current_user.university_id
@@ -70,7 +70,7 @@ class AnalyticsService:
                         monthly_rewards=0.0,
                         active_universities=0,
                     )
-            elif current_user.role == 'referrer':
+            elif current_user.user_type_id == 2:
                 # Referrers see only their own referrals
                 referrer_filter = current_user.id
                 cache_suffix = f"referrer_{referrer_filter}"
@@ -142,7 +142,7 @@ class AnalyticsService:
                 Referral.university_id == university_filter
             ).scalar() or 0
             total_counselors = self.db.query(func.count(User.id)).filter(
-                User.role == "counselor",
+                User.user_type_id == 1,
                 User.university_id == university_filter
             ).scalar() or 0
             active_universities = 1  # They can only see their own university
@@ -151,8 +151,8 @@ class AnalyticsService:
             total_counselors = 0
             active_universities = 0
         else:
-            total_referrers = self.db.query(func.count(User.id)).filter(User.role == "referrer").scalar() or 0
-            total_counselors = self.db.query(func.count(User.id)).filter(User.role == "counselor").scalar() or 0
+            total_referrers = self.db.query(func.count(User.id)).filter(User.user_type_id == 2).scalar() or 0
+            total_counselors = self.db.query(func.count(User.id)).filter(User.user_type_id == 1).scalar() or 0
             active_universities = self.db.query(func.count(University.id)).filter(
                 University.status == "active"
             ).scalar() or 0

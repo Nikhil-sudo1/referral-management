@@ -187,7 +187,7 @@ class ReferralService:
             if counselor_user:
                 counselor = CounselorInfo(
                     id=counselor_user.id,
-                    name=counselor_user.name
+                    name=counselor_user.full_name
                 )
         
         return ReferralResponse(
@@ -409,10 +409,10 @@ class ReferralService:
         """
         referral = self.get_referral_by_id(referral_id)
         
-        # Verify counselor exists
+        # Verify counselor exists (admin user)
         counselor = self.db.query(User).filter(
             User.id == data.counselor_id,
-            User.role == "counselor",
+            User.user_type_id == 1,  # Admin user type
             User.is_active == True
         ).first()
         

@@ -50,36 +50,18 @@ async def get_referrals(
     try:
         controller = ReferralController(db)
         
-        # Apply role-based filtering
+        # Apply role-based filtering using new user_type_id
+        # User Type 1 = Admin, User Type 2 = Referral Partner
         effective_university_id = university_id
         effective_counselor_id = counselor_id
         effective_referrer_id = referrer_id
         
-        # Super Admin and Admin see everything
-        if current_user.role in ['super_admin', 'admin']:
-            pass  # No additional filtering
+        # Admin users (user_type_id = 1) see everything
+        if current_user.user_type_id == 1:
+            pass  # No additional filtering - admins see all
         
-        # Manager sees only their university's referrals
-        elif current_user.role == 'manager':
-            if current_user.university_id:
-                effective_university_id = current_user.university_id
-            # If no university assigned, they see nothing
-            else:
-                return BaseResponse(
-                    success=True,
-                    message="No university assigned to your account",
-                    data={
-                        "items": [],
-                        "total": 0,
-                        "page": page,
-                        "limit": limit,
-                        "pages": 0,
-                        "stats": None
-                    }
-                )
-        
-        # Referrer should use /my-referrals endpoint
-        elif current_user.role == 'referrer':
+        # Referral Partners (user_type_id = 2) see only their own referrals
+        elif current_user.user_type_id == 2:
             effective_referrer_id = current_user.id
         
         return controller.get_referrals(

@@ -32,7 +32,7 @@ async def get_referrer_leaderboard(
         return controller.get_referrer_leaderboard(
             period=period,
             limit=limit,
-            current_user_id=current_user.id if current_user.role == "referrer" else None,
+            current_user_id=current_user.id if current_user.user_type_id == 2 else None,  # Referral Partner
         )
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

@@ -78,7 +78,7 @@ class RewardService:
             items.append(RewardListItem(
                 id=reward.id,
                 referral_code=referral.referral_code if referral else "",
-                user_name=user.name if user else "Unknown",
+                user_name=user.full_name if user else "Unknown",
                 user_type=reward.user_type,
                 reward_type=reward.reward_type,
                 amount=reward.amount,
