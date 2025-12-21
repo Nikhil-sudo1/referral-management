@@ -30,6 +30,8 @@ import ReferrerReferrals from "./pages/ReferrerReferrals";
 import ReferrerLeaderboard from "./pages/ReferrerLeaderboard";
 import ReferrerAnalytics from "./pages/ReferrerAnalytics";
 import ReferrerAddReferral from "./pages/ReferrerAddReferral";
+import ReferrerRewards from "./pages/ReferrerRewards";
+import ReferrerSettings from "./pages/ReferrerSettings";
 import RefereeRegister from "./pages/RefereeRegister";
 import ResetPassword from "./pages/ResetPassword";
 import EmailConfirmation from "./pages/EmailConfirmation";
@@ -52,7 +54,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
-      cacheTime: 10 * 60 * 1000, // Cache data for 10 minutes
+      gcTime: 10 * 60 * 1000, // Cache data for 10 minutes (renamed from cacheTime in v5)
       refetchOnWindowFocus: false, // Don't refetch when user returns to tab
       refetchOnMount: false, // Don't refetch on component mount if data exists
       retry: 1, // Only retry failed requests once
@@ -101,6 +103,8 @@ const App = () => (
             <Route path="/referrer/add" element={<ReferrerAddReferral />} />
             <Route path="/referrer/leaderboard" element={<ReferrerLeaderboard />} />
             <Route path="/referrer/analytics" element={<ReferrerAnalytics />} />
+            <Route path="/referrer/rewards" element={<ReferrerRewards />} />
+            <Route path="/referrer/settings" element={<ReferrerSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

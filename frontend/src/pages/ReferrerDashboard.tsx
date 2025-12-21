@@ -70,35 +70,29 @@ const ReferrerDashboard = () => {
         console.log('My analytics:', analyticsData);
         console.log('My referrals:', referralsData);
         
-        // Update referrer data from analytics
-        if (analyticsData) {
-          setReferrerData({
-            name: user?.name || 'Referrer',
-            email: user?.email || '',
-            phone: user?.phone || '',
-            referralCode: user?.referral_code || user?.referralCode || 'REF-CODE',
-            totalReferrals: analyticsData.total_referrals || 0,
-            successfulAdmissions: analyticsData.successful_admissions || 0,
-            pendingReferrals: analyticsData.pending_referrals || 0,
-            rejectedReferrals: analyticsData.rejected_referrals || 0,
-            totalEarnings: Number(analyticsData.total_earnings) || 0,
-            pendingEarnings: Number(analyticsData.pending_earnings) || 0,
-            withdrawnEarnings: Number(analyticsData.withdrawn_earnings) || 0,
-            conversionRate: analyticsData.conversion_rate || 0,
-            rank: analyticsData.rank || 0,
-            tier: analyticsData.tier || 'Bronze',
-          });
-        } else if (user) {
-          // Fallback to user data
-          setReferrerData(prev => ({
-            ...prev,
-            name: user.name || 'Referrer',
-            email: user.email || '',
-            phone: user.phone || '',
-            referralCode: user.referral_code || user.referralCode || 'REF-CODE',
-            tier: user.tier || 'Bronze',
-          }));
-        }
+        // Get user's actual name from user object
+        const userName = user?.full_name || 'Referrer';
+        const userEmail = user?.email || '';
+        const userPhone = user?.mobile_number || '';
+        const userReferralCode = user?.referral_code || '';
+        
+        // Update referrer data from analytics or default to zero
+        setReferrerData({
+          name: userName,
+          email: userEmail,
+          phone: userPhone,
+          referralCode: userReferralCode,
+          totalReferrals: analyticsData?.total_referrals || 0,
+          successfulAdmissions: analyticsData?.successful_admissions || 0,
+          pendingReferrals: analyticsData?.pending_referrals || 0,
+          rejectedReferrals: analyticsData?.rejected_referrals || 0,
+          totalEarnings: Number(analyticsData?.total_earnings) || 0,
+          pendingEarnings: Number(analyticsData?.pending_earnings) || 0,
+          withdrawnEarnings: Number(analyticsData?.withdrawn_earnings) || 0,
+          conversionRate: analyticsData?.conversion_rate || 0,
+          rank: analyticsData?.rank || 0,
+          tier: analyticsData?.tier || 'Bronze',
+        });
         
         // Update referrals list
         if (referralsData?.items) {
@@ -174,8 +168,8 @@ const ReferrerDashboard = () => {
                 </div>
               </div>
               <div>
-                <h1 className="text-4xl font-display text-foreground">
-                  Welcome back, {referrerData.name.split(' ')[0]}! 👋
+                <h1 className="text-4xl font-display text-white">
+                  Welcome, {referrerData.name || 'Referrer'}! 👋
                 </h1>
                 <p className="text-muted-foreground mt-1">Track your referrals and earnings</p>
               </div>

@@ -45,11 +45,19 @@ export interface AnalyticsResponse {
 export interface MyAnalyticsResponse {
   total_referrals: number;
   total_admissions: number;
+  successful_admissions: number;
+  pending_referrals: number;
+  rejected_referrals: number;
   total_rewards: number;
+  total_earnings: number;
+  pending_earnings: number;
+  withdrawn_earnings: number;
   conversion_rate: number;
   monthly_referrals: number;
   monthly_admissions: number;
   monthly_rewards: number;
+  rank?: number;
+  tier?: string;
   time_series?: TimeSeriesData[];
 }
 

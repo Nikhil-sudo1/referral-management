@@ -111,11 +111,11 @@ const ReferrerAddReferral = () => {
     setIsSubmitting(true);
 
     try {
-      // Submit referral to backend
-      await referralsAPI.createReferral({
-        referee_name: formData.refereeName,
-        referee_email: formData.refereeEmail,
-        referee_phone: formData.refereePhone,
+      // Submit referral to backend using the referrer endpoint
+      await referralsAPI.submitReferral({
+        student_name: formData.refereeName,
+        student_email: formData.refereeEmail,
+        student_phone: formData.refereePhone,
         university_id: formData.universityId,
         program_id: formData.programId,
       });
@@ -137,11 +137,14 @@ const ReferrerAddReferral = () => {
       setTimeout(() => {
         navigate('/referrer/referrals');
       }, 1500);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting referral:', error);
+      const errorMessage = error?.response?.data?.detail || 
+                          error?.response?.data?.message || 
+                          'Failed to submit referral. Please try again.';
       toast({ 
         title: 'Error', 
-        description: 'Failed to submit referral. Please try again.',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
