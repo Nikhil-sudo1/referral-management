@@ -191,10 +191,23 @@ const Login = () => {
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           const userData = JSON.parse(storedUser);
-          // Navigate based on user_type_id: 1 = Admin, 2 = Referral Partner
-          if (userData.user_type_id === 2) {
+          // Navigate based on user_type_id and role_id
+          // user_type_id: 1 = Admin, 2 = Referral Partner
+          // role_id: 1 = HR, 2 = Business Head, 3 = Student Admin, 4 = Employee Referrer, 5 = Student Referrer
+          if (userData.user_type_id === 2 && userData.role_id === 4) {
+            // Employee Referrers go to employee portal (job referrals)
+            navigate('/employee');
+          } else if (userData.user_type_id === 2 && userData.role_id === 5) {
+            // Student Referrers go to referrer portal (course/university referrals)
             navigate('/referrer/referrals');
+          } else if (userData.user_type_id === 2) {
+            // Other Referral Partners go to referrer portal
+            navigate('/referrer/referrals');
+          } else if (userData.user_type_id === 1 && userData.role_id === 3) {
+            // Student Admin goes to student admin portal
+            navigate('/student-admin');
           } else {
+            // Other admins (HR, Business Head) go to main dashboard
             navigate('/dashboard');
           }
         } else {

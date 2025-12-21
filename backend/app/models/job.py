@@ -63,6 +63,7 @@ class Job(Base):
     # Relationships
     company = relationship("Company", back_populates="jobs")
     industry = relationship("Industry")
+    referrals = relationship("JobReferral", back_populates="job", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Job {self.job_title}>"

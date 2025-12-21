@@ -15,6 +15,7 @@ from app.api.routes import (
     notifications,
     public,
     partner,
+    job_referrals,
 )
 
 router = APIRouter()
@@ -33,6 +34,7 @@ router.include_router(rewards.router, prefix="/rewards", tags=["Rewards"])
 router.include_router(leaderboard.router, prefix="/leaderboard", tags=["Leaderboard"])
 router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
+router.include_router(job_referrals.router)  # Job Referrals for Employee Portal
 
 __all__ = ["router"]
 

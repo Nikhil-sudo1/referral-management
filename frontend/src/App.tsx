@@ -38,6 +38,17 @@ import EmailConfirmation from "./pages/EmailConfirmation";
 import VerifyEmail from "./pages/VerifyEmail";
 import Leadership from "./pages/Leadership";
 import NotFound from "./pages/NotFound";
+// Student Admin Pages (user_type_id=1, role_id=3)
+import StudentAdminDashboard from "./pages/StudentAdminDashboard";
+import StudentAdminLeaderboard from "./pages/StudentAdminLeaderboard";
+import StudentAdminOperations from "./pages/StudentAdminOperations";
+import StudentAdminSettings from "./pages/StudentAdminSettings";
+import StudentAdminRequestCentre from "./pages/StudentAdminRequestCentre";
+// Employee Pages (user_type_id=2, role_id=4)
+import EmployeeDashboard from "./pages/EmployeeDashboard";
+import EmployeeLeaderboard from "./pages/EmployeeLeaderboard";
+import EmployeeRewards from "./pages/EmployeeRewards";
+import EmployeeSettings from "./pages/EmployeeSettings";
 
 // Initialize theme from localStorage on app load
 const initializeTheme = () => {
@@ -105,6 +116,17 @@ const App = () => (
             <Route path="/referrer/analytics" element={<ReferrerAnalytics />} />
             <Route path="/referrer/rewards" element={<ReferrerRewards />} />
             <Route path="/referrer/settings" element={<ReferrerSettings />} />
+            {/* Student Admin Routes (user_type_id=1, role_id=3) */}
+            <Route path="/student-admin" element={<StudentAdminDashboard />} />
+            <Route path="/student-admin/leaderboard" element={<StudentAdminLeaderboard />} />
+            <Route path="/student-admin/operations" element={<StudentAdminOperations />} />
+            <Route path="/student-admin/settings" element={<StudentAdminSettings />} />
+            <Route path="/student-admin/requests" element={<StudentAdminRequestCentre />} />
+            {/* Employee Routes (user_type_id=2, role_id=4) */}
+            <Route path="/employee" element={<EmployeeDashboard />} />
+            <Route path="/employee/leaderboard" element={<EmployeeLeaderboard />} />
+            <Route path="/employee/rewards" element={<EmployeeRewards />} />
+            <Route path="/employee/settings" element={<EmployeeSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

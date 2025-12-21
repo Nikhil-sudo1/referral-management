@@ -15,6 +15,7 @@ from app.models.partner_type import PartnerType
 from app.models.industry import Industry
 from app.models.company import Company
 from app.models.job import Job
+from app.models.job_referral import JobReferral, JobReferralReward, JobRewardSlab
 
 __all__ = [
     "UserType",
@@ -31,5 +32,8 @@ __all__ = [
     "Industry",
     "Company",
     "Job",
+    "JobReferral",
+    "JobReferralReward",
+    "JobRewardSlab",
 ]
 
