@@ -233,6 +233,13 @@ class ReferralService:
     def create_referral(self, data: ReferralCreate, referrer_user: Optional[User] = None) -> Referral:
         """
         Create a new referral (admin/manager)
+        
+        Flow:
+        1. Validate university and program
+        2. Generate referral code
+        3. Call CRM API first to create lead
+        4. Only if CRM succeeds, save referral to database
+        5. If CRM fails, raise exception and don't save to DB
         """
         # Validate university and program
         university = self.db.query(University).filter(
@@ -253,8 +260,12 @@ class ReferralService:
         
         # Find referrer user if exists
         referrer_id = None
+        referrer_name = data.referrer_name
+        referrer_email = data.referrer_email.lower()
         if referrer_user:
             referrer_id = referrer_user.id
+            referrer_name = referrer_user.full_name
+            referrer_email = referrer_user.email
         else:
             existing_referrer = self.db.query(User).filter(
                 User.email == data.referrer_email.lower()
@@ -262,6 +273,31 @@ class ReferralService:
             if existing_referrer:
                 referrer_id = existing_referrer.id
         
+        # Step 1: Call CRM API FIRST before saving to database
+        from app.services.crm_service import CRMService
+        crm_service = CRMService(self.db)
+        
+        logger.info(f"Attempting CRM lead creation for referral: {referral_code}")
+        
+        crm_success, crm_lead_id, crm_error = crm_service.create_lead_sync(
+            referee_name=data.referee_name,
+            referee_email=data.referee_email.lower(),
+            referee_phone=data.referee_phone,
+            referrer_name=referrer_name,
+            referrer_email=referrer_email,
+            university=university,
+            program=program,
+            referral_code=referral_code
+        )
+        
+        # Step 2: If CRM fails, raise exception and don't save to DB
+        if not crm_success:
+            logger.error(f"CRM lead creation failed for {referral_code}: {crm_error}")
+            raise ValidationException(f"Failed to create lead in CRM: {crm_error}")
+        
+        logger.info(f"CRM lead created successfully with ID: {crm_lead_id}")
+        
+        # Step 3: Only save to database if CRM succeeded
         referral = Referral(
             referral_code=referral_code,
             referrer_id=referrer_id,
@@ -280,22 +316,30 @@ class ReferralService:
             utm_campaign=data.utm_campaign,
             utm_source=data.utm_source,
             utm_medium=data.utm_medium,
+            # Store CRM data
+            crm_lead_id=crm_lead_id,
+            crm_synced_at=datetime.utcnow(),
+            crm_sync_error=None,
         )
         
         self.db.add(referral)
         self.db.commit()
         self.db.refresh(referral)
         
-        logger.info(f"Referral created: {referral.referral_code}")
-        
-        # Sync to CRM asynchronously
-        self._sync_referral_to_crm(referral)
+        logger.info(f"Referral created: {referral.referral_code} (CRM Lead ID: {crm_lead_id})")
         
         return referral
     
     def submit_referral(self, data: ReferralSubmit, referrer: User) -> Referral:
         """
         Submit a referral as a referrer
+        
+        Flow:
+        1. Validate university and program
+        2. Generate referral code
+        3. Call CRM API first to create lead
+        4. Only if CRM succeeds, save referral to database
+        5. If CRM fails, raise exception and don't save to DB
         """
         # Validate university and program
         university = self.db.query(University).filter(
@@ -316,6 +360,31 @@ class ReferralService:
         # Generate referral code
         referral_code = self._generate_referral_code(university.code, program.code)
         
+        # Step 1: Call CRM API FIRST before saving to database
+        from app.services.crm_service import CRMService
+        crm_service = CRMService(self.db)
+        
+        logger.info(f"Attempting CRM lead creation for referral: {referral_code}")
+        
+        crm_success, crm_lead_id, crm_error = crm_service.create_lead_sync(
+            referee_name=data.referee_name,
+            referee_email=data.referee_email.lower(),
+            referee_phone=data.referee_phone,
+            referrer_name=referrer.full_name,
+            referrer_email=referrer.email,
+            university=university,
+            program=program,
+            referral_code=referral_code
+        )
+        
+        # Step 2: If CRM fails, raise exception and don't save to DB
+        if not crm_success:
+            logger.error(f"CRM lead creation failed for {referral_code}: {crm_error}")
+            raise ValidationException(f"Failed to create lead in CRM: {crm_error}")
+        
+        logger.info(f"CRM lead created successfully with ID: {crm_lead_id}")
+        
+        # Step 3: Only save to database if CRM succeeded
         referral = Referral(
             referral_code=referral_code,
             referrer_id=referrer.id,
@@ -330,16 +399,17 @@ class ReferralService:
             status="submitted",
             submission_date=datetime.utcnow(),
             expected_reward=program.reward_amount,
+            # Store CRM data
+            crm_lead_id=crm_lead_id,
+            crm_synced_at=datetime.utcnow(),
+            crm_sync_error=None,
         )
         
         self.db.add(referral)
         self.db.commit()
         self.db.refresh(referral)
         
-        logger.info(f"Referral submitted by {referrer.email}: {referral.referral_code}")
-        
-        # Sync to CRM asynchronously
-        self._sync_referral_to_crm(referral)
+        logger.info(f"Referral submitted by {referrer.email}: {referral.referral_code} (CRM Lead ID: {crm_lead_id})")
         
         return referral
     

@@ -3,9 +3,10 @@ CRM Integration Service
 Handles integration with Digivarsity CRM for lead management
 """
 import httpx
+import requests
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -33,6 +34,118 @@ class CRMService:
             "Authorization": f"Bearer {self.bearer_token}",
             "Content-Type": "application/json"
         }
+    
+    def create_lead_sync(
+        self,
+        referee_name: str,
+        referee_email: str,
+        referee_phone: str,
+        referrer_name: str,
+        referrer_email: str,
+        university: University,
+        program: Program,
+        referral_code: str
+    ) -> Tuple[bool, Optional[int], Optional[str]]:
+        """
+        Create a lead in CRM synchronously (before saving to DB)
+        
+        Returns:
+            Tuple of (success: bool, crm_lead_id: Optional[int], error_message: Optional[str])
+        """
+        if not self.enabled:
+            logger.info("CRM integration disabled, allowing referral creation")
+            return True, None, None
+        
+        try:
+            now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Prepare lead data for CRM
+            lead_data = {
+                "full_name": referee_name,
+                "mobile_number": referee_phone,
+                "email": referee_email,
+                "university_interested": university.crm_university_id if hasattr(university, 'crm_university_id') and university.crm_university_id else 3,
+                "course": program.crm_course_id if hasattr(program, 'crm_course_id') and program.crm_course_id else 4463,
+                "lead_channel": settings.CRM_DEFAULT_LEAD_CHANNEL,
+                "source_medium": settings.CRM_DEFAULT_SOURCE_MEDIUM,
+                "lead_owner": settings.CRM_DEFAULT_LEAD_OWNER,
+                "tag": settings.CRM_REFERRAL_TAG,
+                "dob": None,
+                "gender": None,
+                "alternate_email": None,
+                "best_time_to_call": None,
+                "first_line_add": None,
+                "country": "INDIA",
+                "state": None,
+                "city": None,
+                "pincode": None,
+                "compaign_name": None,
+                "company_name": None,
+                "remark": f"Referral from: {referrer_name} ({referrer_email}). Program: {program.name} at {university.name}. Referral Code: {referral_code}",
+                "alternate_mobile_number": None,
+                "apply_rule": 0,
+                "ctc_annual_package": None,
+                "experience": None,
+                "enrolment_details": {
+                    "enquiryid": None,
+                    "enrollmentno": referral_code
+                },
+                "lead_date": now,
+                "lead_updated_date": now
+            }
+            
+            logger.info(f"Creating CRM lead for referral {referral_code}")
+            logger.info(f"CRM API URL: {self.base_url}/leads/create")
+            
+            # Use synchronous requests instead of async httpx
+            response = requests.post(
+                f"{self.base_url}/leads/create",
+                headers=self._get_headers(),
+                json=lead_data,
+                timeout=30
+            )
+            
+            logger.info(f"CRM API Response Status: {response.status_code}")
+            logger.info(f"CRM API Response: {response.text[:500] if response.text else 'Empty'}")
+            
+            if response.status_code in [200, 201]:
+                result = response.json()
+                
+                # Check for error in response body
+                if result.get("error") == True:
+                    error_msg = str(result.get("message", "CRM API returned error"))
+                    logger.error(f"CRM API error in response: {error_msg}")
+                    return False, None, f"CRM Error: {error_msg}"
+                
+                # Extract lead ID from response
+                crm_lead_id = (
+                    result.get("id") or 
+                    result.get("lead_id") or 
+                    result.get("data", {}).get("id") or
+                    result.get("data", {}).get("lead_id")
+                )
+                
+                logger.info(f"CRM lead created successfully with ID: {crm_lead_id}")
+                return True, crm_lead_id, None
+            else:
+                error_msg = f"CRM API error: {response.status_code} - {response.text[:200]}"
+                logger.error(error_msg)
+                return False, None, error_msg
+                
+        except requests.Timeout as e:
+            error_msg = f"CRM API timeout: {str(e)}"
+            logger.error(error_msg)
+            return False, None, error_msg
+            
+        except requests.RequestException as e:
+            error_msg = f"CRM connection error: {str(e)}"
+            logger.error(error_msg)
+            return False, None, error_msg
+            
+        except Exception as e:
+            error_msg = f"CRM sync error: {str(e)}"
+            logger.error(error_msg)
+            return False, None, error_msg
     
     async def create_lead(self, referral: Referral) -> Optional[int]:
         """
