@@ -24,6 +24,8 @@ class University(Base):
     contact_phone = Column(String(20))
     address = Column(Text)
     status = Column(String(20), default="active", index=True)
+    # CRM Integration
+    crm_university_id = Column(String(100), nullable=True, index=True, unique=True)  # Digivarsity CRM University ID
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

@@ -31,6 +31,8 @@ class Program(Base):
     reward_tier = Column(String(50), default="bronze")
     eligibility_criteria = Column(Text)
     status = Column(String(20), default="active", index=True)
+    # CRM Integration
+    crm_course_id = Column(String(100), nullable=True, index=True)  # Digivarsity CRM Course ID
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

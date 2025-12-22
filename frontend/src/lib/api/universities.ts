@@ -11,6 +11,7 @@ export interface University {
   contact_phone?: string;
   address?: string;
   status: string;
+  crm_university_id?: string;
   created_at: string;
   updated_at: string;
   stats?: {

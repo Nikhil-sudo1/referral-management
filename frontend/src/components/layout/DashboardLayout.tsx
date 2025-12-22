@@ -31,23 +31,42 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     }
 
     const currentPath = location.pathname;
-    const userRole = user.role;
+    
+    // Determine user role based on user_type_id and role_id
+    // user_type_id: 1 = Admin, 2 = Referral Partner
+    // role_id: 1 = HR, 2 = Business Head, 3 = Student Admin, 4 = Employee Referrer, 5 = Student Referrer
+    const isReferrer = user.user_type_id === 2; // Referral Partner
+    const isAdmin = user.user_type_id === 1; // Admin
+    const isHRAdmin = isAdmin && user.role_id === 1;
+    const isStudentAdmin = isAdmin && user.role_id === 3;
+    const isEmployeeReferrer = isReferrer && user.role_id === 4;
+    const isStudentReferrer = isReferrer && user.role_id === 5;
 
     // Check if user is on the wrong type of route
     const isOnAdminRoute = adminRoutes.some(route => currentPath.startsWith(route));
     const isOnReferrerRoute = referrerRoutes.some(route => currentPath.startsWith(route));
 
     // Referrer trying to access admin routes
-    if (userRole === 'referrer' && isOnAdminRoute) {
+    if (isReferrer && isOnAdminRoute) {
       console.log('Referrer on admin route, redirecting to referrer dashboard');
-      navigate('/referrer');
+      if (isEmployeeReferrer) {
+        navigate('/employee');
+      } else {
+        navigate('/referrer/referrals');
+      }
       return;
     }
 
     // Admin/Manager trying to access referrer routes
-    if ((userRole === 'super_admin' || userRole === 'manager') && isOnReferrerRoute) {
+    if (isAdmin && isOnReferrerRoute) {
       console.log('Admin on referrer route, redirecting to admin dashboard');
-      navigate('/dashboard');
+      if (isHRAdmin) {
+        navigate('/hr-admin');
+      } else if (isStudentAdmin) {
+        navigate('/student-admin');
+      } else {
+        navigate('/dashboard');
+      }
       return;
     }
   }, [user, isLoading, isAuthenticated, location.pathname, navigate]);

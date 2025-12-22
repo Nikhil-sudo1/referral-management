@@ -54,7 +54,7 @@ const ReferrerReferrals = () => {
       const response = await referralsAPI.getMyReferrals({ page: 1, limit: 100 });
       console.log('My referrals response:', response);
       
-      if (response?.items) {
+      if (response?.items && Array.isArray(response.items)) {
         const formattedReferrals = response.items.map((r: any) => ({
           id: r.id,
           name: r.referee_name || r.refereeName || 'Unknown',
@@ -78,13 +78,18 @@ const ReferrerReferrals = () => {
           }
         });
       } else {
+        // Empty response is valid - user just has no referrals yet
         setMyReferrals([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching referrals:', error);
+      const errorMessage = error?.response?.data?.detail || 
+                          error?.response?.data?.message || 
+                          error?.message ||
+                          'Failed to load referrals. Please try again.';
       toast({
         title: 'Error',
-        description: 'Failed to load referrals',
+        description: errorMessage,
         variant: 'destructive',
       });
       setMyReferrals([]);

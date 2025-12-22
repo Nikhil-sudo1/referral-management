@@ -36,15 +36,18 @@ class Referral(Base):
     university_id = Column(
         UUID(as_uuid=True),
         ForeignKey("universities.id"),
-        nullable=False,
+        nullable=True,  # Made nullable to support CRM-only referrals
         index=True
     )
     program_id = Column(
         UUID(as_uuid=True),
         ForeignKey("programs.id"),
-        nullable=False,
+        nullable=True,  # Made nullable to support CRM-only referrals
         index=True
     )
+    # CRM IDs for direct integration
+    crm_university_id = Column(String(100), nullable=True, index=True)
+    crm_course_id = Column(String(100), nullable=True, index=True)
     
     # Assignment
     counselor_id = Column(

@@ -54,6 +54,7 @@ class ProgramResponse(BaseModel):
     reward_tier: str
     eligibility_criteria: Optional[str] = None
     status: str
+    crm_course_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     

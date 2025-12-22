@@ -335,27 +335,46 @@ class ReferralService:
         Submit a referral as a referrer
         
         Flow:
-        1. Validate university and program
+        1. Validate university and program (or create from CRM data if provided)
         2. Generate referral code
-        3. Call CRM API first to create lead
+        3. Call CRM API first to create lead (using CRM IDs if provided)
         4. Only if CRM succeeds, save referral to database
         5. If CRM fails, raise exception and don't save to DB
         """
         # Validate university and program
         university = self.db.query(University).filter(
-            University.id == data.university_id,
-            University.status == "active"
+            University.id == data.university_id
         ).first()
+        
         if not university:
-            raise NotFoundException("University not found or inactive")
+            # If CRM university ID is provided, try to find by CRM ID
+            if data.crm_university_id:
+                university = self.db.query(University).filter(
+                    University.crm_university_id == str(data.crm_university_id)
+                ).first()
+            
+            if not university:
+                raise NotFoundException("University not found. Please contact support to add this university.")
+        
+        # Check if university is active
+        if university.status != "active":
+            raise ValidationException("Selected university is not active")
         
         program = self.db.query(Program).filter(
             Program.id == data.program_id,
-            Program.university_id == data.university_id,
-            Program.status == "active"
+            Program.university_id == university.id
         ).first()
+        
         if not program:
-            raise NotFoundException("Program not found or inactive")
+            # If CRM course ID is provided, try to find by CRM ID
+            if data.crm_course_id:
+                program = self.db.query(Program).filter(
+                    Program.crm_course_id == str(data.crm_course_id),
+                    Program.university_id == university.id
+                ).first()
+            
+            if not program:
+                raise NotFoundException("Program not found for this university. Please contact support to add this program.")
         
         # Generate referral code
         referral_code = self._generate_referral_code(university.code, program.code)
@@ -365,6 +384,27 @@ class ReferralService:
         crm_service = CRMService(self.db)
         
         logger.info(f"Attempting CRM lead creation for referral: {referral_code}")
+        logger.info(f"Using CRM IDs - University: {data.crm_university_id}, Course: {data.crm_course_id}")
+        
+        # Create a dummy university/program object for CRM service if not found locally
+        if not university:
+            from types import SimpleNamespace
+            university = SimpleNamespace(
+                id=None,
+                name=f"CRM University {data.crm_university_id}",
+                code=university_code,
+                crm_university_id=data.crm_university_id
+            )
+        
+        if not program:
+            from types import SimpleNamespace
+            program = SimpleNamespace(
+                id=None,
+                name=f"CRM Course {data.crm_course_id}",
+                code=program_code,
+                crm_course_id=data.crm_course_id,
+                reward_amount=5000.00  # Default reward
+            )
         
         crm_success, crm_lead_id, crm_error = crm_service.create_lead_sync(
             referee_name=data.referee_name,
@@ -374,7 +414,9 @@ class ReferralService:
             referrer_email=referrer.email,
             university=university,
             program=program,
-            referral_code=referral_code
+            referral_code=referral_code,
+            crm_university_id=data.crm_university_id,
+            crm_course_id=data.crm_course_id
         )
         
         # Step 2: If CRM fails, raise exception and don't save to DB
@@ -385,6 +427,11 @@ class ReferralService:
         logger.info(f"CRM lead created successfully with ID: {crm_lead_id}")
         
         # Step 3: Only save to database if CRM succeeded
+        # Get reward amount from program or use default
+        reward_amount = 5000.00  # Default
+        if hasattr(program, 'reward_amount') and program.reward_amount:
+            reward_amount = float(program.reward_amount)
+        
         referral = Referral(
             referral_code=referral_code,
             referrer_id=referrer.id,
@@ -394,12 +441,16 @@ class ReferralService:
             referee_name=data.referee_name,
             referee_email=data.referee_email.lower(),
             referee_phone=data.referee_phone,
-            university_id=data.university_id,
-            program_id=data.program_id,
+            # Store local IDs if available, otherwise NULL (CRM-only referrals)
+            university_id=university.id if hasattr(university, 'id') and university.id else None,
+            program_id=program.id if hasattr(program, 'id') and program.id else None,
+            # Store CRM IDs (required for CRM integration)
+            crm_university_id=str(data.crm_university_id),
+            crm_course_id=str(data.crm_course_id),
             status="submitted",
             submission_date=datetime.utcnow(),
-            expected_reward=program.reward_amount,
-            # Store CRM data
+            expected_reward=reward_amount,
+            # Store CRM lead data
             crm_lead_id=crm_lead_id,
             crm_synced_at=datetime.utcnow(),
             crm_sync_error=None,

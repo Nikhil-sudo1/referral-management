@@ -14,6 +14,7 @@ export interface Program {
   reward_tier: string;
   eligibility_criteria?: string;
   status: string;
+  crm_course_id?: string;
   created_at: string;
   updated_at: string;
   university?: {

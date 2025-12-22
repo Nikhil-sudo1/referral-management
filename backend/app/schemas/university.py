@@ -56,6 +56,7 @@ class UniversityResponse(BaseModel):
     contact_phone: Optional[str] = None
     address: Optional[str] = None
     status: str
+    crm_university_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     stats: Optional[UniversityStats] = None

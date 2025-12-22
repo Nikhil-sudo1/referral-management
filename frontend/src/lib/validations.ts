@@ -39,14 +39,23 @@ export const isValidEmail = (email: string): ValidationResult => {
  * Validate phone number (Indian format)
  */
 export const isValidPhone = (phone: string): ValidationResult => {
-  // Remove spaces, dashes, and parentheses
-  const cleanPhone = phone.replace(/[\s\-()]/g, '');
+  if (!phone || phone.trim() === '') {
+    return { isValid: false, error: 'Phone number is required' };
+  }
   
-  // Indian phone number: 10 digits, optionally with +91 prefix
-  const phoneRegex = /^(\+91)?[6-9]\d{9}$/;
+  // Remove spaces, dashes, parentheses, and plus signs for validation
+  const cleanPhone = phone.replace(/[\s\-()+]/g, '');
   
-  if (!cleanPhone || !phoneRegex.test(cleanPhone)) {
-    return { isValid: false, error: 'Please enter a valid 10-digit phone number' };
+  // Indian phone number: 10 digits starting with 6-9, or with country code 91
+  // More lenient: accepts 10 digits or 12 digits (with 91 prefix)
+  const phoneRegex = /^(91)?[6-9]\d{9}$/;
+  
+  if (!phoneRegex.test(cleanPhone)) {
+    // Try with just 10 digits
+    if (/^[6-9]\d{9}$/.test(cleanPhone)) {
+      return { isValid: true };
+    }
+    return { isValid: false, error: 'Please enter a valid 10-digit phone number (starting with 6-9)' };
   }
   return { isValid: true };
 };
@@ -112,10 +121,11 @@ export const isValidName = (name: string, fieldName: string = 'Name'): Validatio
     return { isValid: false, error: `${fieldName} must be at least 2 characters` };
   }
   
-  // Allow letters, spaces, hyphens, and apostrophes
-  const nameRegex = /^[a-zA-Z\s\-'.]+$/;
-  if (!nameRegex.test(name)) {
-    return { isValid: false, error: `${fieldName} can only contain letters, spaces, hyphens, and apostrophes` };
+  // Allow letters (including accented), spaces, hyphens, apostrophes, and periods
+  // More lenient to support international names
+  const nameRegex = /^[a-zA-ZÀ-ÿ\s\-'.]+$/;
+  if (!nameRegex.test(name.trim())) {
+    return { isValid: false, error: `${fieldName} can only contain letters, spaces, hyphens, apostrophes, and periods` };
   }
   
   return { isValid: true };
@@ -342,25 +352,39 @@ export const validateReferralForm = (data: {
 }): FormErrors => {
   const errors: FormErrors = {};
   
-  // Student name
-  const nameResult = isValidName(data.studentName, 'Student name');
-  if (!nameResult.isValid) errors.studentName = nameResult.error!;
+  // Student name - check if provided and valid
+  if (!data.studentName || data.studentName.trim() === '') {
+    errors.studentName = 'Student name is required';
+  } else {
+    const nameResult = isValidName(data.studentName, 'Student name');
+    if (!nameResult.isValid) errors.studentName = nameResult.error!;
+  }
   
-  // Student email
-  const emailResult = isValidEmail(data.studentEmail);
-  if (!emailResult.isValid) errors.studentEmail = emailResult.error!;
+  // Student email - check if provided and valid
+  if (!data.studentEmail || data.studentEmail.trim() === '') {
+    errors.studentEmail = 'Email address is required';
+  } else {
+    const emailResult = isValidEmail(data.studentEmail);
+    if (!emailResult.isValid) errors.studentEmail = emailResult.error!;
+  }
   
-  // Student phone
-  const phoneResult = isValidPhone(data.studentPhone);
-  if (!phoneResult.isValid) errors.studentPhone = phoneResult.error!;
+  // Student phone - check if provided and valid
+  if (!data.studentPhone || data.studentPhone.trim() === '') {
+    errors.studentPhone = 'Phone number is required';
+  } else {
+    const phoneResult = isValidPhone(data.studentPhone);
+    if (!phoneResult.isValid) errors.studentPhone = phoneResult.error!;
+  }
   
-  // University (required)
-  if (!data.universityId) {
+  // University (required) - check for empty string, null, undefined, or whitespace
+  const universityId = data.universityId ? String(data.universityId).trim() : '';
+  if (!universityId || universityId === '' || universityId === 'null' || universityId === 'undefined') {
     errors.universityId = 'Please select a university';
   }
   
-  // Program (required)
-  if (!data.programId) {
+  // Program (required) - check for empty string, null, undefined, or whitespace
+  const programId = data.programId ? String(data.programId).trim() : '';
+  if (!programId || programId === '' || programId === 'null' || programId === 'undefined') {
     errors.programId = 'Please select a program';
   }
   

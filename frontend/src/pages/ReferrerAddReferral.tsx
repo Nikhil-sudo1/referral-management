@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select';
 import { ArrowLeft, UserPlus, Users, Building2, GraduationCap, Mail, Phone, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { universitiesAPI, referralsAPI, crmAPI } from '@/lib/api';
@@ -18,13 +18,13 @@ const ReferrerAddReferral = () => {
   const [crmUniversities, setCrmUniversities] = useState<any[]>([]);
   const [crmCourses, setCrmCourses] = useState<any[]>([]);
   const [selectedCrmUniversityId, setSelectedCrmUniversityId] = useState<number | null>(null);
+  const [selectedCrmCourseId, setSelectedCrmCourseId] = useState<number | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [formData, setFormData] = useState({
     refereeName: '',
     refereeEmail: '',
     refereePhone: '',
-    universityId: '',
-    programId: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -44,16 +44,43 @@ const ReferrerAddReferral = () => {
   useEffect(() => {
     const fetchUniversities = async () => {
       try {
-        // Fetch from CRM API
-        const crmUnis = await crmAPI.getUniversities();
-        setCrmUniversities(crmUnis || []);
+        setIsLoadingData(true);
+        let crmUnis: any[] = [];
         
-        // Also fetch local universities for mapping
-        const response = await universitiesAPI.getUniversities({ status: 'active', limit: 100 });
-        setUniversities(response.items || []);
+        // Try to fetch from CRM API first
+        try {
+          crmUnis = await crmAPI.getUniversities();
+          if (crmUnis && crmUnis.length > 0) {
+            setCrmUniversities(crmUnis);
+            console.log('Loaded CRM universities:', crmUnis.length);
+          }
+        } catch (crmError) {
+          console.warn('CRM API unavailable:', crmError);
+        }
+        
+        // Always fetch local universities for fallback and matching
+        try {
+          const response = await universitiesAPI.getUniversities({ status: 'active', limit: 100 });
+          const localUnis = response.items || [];
+          setUniversities(localUnis);
+          console.log('Loaded local universities:', localUnis.length);
+          
+          // If no CRM universities, use local ones
+          if (crmUnis.length === 0 && localUnis.length > 0) {
+            const mappedCrmUnis = localUnis.map((uni: any) => ({
+              id: uni.id,
+              name: uni.name,
+              short_name: uni.code,
+            }));
+            setCrmUniversities(mappedCrmUnis);
+            console.log('Using local universities as fallback:', mappedCrmUnis.length);
+          }
+        } catch (localError) {
+          console.error('Error fetching local universities:', localError);
+          setUniversities([]);
+        }
       } catch (error) {
-        console.error('Error fetching universities:', error);
-        toast({ title: 'Error', description: 'Failed to load universities', variant: 'destructive' });
+        console.error('Unexpected error fetching universities:', error);
       } finally {
         setIsLoadingData(false);
       }
@@ -61,109 +88,178 @@ const ReferrerAddReferral = () => {
     fetchUniversities();
   }, []);
 
-  // Fetch courses from CRM when CRM university is selected
+  // Fetch courses from CRM when university is selected
   useEffect(() => {
     const fetchCourses = async () => {
       if (!selectedCrmUniversityId) {
         setCrmCourses([]);
         setPrograms([]);
+        setSelectedCrmCourseId(null);
         return;
       }
+      
       try {
-        // Fetch courses from CRM API
-        const courses = await crmAPI.getCourses(selectedCrmUniversityId);
-        setCrmCourses(courses || []);
+        setIsLoadingCourses(true);
+        setSelectedCrmCourseId(null);
         
-        // Also fetch local programs for mapping (if needed)
-        // Find local university by CRM ID if there's a mapping
-        const localUniversity = universities.find((u: any) => u.crm_university_id === selectedCrmUniversityId);
+        // Fetch courses from CRM API
+        let courses: any[] = [];
+        try {
+          courses = await crmAPI.getCourses(selectedCrmUniversityId);
+          if (courses && courses.length > 0) {
+            setCrmCourses(courses);
+            console.log('Loaded CRM courses:', courses.length);
+          }
+        } catch (crmError) {
+          console.warn('CRM courses API unavailable:', crmError);
+        }
+        
+        // Find local university and fetch its programs
+        const localUniversity = universities.find((u: any) => {
+          if (u.crm_university_id !== undefined && u.crm_university_id !== null) {
+            return u.crm_university_id === selectedCrmUniversityId;
+          }
+          // Try name matching as fallback
+          const crmUni = crmUniversities.find((cu: any) => cu.id === selectedCrmUniversityId);
+          if (crmUni) {
+            const normalizeName = (name: string) => name.toLowerCase().replace(/\s*\([^)]*\)\s*/g, '').trim();
+            return normalizeName(u.name) === normalizeName(crmUni.name);
+          }
+          return false;
+        });
+        
         if (localUniversity) {
-          const programsList = await universitiesAPI.getUniversityPrograms(localUniversity.id);
-          setPrograms(programsList || []);
+          try {
+            const programsList = await universitiesAPI.getUniversityPrograms(localUniversity.id);
+            setPrograms(programsList || []);
+            console.log('Loaded local programs:', programsList?.length || 0);
+            
+            // If no CRM courses, use local programs
+            if (courses.length === 0 && programsList && programsList.length > 0) {
+              const mappedCourses = programsList.map((prog: any) => ({
+                id: prog.id,
+                name: prog.name,
+                crm_course_id: prog.crm_course_id,
+              }));
+              setCrmCourses(mappedCourses);
+              console.log('Using local programs as fallback:', mappedCourses.length);
+            }
+          } catch (progError) {
+            console.error('Error fetching local programs:', progError);
+            setPrograms([]);
+          }
+        } else {
+          setPrograms([]);
         }
       } catch (error) {
         console.error('Error fetching courses:', error);
         setCrmCourses([]);
         setPrograms([]);
+      } finally {
+        setIsLoadingCourses(false);
       }
     };
     fetchCourses();
-  }, [selectedCrmUniversityId, universities]);
-
-  // Filter active programs
-  const availablePrograms = programs.filter(
-    (p: any) => p.status === 'active'
-  );
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => {
-      const updated = {
-        ...prev,
-        [field]: value,
-      };
-      // Reset programId when university changes
-      if (field === 'universityId') {
-        updated.programId = '';
-      }
-      return updated;
-    });
-  };
+  }, [selectedCrmUniversityId, universities, crmUniversities]);
 
   // Handle CRM university selection
   const handleCrmUniversityChange = (crmUniversityId: string) => {
     const crmId = parseInt(crmUniversityId);
     setSelectedCrmUniversityId(crmId);
-    // Find local university by CRM ID
-    const localUniversity = universities.find((u: any) => u.crm_university_id === crmId);
-    if (localUniversity) {
-      handleInputChange('universityId', localUniversity.id);
-    } else {
-      handleInputChange('universityId', '');
-    }
+    setSelectedCrmCourseId(null);
   };
 
   // Handle CRM course selection
   const handleCrmCourseChange = (crmCourseId: string) => {
+    if (!crmCourseId) {
+      setSelectedCrmCourseId(null);
+      return;
+    }
     const crmId = parseInt(crmCourseId);
-    // Find local program by CRM course ID
-    const localProgram = programs.find((p: any) => p.crm_course_id === crmId);
-    if (localProgram) {
-      handleInputChange('programId', localProgram.id);
-    } else {
-      handleInputChange('programId', '');
+    setSelectedCrmCourseId(crmId);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    // Clear error for this field
+    if (errors[field as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [field]: '' }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate using centralized validation
-    const newErrors = validateReferralForm({
-      studentName: formData.refereeName,
-      studentEmail: formData.refereeEmail,
-      studentPhone: formData.refereePhone,
-      universityId: formData.universityId,
-      programId: formData.programId,
-    });
+    // Validate form data
+    const validationData = {
+      studentName: (formData.refereeName || '').trim(),
+      studentEmail: (formData.refereeEmail || '').trim(),
+      studentPhone: (formData.refereePhone || '').trim(),
+      universityId: selectedCrmUniversityId ? 'crm-' + selectedCrmUniversityId : '',
+      programId: selectedCrmCourseId ? 'crm-' + selectedCrmCourseId : '',
+    };
+
+    console.log('=== SUBMISSION DEBUG ===');
+    console.log('Form data:', formData);
+    console.log('Selected CRM University ID:', selectedCrmUniversityId);
+    console.log('Selected CRM Course ID:', selectedCrmCourseId);
+    console.log('Validation data:', validationData);
+    console.log('========================');
+
+    // Validate
+    const newErrors = validateReferralForm(validationData);
     setErrors(newErrors);
 
     if (hasErrors(newErrors)) {
-      toast({ title: 'Validation Error', description: 'Please correct the errors below', variant: 'destructive' });
+      const errorDetails = Object.entries(newErrors).map(([key, value]) => {
+        const fieldName = key === 'studentName' ? 'Name' : 
+                         key === 'studentEmail' ? 'Email' :
+                         key === 'studentPhone' ? 'Phone' :
+                         key === 'universityId' ? 'University' :
+                         key === 'programId' ? 'Program' : key;
+        return `${fieldName}: ${value}`;
+      }).join(' | ');
+      
+      toast({ 
+        title: 'Validation Error', 
+        description: errorDetails, 
+        variant: 'destructive',
+        duration: 8000,
+      });
+      return;
+    }
+
+    if (!selectedCrmUniversityId || !selectedCrmCourseId) {
+      toast({
+        title: 'Error',
+        description: 'Please select both university and program',
+        variant: 'destructive',
+      });
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Submit referral to backend using the referrer endpoint
-      // Backend expects referee_name, referee_email, referee_phone
-      await referralsAPI.submitReferral({
-        referee_name: formData.refereeName,
-        referee_email: formData.refereeEmail,
-        referee_phone: formData.refereePhone,
-        university_id: formData.universityId,
-        program_id: formData.programId,
-      });
+      // Submit directly with CRM IDs - no local matching required
+      const submitData = {
+        referee_name: validationData.studentName,
+        referee_email: validationData.studentEmail,
+        referee_phone: validationData.studentPhone,
+        crm_university_id: selectedCrmUniversityId,
+        crm_course_id: selectedCrmCourseId,
+      };
+      
+      console.log('=== SUBMITTING REFERRAL ===');
+      console.log('Submit data:', submitData);
+      console.log('CRM University ID:', selectedCrmUniversityId);
+      console.log('CRM Course ID:', selectedCrmCourseId);
+      console.log('===========================');
+      
+      await referralsAPI.submitReferral(submitData);
       
       toast({ 
         title: 'Referral Submitted!', 
@@ -175,22 +271,41 @@ const ReferrerAddReferral = () => {
         refereeName: '',
         refereeEmail: '',
         refereePhone: '',
-        universityId: '',
-        programId: '',
       });
-      // Navigate back to referrals page
+      setSelectedCrmUniversityId(null);
+      setSelectedCrmCourseId(null);
+      
+      // Navigate back
       setTimeout(() => {
         navigate('/referrer/referrals');
       }, 1500);
     } catch (error: any) {
-      console.error('Error submitting referral:', error);
-      const errorMessage = error?.response?.data?.detail || 
-                          error?.response?.data?.message || 
-                          'Failed to submit referral. Please try again.';
+      console.error('=== SUBMISSION ERROR ===');
+      console.error('Error:', error);
+      console.error('Error response:', error.response?.data);
+      
+      let errorMessage = 'Failed to submit referral';
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          const errors = error.response.data.detail.map((err: any) => {
+            const field = err.loc?.join('.') || 'field';
+            return `${field}: ${err.msg}`;
+          }).join(', ');
+          errorMessage = `Validation error: ${errors}`;
+        }
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({ 
-        title: 'Error', 
-        description: errorMessage,
-        variant: 'destructive'
+        title: 'Submission Failed', 
+        description: errorMessage, 
+        variant: 'destructive',
+        duration: 10000,
       });
     } finally {
       setIsSubmitting(false);
@@ -253,17 +368,23 @@ const ReferrerAddReferral = () => {
                       <Input
                         id="refereeName"
                         placeholder="Enter student's full name"
-                        className="pl-10"
+                        className={`pl-10 ${errors.studentName ? 'border-red-500' : ''}`}
                         value={formData.refereeName}
-                        onChange={(e) => handleInputChange('refereeName', e.target.value)}
+                        onChange={(e) => {
+                          handleInputChange('refereeName', e.target.value);
+                          if (errors.studentName) {
+                            setErrors((prev) => ({ ...prev, studentName: '' }));
+                          }
+                        }}
                         required
                       />
                     </div>
+                    <FieldError error={errors.studentName} />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="refereeEmail" className="text-foreground">
-                      Email Address <span className="text-destructive">*</span>
+                      Student Email <span className="text-destructive">*</span>
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -271,30 +392,42 @@ const ReferrerAddReferral = () => {
                         id="refereeEmail"
                         type="email"
                         placeholder="student@example.com"
-                        className="pl-10"
+                        className={`pl-10 ${errors.studentEmail ? 'border-red-500' : ''}`}
                         value={formData.refereeEmail}
-                        onChange={(e) => handleInputChange('refereeEmail', e.target.value)}
+                        onChange={(e) => {
+                          handleInputChange('refereeEmail', e.target.value);
+                          if (errors.studentEmail) {
+                            setErrors((prev) => ({ ...prev, studentEmail: '' }));
+                          }
+                        }}
                         required
                       />
                     </div>
+                    <FieldError error={errors.studentEmail} />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="refereePhone" className="text-foreground">
-                    Phone Number <span className="text-destructive">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="refereePhone"
-                      type="tel"
-                      placeholder="+91 1234567890"
-                      className="pl-10"
-                      value={formData.refereePhone}
-                      onChange={(e) => handleInputChange('refereePhone', e.target.value)}
-                      required
-                    />
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="refereePhone" className="text-foreground">
+                      Student Phone <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="refereePhone"
+                        type="tel"
+                        placeholder="+91 1234567890"
+                        className={`pl-10 ${errors.studentPhone ? 'border-red-500' : ''}`}
+                        value={formData.refereePhone}
+                        onChange={(e) => {
+                          handleInputChange('refereePhone', e.target.value);
+                          if (errors.studentPhone) {
+                            setErrors((prev) => ({ ...prev, studentPhone: '' }));
+                          }
+                        }}
+                        required
+                      />
+                    </div>
+                    <FieldError error={errors.studentPhone} />
                   </div>
                 </div>
               </div>
@@ -311,57 +444,89 @@ const ReferrerAddReferral = () => {
                     <Label htmlFor="universityId" className="text-foreground">
                       University <span className="text-destructive">*</span>
                     </Label>
-                    <Select
+                    <SearchableSelect
                       value={selectedCrmUniversityId?.toString() || ''}
                       onValueChange={handleCrmUniversityChange}
-                      required
-                      disabled={isLoadingData}
+                      placeholder={isLoadingData ? "Loading..." : crmUniversities.length === 0 ? "No universities available" : "Search and select a university"}
+                      searchPlaceholder="Search universities..."
+                      disabled={isLoadingData || crmUniversities.length === 0}
+                      className="w-full"
                     >
-                      <SelectTrigger id="universityId" className="w-full">
-                        <SelectValue placeholder={isLoadingData ? "Loading..." : "Select a university"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {crmUniversities.map((university) => (
-                          <SelectItem key={university.id} value={university.id.toString()}>
+                      {crmUniversities.length === 0 && !isLoadingData ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                          <p>No universities available</p>
+                          <p className="text-xs mt-2">Please refresh the page or contact support</p>
+                        </div>
+                      ) : (
+                        crmUniversities.map((university) => (
+                          <SearchableSelectItem key={university.id} value={university.id.toString()}>
                             {university.name} {university.short_name ? `(${university.short_name})` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          </SearchableSelectItem>
+                        ))
+                      )}
+                    </SearchableSelect>
+                    <FieldError error={errors.universityId} />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="programId" className="text-foreground">
                       Program <span className="text-destructive">*</span>
                     </Label>
-                    <Select
-                      value={crmCourses.find((c: any) => programs.find((p: any) => p.crm_course_id === c.id && p.id === formData.programId))?.id?.toString() || ''}
+                    <SearchableSelect
+                      value={selectedCrmCourseId?.toString() || ''}
                       onValueChange={handleCrmCourseChange}
-                      disabled={!selectedCrmUniversityId || crmCourses.length === 0}
-                      required
+                      placeholder={
+                        !selectedCrmUniversityId 
+                          ? "Select university first" 
+                          : isLoadingCourses
+                          ? "Loading courses..." 
+                          : crmCourses.length === 0
+                          ? "No courses available"
+                          : "Search and select a course"
+                      }
+                      searchPlaceholder="Search courses..."
+                      disabled={!selectedCrmUniversityId || isLoadingCourses || crmCourses.length === 0}
+                      className="w-full"
                     >
-                      <SelectTrigger id="programId" className="w-full">
-                        <SelectValue 
-                          placeholder={
-                            !selectedCrmUniversityId 
-                              ? "Select university first" 
-                              : crmCourses.length === 0 
-                              ? "Loading courses..." 
-                              : "Select a course"
-                          } 
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {crmCourses.map((course) => (
-                          <SelectItem key={course.id} value={course.id.toString()}>
+                      {crmCourses.length === 0 ? (
+                        <div className="py-6 text-center text-sm text-muted-foreground">
+                          {!selectedCrmUniversityId 
+                            ? "Please select a university first"
+                            : isLoadingCourses
+                            ? "Loading courses..."
+                            : "No courses available for this university"}
+                        </div>
+                      ) : (
+                        crmCourses.map((course) => (
+                          <SearchableSelectItem key={course.id} value={course.id.toString()}>
                             {course.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          </SearchableSelectItem>
+                        ))
+                      )}
+                    </SearchableSelect>
+                    <FieldError error={errors.programId} />
                   </div>
                 </div>
               </div>
+
+              {/* Validation Errors Summary */}
+              {hasErrors(errors) && (
+                <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-destructive mb-2">Please fix the following errors:</p>
+                      <ul className="text-sm text-destructive/80 space-y-1 list-disc list-inside">
+                        {errors.studentName && <li>{errors.studentName}</li>}
+                        {errors.studentEmail && <li>{errors.studentEmail}</li>}
+                        {errors.studentPhone && <li>{errors.studentPhone}</li>}
+                        {errors.universityId && <li>{errors.universityId}</li>}
+                        {errors.programId && <li>{errors.programId}</li>}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Info Note */}
               <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
@@ -372,25 +537,23 @@ const ReferrerAddReferral = () => {
               </div>
 
               {/* Submit Button */}
-              <div className="flex items-center justify-end gap-4 pt-4 border-t border-border">
+              <div className="flex justify-end gap-3 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/referrer/referrals')}
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  className="gradient-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !selectedCrmUniversityId || !selectedCrmCourseId}
+                  className="min-w-[120px]"
                 >
                   {isSubmitting ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Submitting...
                     </>
                   ) : (
@@ -410,4 +573,3 @@ const ReferrerAddReferral = () => {
 };
 
 export default ReferrerAddReferral;
-

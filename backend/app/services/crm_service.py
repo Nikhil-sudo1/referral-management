@@ -44,7 +44,9 @@ class CRMService:
         referrer_email: str,
         university: University,
         program: Program,
-        referral_code: str
+        referral_code: str,
+        crm_university_id: Optional[int] = None,
+        crm_course_id: Optional[int] = None
     ) -> Tuple[bool, Optional[int], Optional[str]]:
         """
         Create a lead in CRM synchronously (before saving to DB)
@@ -59,16 +61,19 @@ class CRMService:
         try:
             now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             
-            # Prepare lead data for CRM
+            # Prepare lead data for CRM - use CRM IDs directly
+            university_name = university.name if hasattr(university, 'name') else f"CRM University {crm_university_id}"
+            program_name = program.name if hasattr(program, 'name') else f"CRM Course {crm_course_id}"
+            
             lead_data = {
                 "full_name": referee_name,
                 "mobile_number": referee_phone,
                 "email": referee_email,
-                "university_interested": university.crm_university_id if hasattr(university, 'crm_university_id') and university.crm_university_id else 3,
-                "course": program.crm_course_id if hasattr(program, 'crm_course_id') and program.crm_course_id else 4463,
+                "university_interested": crm_university_id if crm_university_id else 3,  # Use provided CRM ID or default
+                "course": crm_course_id if crm_course_id else 4463,  # Use provided CRM ID or default
                 "lead_channel": settings.CRM_DEFAULT_LEAD_CHANNEL,
                 "source_medium": settings.CRM_DEFAULT_SOURCE_MEDIUM,
-                "lead_owner": settings.CRM_DEFAULT_LEAD_OWNER,
+                "lead_owner": settings.CRM_DEFAULT_LEAD_OWNER,  # 8916142a-22b9-4fff-9c81-0fd166d963ce
                 "tag": [],  # Empty array since CRM expects integer tag IDs
                 "dob": None,
                 "gender": None,
@@ -81,7 +86,7 @@ class CRMService:
                 "pincode": None,
                 "compaign_name": None,
                 "company_name": None,
-                "remark": f"Referral from: {referrer_name} ({referrer_email}). Program: {program.name} at {university.name}. Referral Code: {referral_code}",
+                "remark": f"Referral from: {referrer_name} ({referrer_email}). Program: {program_name} at {university_name}. Referral Code: {referral_code}",
                 "alternate_mobile_number": None,
                 "apply_rule": 0,
                 "ctc_annual_package": None,
@@ -96,6 +101,8 @@ class CRMService:
             
             logger.info(f"Creating CRM lead for referral {referral_code}")
             logger.info(f"CRM API URL: {self.base_url}/leads/create")
+            logger.info(f"Lead Owner UUID: {settings.CRM_DEFAULT_LEAD_OWNER}")
+            logger.info(f"Lead Data Preview: university={lead_data.get('university_interested')}, course={lead_data.get('course')}, lead_owner={lead_data.get('lead_owner')}")
             
             # Use synchronous requests instead of async httpx
             response = requests.post(

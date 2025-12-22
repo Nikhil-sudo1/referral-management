@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect, SearchableSelectItem } from '@/components/ui/searchable-select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap, Moon, Sun, CheckCircle, AlertCircle, Users, Shield, Briefcase, Factory, Plus } from 'lucide-react';
+import { Mail, Lock, User, Phone, Building2, ArrowRight, Eye, EyeOff, GraduationCap, Moon, Sun, CheckCircle, AlertCircle, Users, Briefcase, Factory, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { validateLoginForm, hasErrors, FormErrors } from '@/lib/validations';
@@ -510,61 +511,6 @@ const Login = () => {
                 {/* Login Tab */}
                 <TabsContent value="login">
                   <form onSubmit={handleLogin} className="space-y-4">
-                    {/* Quick Login Buttons */}
-                    <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs">Quick Login</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setLoginData({ email: 'test@admin.com', password: 'Password123!' });
-                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
-                          }}
-                          className="text-xs bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50"
-                        >
-                          <Shield className="w-3 h-3 mr-1" /> Admin
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setLoginData({ email: 'student.admin@test.com', password: 'test123' });
-                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
-                          }}
-                          className="text-xs bg-teal-500/10 border-teal-500/30 text-teal-600 dark:text-teal-400 hover:bg-teal-500/20 hover:border-teal-500/50"
-                        >
-                          <GraduationCap className="w-3 h-3 mr-1" /> Student Admin
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setLoginData({ email: 'priya.business@teamlease.com', password: 'Password123!' });
-                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
-                          }}
-                          className="text-xs bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
-                        >
-                          <Briefcase className="w-3 h-3 mr-1" /> Referral Partner
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setLoginData({ email: 'employee@test.com', password: 'Password123!' });
-                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
-                          }}
-                          className="text-xs bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/50"
-                        >
-                          <Users className="w-3 h-3 mr-1" /> Employee
-                        </Button>
-                      </div>
-                    </div>
-
                     <div className="space-y-2">
                       <Label className="text-muted-foreground">Email Address</Label>
                       <div className="relative">
@@ -741,28 +687,29 @@ const Login = () => {
                     {signupData.referrerType === 'student' && (
                       <div className="space-y-2">
                         <Label className="text-muted-foreground">University *</Label>
-                        <Select
+                        <SearchableSelect
                           value={signupData.univId}
                           onValueChange={(value) => {
                             setSignupData({ ...signupData, univId: value });
                             if (signupErrors.universityId) setSignupErrors({ ...signupErrors, universityId: '' });
                           }}
+                          placeholder={loadingData ? "Loading..." : "Search and select your university"}
+                          searchPlaceholder="Search universities..."
                           disabled={loadingData}
+                          className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary"
                         >
-                          <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-12 focus:border-primary">
-                            <div className="flex items-center gap-2">
-                              <GraduationCap className="w-4 h-4 text-muted-foreground" />
-                              <SelectValue placeholder={loadingData ? "Loading..." : "Select your university"} />
+                          {universities.length === 0 && !loadingData ? (
+                            <div className="py-6 text-center text-sm text-muted-foreground">
+                              No universities available
                             </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {universities.map((uni) => (
-                              <SelectItem key={uni.id} value={uni.id}>
+                          ) : (
+                            universities.map((uni) => (
+                              <SearchableSelectItem key={uni.id} value={uni.id}>
                                 {uni.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                              </SearchableSelectItem>
+                            ))
+                          )}
+                        </SearchableSelect>
                         <FieldError error={signupErrors.universityId} />
                       </div>
                     )}

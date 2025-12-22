@@ -60,8 +60,10 @@ export interface ReferralSubmitRequest {
   referee_name: string;
   referee_email: string;
   referee_phone: string;
-  university_id: string;
-  program_id: string;
+  crm_university_id: number;
+  crm_course_id: number;
+  university_id?: string;
+  program_id?: string;
   notes?: string;
 }
 

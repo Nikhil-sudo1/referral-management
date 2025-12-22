@@ -60,12 +60,16 @@ class ReferralCreate(BaseModel):
 
 
 class ReferralSubmit(BaseModel):
-    """Submit referral schema (referrer)"""
+    """Submit referral schema (referrer) - CRM-first approach"""
     referee_name: str = Field(..., min_length=2, max_length=255)
     referee_email: EmailStr
     referee_phone: str = Field(..., min_length=10, max_length=20)
-    university_id: UUID
-    program_id: UUID
+    # CRM IDs are required for direct CRM integration
+    crm_university_id: int = Field(..., description="CRM University ID")
+    crm_course_id: int = Field(..., description="CRM Course ID")
+    # Local IDs are optional (for backwards compatibility)
+    university_id: Optional[UUID] = None
+    program_id: Optional[UUID] = None
 
 
 class ReferralUpdate(BaseModel):
