@@ -155,9 +155,6 @@ export const authAPI = {
   }): Promise<any> => {
     const response = await apiClient.put<{ success: boolean; data: any }>('/auth/me/bank-details', data);
     return response.data.data;
-  }, async (email: string): Promise<{ message: string }> => {
-    const response = await apiClient.post<{ success: boolean; message: string }>('/auth/resend-verification', { email });
-    return response.data;
   },
 
   // Check verification status
