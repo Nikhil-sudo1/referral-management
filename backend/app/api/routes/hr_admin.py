@@ -224,41 +224,49 @@ async def get_dashboard_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Get HR Admin dashboard statistics"""
-    # Verify HR Admin role
-    if current_user.role_id != 1:
+    # Verify HR Admin role (role_id=1) or allow admins (user_type_id=1)
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
     try:
         # Get company for the HR admin
-        company = db.query(Company).filter(Company.id == current_user.org_id).first()
+        org_id = current_user.org_id
+        
+        # If no org_id, use the first company as default (for demo purposes)
+        if not org_id:
+            first_company = db.query(Company).first()
+            org_id = first_company.id if first_company else None
+            logger.warning(f"User {current_user.email} has no org_id, using default: {org_id}")
+        
+        company = db.query(Company).filter(Company.id == org_id).first()
         
         # Total jobs posted by this organization
         total_jobs = db.query(Job).filter(
-            Job.company_id == current_user.org_id,
+            Job.company_id == org_id,
             Job.is_active == True
         ).count()
         
         # Active jobs (not expired)
         active_jobs = db.query(Job).filter(
-            Job.company_id == current_user.org_id,
+            Job.company_id == org_id,
             Job.is_active == True,
             Job.valid_till >= date.today()
         ).count()
         
         # Total referrals for organization's jobs
         total_referrals = db.query(JobReferral).filter(
-            JobReferral.company_id == current_user.org_id
+            JobReferral.company_id == org_id
         ).count()
         
         # Pending referrals
         pending_referrals = db.query(JobReferral).filter(
-            JobReferral.company_id == current_user.org_id,
+            JobReferral.company_id == org_id,
             JobReferral.status.in_(['submitted', 'screening', 'interviewing'])
         ).count()
         
         # Successful hires
         successful_hires = db.query(JobReferral).filter(
-            JobReferral.company_id == current_user.org_id,
+            JobReferral.company_id == org_id,
             JobReferral.status == 'joined'
         ).count()
         
@@ -266,7 +274,7 @@ async def get_dashboard_stats(
         total_referrers = db.query(User).filter(
             User.user_type_id == 2,
             User.role_id == 4,
-            User.org_id == current_user.org_id,
+            User.org_id == org_id,
             User.is_active == True
         ).count()
         
@@ -277,13 +285,13 @@ async def get_dashboard_stats(
             month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
             
             referrals = db.query(JobReferral).filter(
-                JobReferral.company_id == current_user.org_id,
+                JobReferral.company_id == org_id,
                 JobReferral.submission_date >= month_start,
                 JobReferral.submission_date <= month_end
             ).count()
             
             hires = db.query(JobReferral).filter(
-                JobReferral.company_id == current_user.org_id,
+                JobReferral.company_id == org_id,
                 JobReferral.status == 'joined',
                 JobReferral.joining_date >= month_start,
                 JobReferral.joining_date <= month_end
@@ -322,16 +330,21 @@ async def create_job(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new job posting and notify employees"""
-    # Verify HR Admin role
-    if current_user.role_id != 1:
+    # Verify HR Admin role (role_id=1) or allow admins (user_type_id=1)
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
-    if not current_user.org_id:
-        raise HTTPException(status_code=400, detail="User not associated with any organization")
+    # Get org_id, default to first company if not set
+    org_id = current_user.org_id
+    if not org_id:
+        first_company = db.query(Company).first()
+        org_id = first_company.id if first_company else None
+        if not org_id:
+            raise HTTPException(status_code=400, detail="No organizations found in database")
     
     try:
         # Get company and industry
-        company = db.query(Company).filter(Company.id == current_user.org_id).first()
+        company = db.query(Company).filter(Company.id == org_id).first()
         if not company:
             raise HTTPException(status_code=404, detail="Organization not found")
         
@@ -404,11 +417,17 @@ async def get_jobs(
     current_user: User = Depends(get_current_user)
 ):
     """Get list of jobs for HR Admin's organization with referral stats"""
-    if current_user.role_id != 1:
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
+    # Get org_id, default to first company if not set
+    org_id = current_user.org_id
+    if not org_id:
+        first_company = db.query(Company).first()
+        org_id = first_company.id if first_company else None
+    
     try:
-        query = db.query(Job).filter(Job.company_id == current_user.org_id)
+        query = db.query(Job).filter(Job.company_id == org_id)
         
         # Apply filters
         if status == "active":
@@ -434,7 +453,7 @@ async def get_jobs(
         jobs = query.order_by(Job.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
         
         # Get company info
-        company = db.query(Company).filter(Company.id == current_user.org_id).first()
+        company = db.query(Company).filter(Company.id == org_id).first()
         industry = db.query(Industry).filter(Industry.id == company.industry_id).first() if company else None
         
         # Build response with referral stats
@@ -497,12 +516,18 @@ async def get_job_referrals(
     current_user: User = Depends(get_current_user)
 ):
     """Get referrals for a specific job with referrer details"""
-    if current_user.role_id != 1:
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
+    
+    # Get org_id, default to first company if not set
+    org_id = current_user.org_id
+    if not org_id:
+        first_company = db.query(Company).first()
+        org_id = first_company.id if first_company else None
     
     try:
         # Verify job belongs to HR's organization
-        job = db.query(Job).filter(Job.id == job_id, Job.company_id == current_user.org_id).first()
+        job = db.query(Job).filter(Job.id == job_id, Job.company_id == org_id).first()
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         
@@ -563,11 +588,17 @@ async def toggle_job_status(
     current_user: User = Depends(get_current_user)
 ):
     """Toggle job active status"""
-    if current_user.role_id != 1:
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
+    # Get org_id, default to first company if not set
+    org_id = current_user.org_id
+    if not org_id:
+        first_company = db.query(Company).first()
+        org_id = first_company.id if first_company else None
+    
     try:
-        job = db.query(Job).filter(Job.id == job_id, Job.company_id == current_user.org_id).first()
+        job = db.query(Job).filter(Job.id == job_id, Job.company_id == org_id).first()
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         
@@ -596,7 +627,7 @@ async def get_leaderboard(
     current_user: User = Depends(get_current_user)
 ):
     """Get leaderboard for referrers in the organization"""
-    if current_user.role_id != 1:
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
     try:
@@ -686,7 +717,7 @@ async def get_referrers_operations(
     current_user: User = Depends(get_current_user)
 ):
     """Get list of referrers for operations management"""
-    if current_user.role_id != 1:
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
     try:
@@ -775,7 +806,7 @@ async def toggle_referrer_status(
     current_user: User = Depends(get_current_user)
 ):
     """Toggle referrer active status (affects login and referral code)"""
-    if current_user.role_id != 1:
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
     try:
@@ -817,7 +848,7 @@ async def get_referrer_requests(
     current_user: User = Depends(get_current_user)
 ):
     """Get requests from referrers (placeholder - would need a requests table)"""
-    if current_user.role_id != 1:
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
     # Since there's no requests table yet, return sample data
@@ -841,7 +872,7 @@ async def get_company_info(
     current_user: User = Depends(get_current_user)
 ):
     """Get HR Admin's company information"""
-    if current_user.role_id != 1:
+    if current_user.user_type_id != 1 and current_user.role_id != 1:
         raise HTTPException(status_code=403, detail="Access denied. HR Admin only.")
     
     try:
