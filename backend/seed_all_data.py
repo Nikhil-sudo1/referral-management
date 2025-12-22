@@ -288,6 +288,7 @@ def seed_test_users(db):
             "mobile_number": "+919876543210",
             "user_type_id": 1,
             "role_id": 1,
+            "org_id": first_company.id if first_company else 1,  # HR Admin manages this company
             "is_active": True,
             "email_verification": True,
         },

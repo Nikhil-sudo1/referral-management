@@ -194,7 +194,10 @@ const Login = () => {
           // Navigate based on user_type_id and role_id
           // user_type_id: 1 = Admin, 2 = Referral Partner
           // role_id: 1 = HR, 2 = Business Head, 3 = Student Admin, 4 = Employee Referrer, 5 = Student Referrer
-          if (userData.user_type_id === 2 && userData.role_id === 4) {
+          if (userData.user_type_id === 1 && userData.role_id === 1) {
+            // HR Admin goes to HR Admin portal
+            navigate('/hr-admin');
+          } else if (userData.user_type_id === 2 && userData.role_id === 4) {
             // Employee Referrers go to employee portal (job referrals)
             navigate('/employee');
           } else if (userData.user_type_id === 2 && userData.role_id === 5) {
@@ -207,7 +210,7 @@ const Login = () => {
             // Student Admin goes to student admin portal
             navigate('/student-admin');
           } else {
-            // Other admins (HR, Business Head) go to main dashboard
+            // Other admins (Business Head) go to main dashboard
             navigate('/dashboard');
           }
         } else {

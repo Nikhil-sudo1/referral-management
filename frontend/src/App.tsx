@@ -49,6 +49,12 @@ import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeLeaderboard from "./pages/EmployeeLeaderboard";
 import EmployeeRewards from "./pages/EmployeeRewards";
 import EmployeeSettings from "./pages/EmployeeSettings";
+// HR Admin Pages (user_type_id=1, role_id=1)
+import HRAdminDashboard from "./pages/HRAdminDashboard";
+import HRAdminLeaderboard from "./pages/HRAdminLeaderboard";
+import HRAdminOperations from "./pages/HRAdminOperations";
+import HRAdminSettings from "./pages/HRAdminSettings";
+import HRAdminRequestCentre from "./pages/HRAdminRequestCentre";
 
 // Initialize theme from localStorage on app load
 const initializeTheme = () => {
@@ -127,6 +133,12 @@ const App = () => (
             <Route path="/employee/leaderboard" element={<EmployeeLeaderboard />} />
             <Route path="/employee/rewards" element={<EmployeeRewards />} />
             <Route path="/employee/settings" element={<EmployeeSettings />} />
+            {/* HR Admin Routes (user_type_id=1, role_id=1) */}
+            <Route path="/hr-admin" element={<HRAdminDashboard />} />
+            <Route path="/hr-admin/leaderboard" element={<HRAdminLeaderboard />} />
+            <Route path="/hr-admin/operations" element={<HRAdminOperations />} />
+            <Route path="/hr-admin/settings" element={<HRAdminSettings />} />
+            <Route path="/hr-admin/requests" element={<HRAdminRequestCentre />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
