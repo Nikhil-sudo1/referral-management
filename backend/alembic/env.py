@@ -14,15 +14,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.config import settings
 from app.database import Base
 from app.models import (
-    User, University, Program, Referral,
-    Reward, RewardTier, Notification, Settings, AuditLog
+    User, UserType, Role, University, Program, Referral,
+    Reward, RewardTier, Settings, AuditLog, PartnerType,
+    Industry, Company, Job, JobReferral, JobReferralReward, JobRewardSlab
 )
 
 # Alembic Config object
 config = context.config
 
 # Set the database URL from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# URL encode the database URL to handle special characters
+import urllib.parse
+db_url = settings.DATABASE_URL.replace('%', '%%')
+config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:

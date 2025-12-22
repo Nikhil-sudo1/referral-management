@@ -23,6 +23,7 @@ import {
 import { motion } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
 import { referralsAPI, universitiesAPI } from '@/lib/api';
+import { cn } from '@/lib/utils';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend

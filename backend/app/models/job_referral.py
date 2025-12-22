@@ -85,7 +85,7 @@ class JobReferral(Base):
     )
     job = relationship("Job", back_populates="referrals")
     company = relationship("Company", back_populates="job_referrals")
-    industry = relationship("Industry")
+    industry = relationship("Industry", back_populates="job_referrals")
     
     def __repr__(self):
         return f"<JobReferral {self.referral_code} - {self.referee_name}>"

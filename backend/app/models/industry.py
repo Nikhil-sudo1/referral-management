@@ -22,6 +22,7 @@ class Industry(Base):
     
     # Relationships
     companies = relationship("Company", back_populates="industry")
+    job_referrals = relationship("JobReferral", back_populates="industry")
     
     def __repr__(self):
         return f"<Industry {self.name}>"

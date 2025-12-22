@@ -1,7 +1,7 @@
 """add job referral tables
 
-Revision ID: 007
-Revises: 006
+Revision ID: 007_job_referral_tables
+Revises: 
 Create Date: 2024-12-22
 
 """
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '007'
-down_revision: Union[str, None] = '006'
+revision: str = '007_job_referral_tables'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
