@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.core.security import get_current_user
+from app.dependencies import get_current_user
 from app.models.user import User
 from app.services.job_referral_service import JobReferralService
 from app.schemas.job_referral import (

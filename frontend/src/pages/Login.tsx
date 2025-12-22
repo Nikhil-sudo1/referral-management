@@ -521,19 +521,43 @@ const Login = () => {
                           }}
                           className="text-xs bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50"
                         >
-                          <Shield className="w-3 h-3 mr-1" /> Admin
+                          <Shield className="w-3 h-3 mr-1" /> HR Admin
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setLoginData({ email: 'student@test.com', password: 'Test@123' });
+                            setLoginData({ email: 'amit.admin@teamlease.com', password: 'Password@123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
-                          className="text-xs bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/50"
+                          className="text-xs bg-teal-500/10 border-teal-500/30 text-teal-600 dark:text-teal-400 hover:bg-teal-500/20 hover:border-teal-500/50"
                         >
-                          <Users className="w-3 h-3 mr-1" /> Referral Partner
+                          <GraduationCap className="w-3 h-3 mr-1" /> Student Admin
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLoginData({ email: 'employee@test.com', password: 'Password@123' });
+                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
+                          }}
+                          className="text-xs bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
+                        >
+                          <Briefcase className="w-3 h-3 mr-1" /> Employee
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLoginData({ email: 'student@test.com', password: 'Password@123' });
+                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
+                          }}
+                          className="text-xs bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/50"
+                        >
+                          <Users className="w-3 h-3 mr-1" /> Student Referrer
                         </Button>
                       </div>
                     </div>
