@@ -10,4 +10,5 @@ export * from './analytics';
 export * from './users';
 export * from './notifications';
 export * from './partner';
+export * from './crm';
 

@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     CRM_ENABLED: bool = True
     CRM_DEFAULT_LEAD_CHANNEL: int = 0
     CRM_DEFAULT_SOURCE_MEDIUM: int = 0
-    CRM_DEFAULT_LEAD_OWNER: str = "46deaf9b-1f42-498f-99c3-959af742a021"  # Default counselor UUID in CRM
+    CRM_DEFAULT_LEAD_OWNER: str = "8916142a-22b9-4fff-9c81-0fd166d963ce"  # Default lead owner UUID in CRM
     CRM_REFERRAL_TAG: str = "referral Ai"  # Tag to identify referrals from AI system
     
     # Logging

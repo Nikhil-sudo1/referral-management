@@ -69,7 +69,7 @@ class CRMService:
                 "lead_channel": settings.CRM_DEFAULT_LEAD_CHANNEL,
                 "source_medium": settings.CRM_DEFAULT_SOURCE_MEDIUM,
                 "lead_owner": settings.CRM_DEFAULT_LEAD_OWNER,
-                "tag": settings.CRM_REFERRAL_TAG,
+                "tag": [],  # Empty array since CRM expects integer tag IDs
                 "dob": None,
                 "gender": None,
                 "alternate_email": None,
@@ -188,7 +188,7 @@ class CRMService:
                 "lead_channel": settings.CRM_DEFAULT_LEAD_CHANNEL,
                 "source_medium": settings.CRM_DEFAULT_SOURCE_MEDIUM,
                 "lead_owner": settings.CRM_DEFAULT_LEAD_OWNER,  # Required field for CRM
-                "tag": settings.CRM_REFERRAL_TAG,  # Tag to identify referrals from AI system
+                "tag": [],  # Empty array since CRM expects integer tag IDs  # Tag to identify referrals from AI system
                 "dob": None,
                 "gender": None,
                 "alternate_email": None,
@@ -331,6 +331,99 @@ class CRMService:
             asyncio.set_event_loop(loop)
         
         return loop.run_until_complete(self.sync_referral_to_crm(referral))
+    
+    async def get_master_data(
+        self,
+        identifier: list,
+        status: Optional[int] = None,
+        parent_id: Optional[int] = None
+    ) -> list:
+        """
+        Get master data from CRM using /common/get_master_dd endpoint
+        
+        Args:
+            identifier: List of identifiers (e.g., ["university"], ["course"])
+            status: Optional status filter (e.g., 1 for active)
+            parent_id: Optional parent ID (e.g., university_id for courses)
+            
+        Returns:
+            List of master data items
+        """
+        if not self.enabled:
+            logger.info("CRM integration disabled, skipping master data fetch")
+            return []
+        
+        try:
+            request_body = {
+                "identifier": identifier
+            }
+            
+            if status is not None:
+                request_body["status"] = status
+            
+            if parent_id is not None:
+                request_body["parent_id"] = parent_id
+            
+            logger.info(f"Fetching CRM master data: {request_body}")
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/common/get_master_dd",
+                    headers=self._get_headers(),
+                    json=request_body
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    logger.info(f"CRM master data fetched successfully: {len(result) if isinstance(result, list) else 'N/A'} items")
+                    return result if isinstance(result, list) else []
+                else:
+                    logger.error(f"CRM master data API error: {response.status_code} - {response.text}")
+                    return []
+                    
+        except Exception as e:
+            logger.error(f"Error fetching CRM master data: {str(e)}")
+            return []
+    
+    def get_lead_activity_sync(self, crm_lead_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get lead activity history from CRM synchronously
+        
+        Args:
+            crm_lead_id: The CRM Lead ID
+            
+        Returns:
+            Activity data if successful, None otherwise
+        """
+        if not self.enabled:
+            logger.info("CRM integration disabled, skipping activity fetch")
+            return None
+        
+        if not crm_lead_id:
+            logger.warning("No CRM lead ID provided for activity fetch")
+            return None
+        
+        try:
+            logger.info(f"Fetching CRM activity for lead {crm_lead_id}")
+            
+            response = requests.post(
+                f"{self.base_url}/leads/lead_activity",
+                headers=self._get_headers(),
+                json={"id": crm_lead_id},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                logger.info(f"CRM activity fetched successfully for lead {crm_lead_id}")
+                return result
+            else:
+                logger.error(f"CRM activity API error: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error fetching CRM activity: {str(e)}")
+            return None
 
 
 def get_crm_service(db: Session) -> CRMService:

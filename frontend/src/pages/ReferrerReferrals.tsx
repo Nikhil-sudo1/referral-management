@@ -25,6 +25,8 @@ interface Referral {
   reward: number;
   rewardStatus: string;
   counselor: string;
+  crm_lead_id?: number;
+  crm_activity?: any;
 }
 
 const statusConfig = {
@@ -42,6 +44,7 @@ const ReferrerReferrals = () => {
   const [universityFilter, setUniversityFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [myReferrals, setMyReferrals] = useState<Referral[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState<Set<string>>(new Set());
 
   // Fetch referrals from API
   const fetchReferrals = async () => {
@@ -64,8 +67,16 @@ const ReferrerReferrals = () => {
           reward: r.expected_reward || r.expectedReward || 0,
           rewardStatus: r.status === 'admitted' ? 'paid' : 'pending',
           counselor: r.counselor?.name || r.counselorName || '-',
+          crm_lead_id: r.crm_lead_id,
         }));
         setMyReferrals(formattedReferrals);
+        
+        // Fetch CRM activity for referrals with crm_lead_id
+        formattedReferrals.forEach(async (referral) => {
+          if (referral.crm_lead_id) {
+            fetchCRMActivity(referral.id, referral.crm_lead_id);
+          }
+        });
       } else {
         setMyReferrals([]);
       }
@@ -79,6 +90,31 @@ const ReferrerReferrals = () => {
       setMyReferrals([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch CRM activity for a referral
+  const fetchCRMActivity = async (referralId: string, crmLeadId: number) => {
+    if (loadingActivities.has(referralId)) return;
+    
+    setLoadingActivities(prev => new Set(prev).add(referralId));
+    try {
+      const activityData = await referralsAPI.getCRMActivity(referralId);
+      if (activityData?.activity) {
+        setMyReferrals(prev => prev.map(r => 
+          r.id === referralId 
+            ? { ...r, crm_activity: activityData.activity }
+            : r
+        ));
+      }
+    } catch (error) {
+      console.error(`Error fetching CRM activity for referral ${referralId}:`, error);
+    } finally {
+      setLoadingActivities(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(referralId);
+        return newSet;
+      });
     }
   };
 
@@ -258,6 +294,7 @@ const ReferrerReferrals = () => {
                       <th className="text-left p-4 text-sm font-semibold text-white/60">University</th>
                       <th className="text-left p-4 text-sm font-semibold text-white/60">Counselor</th>
                       <th className="text-left p-4 text-sm font-semibold text-white/60">Status</th>
+                      <th className="text-left p-4 text-sm font-semibold text-white/60">CRM Activity</th>
                       <th className="text-left p-4 text-sm font-semibold text-white/60">Date</th>
                       <th className="text-right p-4 text-sm font-semibold text-white/60">Reward</th>
                     </tr>
@@ -291,6 +328,41 @@ const ReferrerReferrals = () => {
                               <StatusIcon className="w-3 h-3 mr-1" />
                               {status.label}
                             </Badge>
+                          </td>
+                          <td className="p-4">
+                            {referral.crm_lead_id ? (
+                              loadingActivities.has(referral.id) ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-white/60" />
+                              ) : referral.crm_activity ? (
+                                <div className="text-xs">
+                                  {Array.isArray(referral.crm_activity) && referral.crm_activity.length > 0 ? (
+                                    <div className="space-y-1">
+                                      <p className="text-white/80">
+                                        {referral.crm_activity.length} {referral.crm_activity.length === 1 ? 'activity' : 'activities'}
+                                      </p>
+                                      {referral.crm_activity[0]?.activity?.name && (
+                                        <p className="text-white/60">
+                                          Latest: {referral.crm_activity[0].activity.name}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-white/60">No activity</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-xs text-white/60 hover:text-white"
+                                  onClick={() => fetchCRMActivity(referral.id, referral.crm_lead_id!)}
+                                >
+                                  Load Activity
+                                </Button>
+                              )
+                            ) : (
+                              <p className="text-xs text-white/40">Not synced</p>
+                            )}
                           </td>
                           <td className="p-4 text-sm text-white/60">
                             {new Date(referral.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}

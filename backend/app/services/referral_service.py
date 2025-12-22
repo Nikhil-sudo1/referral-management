@@ -411,6 +411,17 @@ class ReferralService:
         
         logger.info(f"Referral submitted by {referrer.email}: {referral.referral_code} (CRM Lead ID: {crm_lead_id})")
         
+        # Step 4: Fetch lead activity after creating the lead (non-blocking, don't fail if it fails)
+        if crm_lead_id:
+            try:
+                logger.info(f"Fetching CRM activity for lead {crm_lead_id}")
+                crm_activity = crm_service.get_lead_activity_sync(crm_lead_id)
+                if crm_activity:
+                    logger.info(f"CRM activity fetched successfully for lead {crm_lead_id}: {len(crm_activity) if isinstance(crm_activity, list) else 'N/A'} activities")
+            except Exception as e:
+                logger.warning(f"Failed to fetch CRM activity for lead {crm_lead_id}: {str(e)}")
+                # Don't fail the referral creation if activity fetch fails
+        
         return referral
     
     def update_referral(self, referral_id: UUID, data: ReferralUpdate) -> Referral:

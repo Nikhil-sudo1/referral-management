@@ -8,13 +8,16 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, UserPlus, Users, Building2, GraduationCap, Mail, Phone, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { universitiesAPI, referralsAPI } from '@/lib/api';
+import { universitiesAPI, referralsAPI, crmAPI } from '@/lib/api';
 import { validateReferralForm, hasErrors, FormErrors } from '@/lib/validations';
 
 const ReferrerAddReferral = () => {
   const navigate = useNavigate();
   const [universities, setUniversities] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [crmUniversities, setCrmUniversities] = useState<any[]>([]);
+  const [crmCourses, setCrmCourses] = useState<any[]>([]);
+  const [selectedCrmUniversityId, setSelectedCrmUniversityId] = useState<number | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [formData, setFormData] = useState({
     refereeName: '',
@@ -37,10 +40,15 @@ const ReferrerAddReferral = () => {
     );
   };
 
-  // Fetch universities on mount
+  // Fetch universities from CRM on mount
   useEffect(() => {
     const fetchUniversities = async () => {
       try {
+        // Fetch from CRM API
+        const crmUnis = await crmAPI.getUniversities();
+        setCrmUniversities(crmUnis || []);
+        
+        // Also fetch local universities for mapping
         const response = await universitiesAPI.getUniversities({ status: 'active', limit: 100 });
         setUniversities(response.items || []);
       } catch (error) {
@@ -53,23 +61,34 @@ const ReferrerAddReferral = () => {
     fetchUniversities();
   }, []);
 
-  // Fetch programs when university changes
+  // Fetch courses from CRM when CRM university is selected
   useEffect(() => {
-    const fetchPrograms = async () => {
-      if (!formData.universityId) {
+    const fetchCourses = async () => {
+      if (!selectedCrmUniversityId) {
+        setCrmCourses([]);
         setPrograms([]);
         return;
       }
       try {
-        const programsList = await universitiesAPI.getUniversityPrograms(formData.universityId);
-        setPrograms(programsList || []);
+        // Fetch courses from CRM API
+        const courses = await crmAPI.getCourses(selectedCrmUniversityId);
+        setCrmCourses(courses || []);
+        
+        // Also fetch local programs for mapping (if needed)
+        // Find local university by CRM ID if there's a mapping
+        const localUniversity = universities.find((u: any) => u.crm_university_id === selectedCrmUniversityId);
+        if (localUniversity) {
+          const programsList = await universitiesAPI.getUniversityPrograms(localUniversity.id);
+          setPrograms(programsList || []);
+        }
       } catch (error) {
-        console.error('Error fetching programs:', error);
+        console.error('Error fetching courses:', error);
+        setCrmCourses([]);
         setPrograms([]);
       }
     };
-    fetchPrograms();
-  }, [formData.universityId]);
+    fetchCourses();
+  }, [selectedCrmUniversityId, universities]);
 
   // Filter active programs
   const availablePrograms = programs.filter(
@@ -88,6 +107,31 @@ const ReferrerAddReferral = () => {
       }
       return updated;
     });
+  };
+
+  // Handle CRM university selection
+  const handleCrmUniversityChange = (crmUniversityId: string) => {
+    const crmId = parseInt(crmUniversityId);
+    setSelectedCrmUniversityId(crmId);
+    // Find local university by CRM ID
+    const localUniversity = universities.find((u: any) => u.crm_university_id === crmId);
+    if (localUniversity) {
+      handleInputChange('universityId', localUniversity.id);
+    } else {
+      handleInputChange('universityId', '');
+    }
+  };
+
+  // Handle CRM course selection
+  const handleCrmCourseChange = (crmCourseId: string) => {
+    const crmId = parseInt(crmCourseId);
+    // Find local program by CRM course ID
+    const localProgram = programs.find((p: any) => p.crm_course_id === crmId);
+    if (localProgram) {
+      handleInputChange('programId', localProgram.id);
+    } else {
+      handleInputChange('programId', '');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -268,17 +312,18 @@ const ReferrerAddReferral = () => {
                       University <span className="text-destructive">*</span>
                     </Label>
                     <Select
-                      value={formData.universityId}
-                      onValueChange={(value) => handleInputChange('universityId', value)}
+                      value={selectedCrmUniversityId?.toString() || ''}
+                      onValueChange={handleCrmUniversityChange}
                       required
+                      disabled={isLoadingData}
                     >
                       <SelectTrigger id="universityId" className="w-full">
-                        <SelectValue placeholder="Select a university" />
+                        <SelectValue placeholder={isLoadingData ? "Loading..." : "Select a university"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {universities.map((university) => (
-                          <SelectItem key={university.id} value={university.id}>
-                            {university.name}
+                        {crmUniversities.map((university) => (
+                          <SelectItem key={university.id} value={university.id.toString()}>
+                            {university.name} {university.short_name ? `(${university.short_name})` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -290,26 +335,26 @@ const ReferrerAddReferral = () => {
                       Program <span className="text-destructive">*</span>
                     </Label>
                     <Select
-                      value={formData.programId}
-                      onValueChange={(value) => handleInputChange('programId', value)}
-                      disabled={!formData.universityId || availablePrograms.length === 0}
+                      value={crmCourses.find((c: any) => programs.find((p: any) => p.crm_course_id === c.id && p.id === formData.programId))?.id?.toString() || ''}
+                      onValueChange={handleCrmCourseChange}
+                      disabled={!selectedCrmUniversityId || crmCourses.length === 0}
                       required
                     >
                       <SelectTrigger id="programId" className="w-full">
                         <SelectValue 
                           placeholder={
-                            !formData.universityId 
+                            !selectedCrmUniversityId 
                               ? "Select university first" 
-                              : availablePrograms.length === 0 
-                              ? "No programs available" 
-                              : "Select a program"
+                              : crmCourses.length === 0 
+                              ? "Loading courses..." 
+                              : "Select a course"
                           } 
                         />
                       </SelectTrigger>
                       <SelectContent>
-                        {availablePrograms.map((program) => (
-                          <SelectItem key={program.id} value={program.id}>
-                            {program.name}
+                        {crmCourses.map((course) => (
+                          <SelectItem key={course.id} value={course.id.toString()}>
+                            {course.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
