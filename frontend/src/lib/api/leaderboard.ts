@@ -42,6 +42,28 @@ export const leaderboardAPI = {
     return response.data.data;
   },
 
+  // Get leaderboard - alias for backward compatibility with StudentAdmin pages
+  getLeaderboard: async (params?: {
+    period?: string;
+    limit?: number;
+    university_id?: string;
+  }): Promise<any> => {
+    try {
+      const backendParams: any = { limit: params?.limit || 50 };
+      if (params?.period === 'week') backendParams.period = 'weekly';
+      else if (params?.period === 'month') backendParams.period = 'monthly';
+      else backendParams.period = 'all_time';
+
+      const response = await apiClient.get<{ success: boolean; data: any }>('/leaderboard/referrers', { params: backendParams });
+      // Transform response to match expected format
+      return response.data.data?.entries || response.data.data || [];
+    } catch (error) {
+      console.error('Leaderboard API error:', error);
+      // Return empty array on error to allow UI to show "no data" instead of crashing
+      return [];
+    }
+  },
+
   // Get counselor leaderboard
   getCounselorLeaderboard: async (params?: {
     period?: 'all_time' | 'monthly' | 'weekly';

@@ -89,12 +89,21 @@ class UserController:
             data=[UserResponse.model_validate(c).model_dump() for c in counselors]
         )
     
-    def get_referrers(self, is_active: bool = True) -> BaseResponse:
-        """Get list of referrers"""
-        referrers = self.service.get_referrers(is_active=is_active)
+    def get_referrers(
+        self,
+        page: int = 1,
+        limit: int = 20,
+        is_active: Optional[bool] = None,
+    ) -> BaseResponse:
+        """Get list of referrers with pagination"""
+        result = self.service.get_referrers(
+            page=page,
+            limit=limit,
+            is_active=is_active,
+        )
         return BaseResponse(
             success=True,
             message="Success",
-            data=[UserResponse.model_validate(r).model_dump() for r in referrers]
+            data=result.model_dump()
         )
 

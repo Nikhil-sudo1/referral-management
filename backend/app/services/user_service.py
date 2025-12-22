@@ -184,11 +184,16 @@ class UserService:
         page: int = 1,
         limit: int = 20,
         search: Optional[str] = None,
+        is_active: Optional[bool] = True,
     ) -> UserListResponse:
         """
         Get list of referral partners (user_type_id = 2)
         """
-        query = self.db.query(User).filter(User.user_type_id == 2, User.is_active == True)
+        query = self.db.query(User).filter(User.user_type_id == 2)
+        
+        # Filter by active status if specified
+        if is_active is not None:
+            query = query.filter(User.is_active == is_active)
         
         if search:
             search_term = f"%{search}%"

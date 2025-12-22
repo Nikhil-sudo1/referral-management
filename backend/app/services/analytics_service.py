@@ -325,7 +325,15 @@ class AnalyticsService:
         
         # Get user for rank/tier
         user = self.db.query(User).filter(User.id == user_id).first()
-        tier = user.tier if user else "Bronze"
+        # Determine tier based on successful admissions
+        if successful_admissions >= 21:
+            tier = "Platinum"
+        elif successful_admissions >= 11:
+            tier = "Gold"
+        elif successful_admissions >= 6:
+            tier = "Silver"
+        else:
+            tier = "Bronze"
         
         # Calculate rank
         from app.services.leaderboard_service import LeaderboardService

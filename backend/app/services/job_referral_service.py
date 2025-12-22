@@ -345,55 +345,63 @@ class JobReferralService:
         limit: int = 50
     ) -> LeaderboardResponse:
         """Get leaderboard of top referrers"""
-        query = self.db.query(
-            JobReferral.referrer_id,
-            User.full_name,
-            func.count(JobReferral.id).label("referral_count"),
-            func.sum(
-                func.case(
-                    (JobReferral.status == "joined", 1),
-                    else_=0
-                )
-            ).label("successful_referrals"),
-            func.coalesce(func.sum(JobReferral.actual_reward), 0).label("total_earnings")
-        ).join(
-            User, User.id == JobReferral.referrer_id
-        ).filter(
-            User.is_active == True
-        )
-        
-        # Apply period filter
+        # Build base filter for period
         now = datetime.utcnow()
+        date_filter = None
         if period == "month":
-            start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            query = query.filter(JobReferral.created_at >= start_of_month)
+            date_filter = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         elif period == "week":
-            start_of_week = now - timedelta(days=now.weekday())
-            start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-            query = query.filter(JobReferral.created_at >= start_of_week)
+            date_filter = now - timedelta(days=now.weekday())
+            date_filter = date_filter.replace(hour=0, minute=0, second=0, microsecond=0)
         
-        # Apply filters
+        # Get all referrers with their referral counts
+        base_query = self.db.query(JobReferral).join(
+            User, User.id == JobReferral.referrer_id
+        ).filter(User.is_active == True)
+        
+        if date_filter:
+            base_query = base_query.filter(JobReferral.created_at >= date_filter)
         if job_id:
-            query = query.filter(JobReferral.job_id == job_id)
+            base_query = base_query.filter(JobReferral.job_id == job_id)
         if company_id:
-            query = query.filter(JobReferral.company_id == company_id)
+            base_query = base_query.filter(JobReferral.company_id == company_id)
         
-        query = query.group_by(JobReferral.referrer_id, User.full_name)
-        query = query.order_by(desc("referral_count"), desc("successful_referrals"))
-        results = query.limit(limit).all()
+        # Group by referrer and count
+        referrer_stats = {}
+        for referral in base_query.all():
+            uid = str(referral.referrer_id)
+            if uid not in referrer_stats:
+                referrer_stats[uid] = {
+                    "referrer_id": referral.referrer_id,
+                    "full_name": referral.referrer_name,
+                    "referral_count": 0,
+                    "successful_referrals": 0,
+                    "total_earnings": Decimal("0"),
+                }
+            referrer_stats[uid]["referral_count"] += 1
+            if referral.status == "joined":
+                referrer_stats[uid]["successful_referrals"] += 1
+            if referral.actual_reward:
+                referrer_stats[uid]["total_earnings"] += referral.actual_reward
+        
+        # Sort by referral count, then successful referrals
+        sorted_referrers = sorted(
+            referrer_stats.values(),
+            key=lambda x: (-x["referral_count"], -x["successful_referrals"])
+        )[:limit]
         
         leaderboard = []
-        for rank, row in enumerate(results, 1):
+        for rank, referrer in enumerate(sorted_referrers, 1):
             # Get user's current slab
-            slab = self._get_user_slab(row.successful_referrals or 0)
+            slab = self._get_user_slab(referrer["successful_referrals"])
             
             leaderboard.append(LeaderboardEntry(
                 rank=rank,
-                user_id=row.referrer_id,
-                user_name=row.full_name,
-                referral_count=row.referral_count,
-                successful_referrals=row.successful_referrals or 0,
-                total_earnings=Decimal(str(row.total_earnings or 0)),
+                user_id=referrer["referrer_id"],
+                user_name=referrer["full_name"],
+                referral_count=referrer["referral_count"],
+                successful_referrals=referrer["successful_referrals"],
+                total_earnings=referrer["total_earnings"],
                 current_slab=slab.slab_name if slab else "Bronze",
                 current_level=slab.level if slab else 1
             ))

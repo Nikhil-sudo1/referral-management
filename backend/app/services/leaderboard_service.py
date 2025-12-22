@@ -324,7 +324,16 @@ class LeaderboardService:
             "Platinum": (None, None),
         }
         
-        current_tier = user.tier or "Bronze"
+        # Calculate tier based on total_admissions
+        if total_admissions >= 21:
+            current_tier = "Platinum"
+        elif total_admissions >= 11:
+            current_tier = "Gold"
+        elif total_admissions >= 6:
+            current_tier = "Silver"
+        else:
+            current_tier = "Bronze"
+        
         next_tier, required = tier_progression.get(current_tier, (None, None))
         referrals_to_next = None
         if required:

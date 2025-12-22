@@ -100,14 +100,29 @@ export const usersAPI = {
     page?: number;
     page_size?: number;
     limit?: number;
+    is_active?: boolean;
   }): Promise<PaginatedResponse<User>> => {
-    const backendParams = {
-      ...params,
-      limit: params?.page_size || params?.limit || 20,
-      page_size: undefined,
-    };
-    const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<User> }>('/users/referrers', { params: backendParams });
-    return response.data.data;
+    try {
+      const backendParams: any = {
+        page: params?.page || 1,
+        limit: params?.page_size || params?.limit || 20,
+      };
+      if (params?.is_active !== undefined) {
+        backendParams.is_active = params.is_active;
+      }
+      const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<User> }>('/users/referrers', { params: backendParams });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching referrers:', error);
+      // Return empty response on error
+      return {
+        items: [],
+        total: 0,
+        page: 1,
+        page_size: 20,
+        total_pages: 0,
+      };
+    }
   },
 };
 

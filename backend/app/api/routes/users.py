@@ -80,7 +80,9 @@ async def get_counselors(
 
 @router.get("/referrers", response_model=BaseResponse)
 async def get_referrers(
-    is_active: bool = True,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    is_active: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user),
 ):
@@ -89,7 +91,11 @@ async def get_referrers(
     """
     try:
         controller = UserController(db)
-        return controller.get_referrers(is_active=is_active)
+        return controller.get_referrers(
+            page=page,
+            limit=limit,
+            is_active=is_active,
+        )
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
