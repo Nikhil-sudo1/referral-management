@@ -10,7 +10,7 @@ from app.database import get_db
 from app.controllers.reward_controller import RewardController
 from app.schemas.reward import RewardCreate, RewardApprove, RewardDisburse
 from app.schemas.common import BaseResponse
-from app.dependencies import get_current_user, get_admin_user
+from app.dependencies import get_current_user, get_admin_user, get_student_admin, get_account_team_user
 from app.models.user import User
 from app.core.exceptions import AppException
 
@@ -158,6 +158,84 @@ async def cancel_reward(
     try:
         controller = RewardController(db)
         return controller.cancel_reward(reward_id, data.reason)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.patch("/{reward_id}/approve-student-admin", response_model=BaseResponse)
+async def approve_reward_student_admin(
+    reward_id: UUID,
+    data: RewardApprove,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_student_admin),
+):
+    """
+    Approve a reward by student-admin (first level approval)
+    Status: pending_student_admin -> pending_account_team
+    """
+    try:
+        controller = RewardController(db)
+        return controller.approve_by_student_admin(reward_id, data, current_user.id)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.patch("/{reward_id}/approve-account-team", response_model=BaseResponse)
+async def approve_reward_account_team(
+    reward_id: UUID,
+    data: RewardApprove,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_account_team_user),
+):
+    """
+    Approve a reward by account team (second level approval)
+    Status: pending_account_team -> approved_account_team
+    """
+    try:
+        controller = RewardController(db)
+        return controller.approve_by_account_team(reward_id, data, current_user.id)
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.get("/payouts/pending-student-admin", response_model=BaseResponse)
+async def get_pending_student_admin_approvals(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=500),  # Allow up to 500 for stats calculation
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_student_admin),
+):
+    """
+    Get rewards pending student-admin approval
+    """
+    try:
+        controller = RewardController(db)
+        return controller.get_rewards(
+            page=page,
+            limit=limit,
+            status="pending_student_admin",
+        )
+    except AppException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.get("/payouts/pending-account-team", response_model=BaseResponse)
+async def get_pending_account_team_approvals(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=500),  # Allow up to 500 for stats calculation
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_account_team_user),
+):
+    """
+    Get rewards pending account team approval
+    """
+    try:
+        controller = RewardController(db)
+        return controller.get_rewards(
+            page=page,
+            limit=limit,
+            status="pending_account_team",
+        )
     except AppException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 

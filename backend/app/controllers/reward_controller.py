@@ -127,4 +127,30 @@ class RewardController:
             message="Success",
             data=[t.model_dump() for t in tiers]
         )
+    
+    def approve_by_student_admin(self, reward_id: UUID, data: RewardApprove, approved_by: UUID) -> BaseResponse:
+        """Approve reward by student-admin (first level)"""
+        reward = self.service.approve_by_student_admin(reward_id, data, approved_by)
+        return BaseResponse(
+            success=True,
+            message="Reward approved by student-admin and sent to account team",
+            data={
+                "id": str(reward.id),
+                "status": reward.status,
+                "student_admin_approved_at": reward.student_admin_approved_at.isoformat() if reward.student_admin_approved_at else None,
+            }
+        )
+    
+    def approve_by_account_team(self, reward_id: UUID, data: RewardApprove, approved_by: UUID) -> BaseResponse:
+        """Approve reward by account team (second level)"""
+        reward = self.service.approve_by_account_team(reward_id, data, approved_by)
+        return BaseResponse(
+            success=True,
+            message="Reward approved by account team. Ready for disbursement.",
+            data={
+                "id": str(reward.id),
+                "status": reward.status,
+                "account_team_approved_at": reward.account_team_approved_at.isoformat() if reward.account_team_approved_at else None,
+            }
+        )
 

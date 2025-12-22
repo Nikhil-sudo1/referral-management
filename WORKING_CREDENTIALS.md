@@ -1,30 +1,79 @@
 # 🔐 WORKING LOGIN CREDENTIALS
 
-**Last Updated:** December 12, 2025  
+**Last Updated:** December 22, 2025  
 **Status:** ✅ Verified Working
 
 ---
 
 ## 🎯 **PRIMARY TEST CREDENTIALS**
 
-### **Referrer Account (Works for both Admin & Referrer Login)**
+### **Student Admin (For Payout Management)** ⭐ USE THIS
 ```
-URL:      http://localhost:8080/login
-Email:    alex@example.com
-Password: password123
-Role:     referrer (can login as "Admin" or "Referrer")
-Status:   ✅ VERIFIED WORKING
+URL:      http://localhost:3001/login
+Email:    student.admin@test.com
+Password: test123
+Role:     Student Admin (role_id = 3)
+Status:   ✅ VERIFIED WORKING - API TESTED
+```
+
+### Alternative Student Admin Accounts:
+```
+Email:    amit.student@teamlease.com
+Password: Password123!
+Role:     Student Admin (role_id = 3)
+```
+
+```
+Email:    amit.admin@teamlease.com
+Password: Password123!
+Role:     Student Admin (role_id = 3)
 ```
 
 ---
 
-## 👥 **ALL AVAILABLE USERS**
+## 👥 **ALL AVAILABLE USERS BY ROLE**
 
-### **Super Admin**
+### **Admin Users (user_type_id = 1)**
+
+#### Human Resources (role_id = 1)
 ```
-Email:    admin@teamlease.com
+Email:    hr@teamlease.com
 Password: Password123!
-Role:     super_admin
+```
+
+#### Business Head (role_id = 2)
+```
+Email:    businesshead@teamlease.com
+Password: Password123!
+```
+
+#### Student Admin (role_id = 3) ⭐
+```
+Email:    amit.student@teamlease.com
+Password: Password123!
+Role:     Student Admin
+Access:   ✅ Payout Management
+
+Email:    amit.admin@teamlease.com  
+Password: Password123!
+Role:     Student Admin
+Access:   ✅ Payout Management
+```
+
+### **Referral Partners (user_type_id = 2)**
+
+#### Employee (role_id = 4)
+```
+Email:    employee@company.com
+Password: Password123!
+```
+
+#### Student Referrer (role_id = 5)
+```
+Email:    alex@example.com
+Password: password123
+Role:     Student Referrer
+Status:   ✅ VERIFIED WORKING
 ```
 
 ### **Managers**
@@ -55,11 +104,6 @@ Role:     counselor
 
 ### **Referrers**
 ```
-Email:    alex@example.com
-Password: password123
-Role:     referrer
-Status:   ✅ MANUALLY VERIFIED
-
 Email:    arjun.mehta@gmail.com
 Password: Password123!
 Role:     referrer
@@ -93,108 +137,61 @@ Role:     referrer
 
 ---
 
-## 📝 **LOGIN STEPS**
+## 📝 **LOGIN STEPS FOR PAYOUT MANAGEMENT**
 
-### **Option 1: Admin/Counselor Login**
-1. Go to: `http://localhost:8080/login`
-2. Click on **"Admin Login"** tab
-3. Enter credentials (e.g., `admin@teamlease.com` / `Password123!`)
-4. Click "Sign In"
-
-### **Option 2: Referrer Login**
-1. Go to: `http://localhost:8080/login`
-2. Stay on **"Referrer Login"** tab
-3. Enter credentials (e.g., `alex@example.com` / `password123`)
-4. Click "Sign In"
+### **To Access Payout Management:**
+1. Go to: `http://localhost:3001/login`
+2. Select "Admin" tab
+3. Enter credentials:
+   - Email: `student.admin@test.com`
+   - Password: `test123`
+4. Click Login
+5. Navigate to "Payout Management" in sidebar
 
 ---
 
-## ✅ **VERIFICATION COMMANDS**
+## 🔧 **ROLE HIERARCHY**
 
-### **Test Login via API:**
-```powershell
-$body = @{email='alex@example.com'; password='password123'; role='referrer'} | ConvertTo-Json
-Invoke-RestMethod -Uri 'http://localhost:8000/api/v1/auth/login' -Method POST -Body $body -ContentType 'application/json'
 ```
-
-### **List All Users:**
-```powershell
-cd backend
-python -c "from app.database import get_db; from app.models import User; from sqlalchemy import select; db = next(get_db()); users = db.execute(select(User)).scalars().all(); [print(f'{u.email} - {u.role}') for u in users]"
-```
-
-### **Reset Password for a User:**
-```powershell
-cd backend
-python -c "from app.database import get_db; from app.models import User; from app.core.security import get_password_hash; from sqlalchemy import select; db = next(get_db()); user = db.execute(select(User).where(User.email == 'EMAIL_HERE')).scalar_one(); user.password_hash = get_password_hash('NEW_PASSWORD'); db.commit(); print('Password updated')"
+User Types:
+├── Admin (user_type_id = 1)
+│   ├── Human Resources (role_id = 1)
+│   ├── Business Head (role_id = 2)
+│   └── Student Admin (role_id = 3) ⭐ Required for Payout Management
+│
+└── Referral Partner (user_type_id = 2)
+    ├── Employee (role_id = 4)
+    └── Student Referrer (role_id = 5)
 ```
 
 ---
 
-## 🚨 **TROUBLESHOOTING**
+## ⚠️ **TROUBLESHOOTING**
 
-### **"Invalid email or password" Error**
+### "Validation Error" on Payout Management Page
+- **Cause:** You're not logged in as Student Admin (role_id = 3)
+- **Solution:** Log out and log in with `amit.student@teamlease.com`
 
-**Solution:**
-1. Make sure you're using the correct password:
-   - `alex@example.com` → `password123` (lowercase, no special chars)
-   - All other users → `Password123!` (capital P, exclamation mark)
+### "Access Denied" Error
+- **Cause:** Insufficient permissions for the current role
+- **Solution:** Use Student Admin credentials for payout features
 
-2. If still not working, reset the password:
-```powershell
-cd backend
-python -c "from app.database import get_db; from app.models import User; from app.core.security import get_password_hash; from sqlalchemy import select; db = next(get_db()); alex = db.execute(select(User).where(User.email == 'alex@example.com')).scalar_one(); alex.password_hash = get_password_hash('password123'); db.commit(); print('Password reset to: password123')"
-```
-
-### **"Session Expired" Error**
-- Clear browser cache and cookies
-- Try in incognito/private browsing mode
-- Check that backend is running on port 8000
-
-### **Backend Not Responding**
-```powershell
-# Check if backend is running
-Test-NetConnection -ComputerName localhost -Port 8000
-
-# Start backend
-cd backend
-.\venv\Scripts\activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-### **Frontend Not Loading**
-```powershell
-# Check if frontend is running
-Test-NetConnection -ComputerName localhost -Port 8080
-
-# Start frontend
-cd frontend
-npm run dev
-```
+### Data Not Loading
+1. Check if backend is running: `http://localhost:8000/docs`
+2. Check browser console for errors
+3. Verify you're logged in as Student Admin
 
 ---
 
-## 🎯 **QUICK TEST CHECKLIST**
+## 📊 **TEST DATA AVAILABLE**
 
-1. ✅ Backend running on port 8000
-2. ✅ Frontend running on port 8080
-3. ✅ Database populated with seed data
-4. ✅ Try login with: `alex@example.com` / `password123`
-5. ✅ Navigate to: Dashboard, Referrals, Universities, Rewards, Leaderboard, Analytics
-6. ✅ All pages should load without errors
+### Payout System Test Data:
+- **17 rewards** with status `pending_student_admin`
+- **Total Amount:** ₹7,18,750
+- **Sample Rewards:**
+  - ₹48,000 - SR-TES-0026
+  - ₹31,250 - SR-ANA-0006
+  - ₹33,000 - SR-ANA-0008
+  - ₹80,000 - SR-TES-0014
 
----
-
-## 📞 **SUPPORT**
-
-If login still doesn't work after trying the above:
-1. Check backend logs for errors
-2. Check browser console for frontend errors
-3. Verify database connection
-4. Ensure all migrations are applied
-5. Try registering a new account via `/register/referee`
-
----
-
-**Status:** ✅ **ALL CREDENTIALS VERIFIED AND WORKING**
-
+All rewards are linked to real users and referrals.

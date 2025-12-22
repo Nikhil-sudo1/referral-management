@@ -66,6 +66,11 @@ const StudentAdminLeaderboard = () => {
     }
   };
 
+  // Helper to get user name from various possible field names
+  const getUserName = (referrer: any) => {
+    return referrer.user_name || referrer.name || referrer.full_name || 'Unknown';
+  };
+
   const generatePerformanceData = (data: any[]) => {
     // Weekly data
     const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
@@ -81,7 +86,7 @@ const StudentAdminLeaderboard = () => {
     setMonthlyData(months.map(month => {
       const item: any = { name: month };
       top5.forEach((referrer, i) => {
-        item[referrer.name || `Referrer ${i + 1}`] = Math.floor(Math.random() * 15) + 5;
+        item[getUserName(referrer)] = Math.floor(Math.random() * 15) + 5;
       });
       return item;
     }));
@@ -140,11 +145,12 @@ const StudentAdminLeaderboard = () => {
             const RankIcon = rankIcons[index];
             const position = index === 0 ? 1 : index === 1 ? 0 : 2;
             const heights = ['h-48', 'h-56', 'h-44'];
-            const tier = getTier(referrer.total_referrals || referrer.referrals_count || 0);
+            const total = referrer.total_referrals || referrer.referrals_count || 0;
+            const tier = referrer.tier || getTier(total);
             
             return (
               <motion.div
-                key={referrer.id || index}
+                key={referrer.user_id || referrer.id || index}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: position * 0.15 }}
@@ -163,19 +169,19 @@ const StudentAdminLeaderboard = () => {
                       <RankIcon className={`w-12 h-12 mx-auto ${rankColors[index]}`} />
                     </motion.div>
                     <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-white text-xl font-bold">
-                      {(referrer.name || 'U').charAt(0)}
+                      {getUserName(referrer).charAt(0).toUpperCase()}
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-1">{referrer.name || 'Unknown'}</h3>
-                    <Badge className={`${tierColors[tier]?.bg} ${tierColors[tier]?.text} ${tierColors[tier]?.border} mb-2`}>
+                    <h3 className="text-lg font-bold text-white mb-1">{getUserName(referrer)}</h3>
+                    <Badge className={`${tierColors[tier]?.bg || tierColors.Bronze.bg} ${tierColors[tier]?.text || tierColors.Bronze.text} ${tierColors[tier]?.border || tierColors.Bronze.border} mb-2`}>
                       {tier}
                     </Badge>
                     <div className="text-2xl font-bold text-emerald-400">
-                      {referrer.total_referrals || referrer.referrals_count || 0}
+                      {total}
                     </div>
                     <p className="text-white/60 text-sm">referrals</p>
                     <div className="mt-2 flex items-center justify-center gap-1 text-green-400 text-sm">
                       <ArrowUp className="w-3 h-3" />
-                      {referrer.admitted_count || Math.floor((referrer.total_referrals || 0) * 0.3)} admitted
+                      {referrer.total_admissions || referrer.admitted_count || 0} admitted
                     </div>
                   </CardContent>
                 </Card>
@@ -252,7 +258,7 @@ const StudentAdminLeaderboard = () => {
                       <Line 
                         key={i}
                         type="monotone" 
-                        dataKey={referrer.name || `Referrer ${i + 1}`}
+                        dataKey={getUserName(referrer)}
                         stroke={['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'][i]}
                         strokeWidth={2}
                         dot={{ r: 4 }}
@@ -304,15 +310,16 @@ const StudentAdminLeaderboard = () => {
                       </tr>
                     ) : (
                       leaderboard.map((referrer, index) => {
-                        const tier = getTier(referrer.total_referrals || referrer.referrals_count || 0);
-                        const admitted = referrer.admitted_count || Math.floor((referrer.total_referrals || 0) * 0.3);
                         const total = referrer.total_referrals || referrer.referrals_count || 0;
-                        const conversion = total > 0 ? Math.round((admitted / total) * 100) : 0;
-                        const trend = Math.random() > 0.5;
+                        const tier = referrer.tier || getTier(total);
+                        const admitted = referrer.total_admissions || referrer.admitted_count || 0;
+                        const conversion = referrer.conversion_rate || (total > 0 ? Math.round((admitted / total) * 100) : 0);
+                        const growth = referrer.growth_rate || 0;
+                        const userName = getUserName(referrer);
                         
                         return (
                           <motion.tr
-                            key={referrer.id || index}
+                            key={referrer.user_id || referrer.id || index}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.02 }}
@@ -330,7 +337,7 @@ const StudentAdminLeaderboard = () => {
                                   </div>
                                 ) : (
                                   <span className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/60 font-medium">
-                                    {index + 1}
+                                    {referrer.rank || index + 1}
                                   </span>
                                 )}
                               </div>
@@ -338,14 +345,14 @@ const StudentAdminLeaderboard = () => {
                             <td className="py-4 px-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-white font-bold">
-                                  {(referrer.name || 'U').charAt(0)}
+                                  {userName.charAt(0).toUpperCase()}
                                 </div>
-                                <span className="text-white font-medium">{referrer.name || 'Unknown'}</span>
+                                <span className="text-white font-medium">{userName}</span>
                               </div>
                             </td>
                             <td className="py-4 px-4 text-white/60">{referrer.email || '-'}</td>
                             <td className="py-4 px-4">
-                              <Badge className={`${tierColors[tier]?.bg} ${tierColors[tier]?.text} ${tierColors[tier]?.border}`}>
+                              <Badge className={`${tierColors[tier]?.bg || tierColors.Bronze.bg} ${tierColors[tier]?.text || tierColors.Bronze.text} ${tierColors[tier]?.border || tierColors.Bronze.border}`}>
                                 {tier}
                               </Badge>
                             </td>
@@ -358,20 +365,20 @@ const StudentAdminLeaderboard = () => {
                             <td className="py-4 px-4 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <span className={`font-medium ${conversion >= 30 ? 'text-green-400' : conversion >= 15 ? 'text-yellow-400' : 'text-red-400'}`}>
-                                  {conversion}%
+                                  {typeof conversion === 'number' ? `${conversion.toFixed(0)}%` : conversion}
                                 </span>
                               </div>
                             </td>
                             <td className="py-4 px-4 text-center">
-                              {trend ? (
+                              {growth >= 0 ? (
                                 <div className="flex items-center justify-center gap-1 text-green-400">
                                   <ArrowUp className="w-4 h-4" />
-                                  <span className="text-sm">+{Math.floor(Math.random() * 10) + 1}</span>
+                                  <span className="text-sm">+{growth.toFixed(0)}</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-center gap-1 text-red-400">
                                   <ArrowDown className="w-4 h-4" />
-                                  <span className="text-sm">-{Math.floor(Math.random() * 5) + 1}</span>
+                                  <span className="text-sm">{growth.toFixed(0)}</span>
                                 </div>
                               )}
                             </td>

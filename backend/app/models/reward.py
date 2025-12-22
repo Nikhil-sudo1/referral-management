@@ -32,10 +32,20 @@ class Reward(Base):
     amount = Column(Numeric(12, 2), nullable=False)
     status = Column(String(50), default="pending", index=True)
     
-    # Approval tracking
+    # Approval tracking (legacy - for backward compatibility)
     approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     approved_at = Column(DateTime)
     approval_notes = Column(Text)
+    
+    # Student-Admin approval tracking
+    student_admin_approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    student_admin_approved_at = Column(DateTime)
+    student_admin_approval_notes = Column(Text)
+    
+    # Account Team approval tracking
+    account_team_approved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    account_team_approved_at = Column(DateTime)
+    account_team_approval_notes = Column(Text)
     
     # Disbursement tracking
     disbursed_by = Column(UUID(as_uuid=True), ForeignKey("users.id"))

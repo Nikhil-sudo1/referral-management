@@ -13,6 +13,7 @@ import {
   X,
   Inbox,
   ChevronRight,
+  DollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from './ThemeToggle';
@@ -23,6 +24,7 @@ const menuItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/student-admin' },
   { label: 'Leaderboard', icon: Trophy, path: '/student-admin/leaderboard' },
   { label: 'Operations', icon: Users, path: '/student-admin/operations' },
+  { label: 'Payout Management', icon: DollarSign, path: '/student-admin/payouts' },
   { label: 'Request Centre', icon: Inbox, path: '/student-admin/requests' },
   { label: 'Settings', icon: Settings, path: '/student-admin/settings' },
 ];

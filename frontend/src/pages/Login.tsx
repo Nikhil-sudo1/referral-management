@@ -512,26 +512,26 @@ const Login = () => {
                   <form onSubmit={handleLogin} className="space-y-4">
                     {/* Quick Login Buttons */}
                     <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs">Quick Login (Demo)</Label>
+                      <Label className="text-muted-foreground text-xs">Quick Login</Label>
                       <div className="grid grid-cols-2 gap-2">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setLoginData({ email: 'rajesh.hr@teamlease.com', password: 'Password@123' });
+                            setLoginData({ email: 'test@admin.com', password: 'Password123!' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 hover:border-primary/50"
                         >
-                          <Shield className="w-3 h-3 mr-1" /> HR Admin
+                          <Shield className="w-3 h-3 mr-1" /> Admin
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setLoginData({ email: 'amit.admin@teamlease.com', password: 'Password@123' });
+                            setLoginData({ email: 'student.admin@test.com', password: 'test123' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs bg-teal-500/10 border-teal-500/30 text-teal-600 dark:text-teal-400 hover:bg-teal-500/20 hover:border-teal-500/50"
@@ -543,24 +543,24 @@ const Login = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setLoginData({ email: 'employee@test.com', password: 'Password@123' });
+                            setLoginData({ email: 'priya.business@teamlease.com', password: 'Password123!' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
                         >
-                          <Briefcase className="w-3 h-3 mr-1" /> Employee
+                          <Briefcase className="w-3 h-3 mr-1" /> Referral Partner
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setLoginData({ email: 'student@test.com', password: 'Password@123' });
+                            setLoginData({ email: 'employee@test.com', password: 'Password123!' });
                             setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
                           }}
                           className="text-xs bg-violet-500/10 border-violet-500/30 text-violet-600 dark:text-violet-400 hover:bg-violet-500/20 hover:border-violet-500/50"
                         >
-                          <Users className="w-3 h-3 mr-1" /> Student Referrer
+                          <Users className="w-3 h-3 mr-1" /> Employee
                         </Button>
                       </div>
                     </div>

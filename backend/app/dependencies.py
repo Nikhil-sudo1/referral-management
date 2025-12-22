@@ -117,3 +117,18 @@ async def get_employee_referrer(current_user: User = Depends(get_current_user)) 
     if current_user.role_id != ROLE_EMPLOYEE:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Employee referrer access required")
     return current_user
+
+
+async def get_student_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Get student admin user - for payout approval"""
+    if current_user.role_id != ROLE_STUDENT_ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Student Admin access required")
+    return current_user
+
+
+async def get_account_team_user(current_user: User = Depends(get_current_user)) -> User:
+    """Get account team user - for final payout approval"""
+    # Account team can be HR Admin or Business Head
+    if current_user.role_id not in [ROLE_HR, ROLE_BUSINESS_HEAD]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account Team access required (HR Admin or Business Head)")
+    return current_user

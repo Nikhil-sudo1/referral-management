@@ -44,6 +44,7 @@ import StudentAdminLeaderboard from "./pages/StudentAdminLeaderboard";
 import StudentAdminOperations from "./pages/StudentAdminOperations";
 import StudentAdminSettings from "./pages/StudentAdminSettings";
 import StudentAdminRequestCentre from "./pages/StudentAdminRequestCentre";
+import StudentAdminPayouts from "./pages/StudentAdminPayouts";
 // Employee Pages (user_type_id=2, role_id=4)
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeLeaderboard from "./pages/EmployeeLeaderboard";
@@ -128,6 +129,7 @@ const App = () => (
             <Route path="/student-admin/operations" element={<StudentAdminOperations />} />
             <Route path="/student-admin/settings" element={<StudentAdminSettings />} />
             <Route path="/student-admin/requests" element={<StudentAdminRequestCentre />} />
+            <Route path="/student-admin/payouts" element={<StudentAdminPayouts />} />
             {/* Employee Routes (user_type_id=2, role_id=4) */}
             <Route path="/employee" element={<EmployeeDashboard />} />
             <Route path="/employee/leaderboard" element={<EmployeeLeaderboard />} />

@@ -50,8 +50,10 @@ export interface PaginatedResponse<T> {
   items: T[];
   total: number;
   page: number;
-  page_size: number;
-  total_pages: number;
+  page_size?: number;
+  limit?: number;
+  total_pages?: number;
+  pages?: number; // Backend returns 'pages', frontend expects 'total_pages'
 }
 
 export const rewardsAPI = {
@@ -108,8 +110,38 @@ export const rewardsAPI = {
   },
 
   // Cancel reward
-  cancelReward: async (id: string): Promise<Reward> => {
-    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/cancel`);
+  cancelReward: async (id: string, reason?: string): Promise<Reward> => {
+    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/cancel`, { reason });
+    return response.data.data;
+  },
+
+  // Student-Admin Approval
+  approveByStudentAdmin: async (id: string, notes?: string): Promise<Reward> => {
+    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/approve-student-admin`, { notes });
+    return response.data.data;
+  },
+
+  // Get pending student-admin approvals
+  getPendingStudentAdminApprovals: async (params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<Reward>> => {
+    const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<Reward> }>('/rewards/payouts/pending-student-admin', { params });
+    return response.data.data;
+  },
+
+  // Account Team Approval
+  approveByAccountTeam: async (id: string, notes?: string): Promise<Reward> => {
+    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/approve-account-team`, { notes });
+    return response.data.data;
+  },
+
+  // Get pending account team approvals
+  getPendingAccountTeamApprovals: async (params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<Reward>> => {
+    const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<Reward> }>('/rewards/payouts/pending-account-team', { params });
     return response.data.data;
   },
 };

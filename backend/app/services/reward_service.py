@@ -128,7 +128,7 @@ class RewardService:
             user_type=data.user_type,
             reward_type=data.reward_type,
             amount=data.amount,
-            status="pending",
+            status="pending_student_admin",  # New rewards start with student-admin approval
         )
         
         self.db.add(reward)
@@ -164,8 +164,9 @@ class RewardService:
         """
         reward = self.get_reward_by_id(reward_id)
         
-        if reward.status != "approved":
-            raise ValidationException(f"Cannot disburse reward with status: {reward.status}")
+        # Can disburse if approved by account team or legacy approved status
+        if reward.status not in ["approved", "approved_account_team"]:
+            raise ValidationException(f"Cannot disburse reward with status: {reward.status}. Must be approved by account team.")
         
         reward.status = "disbursed"
         reward.disbursed_by = disbursed_by
@@ -197,6 +198,48 @@ class RewardService:
         logger.info(f"Reward cancelled: {reward_id}")
         return reward
     
+    def approve_by_student_admin(self, reward_id: UUID, data: RewardApprove, approved_by: UUID) -> Reward:
+        """
+        Approve a reward by student-admin (first level approval)
+        Status: pending_student_admin -> approved_student_admin -> pending_account_team
+        """
+        reward = self.get_reward_by_id(reward_id)
+        
+        if reward.status != "pending_student_admin":
+            raise ValidationException(f"Cannot approve reward with status: {reward.status}. Expected: pending_student_admin")
+        
+        reward.status = "pending_account_team"
+        reward.student_admin_approved_by = approved_by
+        reward.student_admin_approved_at = datetime.utcnow()
+        reward.student_admin_approval_notes = data.notes
+        
+        self.db.commit()
+        self.db.refresh(reward)
+        
+        logger.info(f"Reward approved by student-admin: {reward_id}")
+        return reward
+    
+    def approve_by_account_team(self, reward_id: UUID, data: RewardApprove, approved_by: UUID) -> Reward:
+        """
+        Approve a reward by account team (second level approval)
+        Status: pending_account_team -> approved_account_team
+        """
+        reward = self.get_reward_by_id(reward_id)
+        
+        if reward.status != "pending_account_team":
+            raise ValidationException(f"Cannot approve reward with status: {reward.status}. Expected: pending_account_team")
+        
+        reward.status = "approved_account_team"
+        reward.account_team_approved_by = approved_by
+        reward.account_team_approved_at = datetime.utcnow()
+        reward.account_team_approval_notes = data.notes
+        
+        self.db.commit()
+        self.db.refresh(reward)
+        
+        logger.info(f"Reward approved by account team: {reward_id}")
+        return reward
+    
     def get_my_rewards(self, user_id: UUID) -> MyRewardsResponse:
         """
         Get rewards for current user with summary
@@ -207,7 +250,10 @@ class RewardService:
         
         # Calculate summary
         total_earned = sum(r.amount for r in rewards if r.status == "disbursed")
-        total_pending = sum(r.amount for r in rewards if r.status in ["pending", "approved"])
+        total_pending = sum(r.amount for r in rewards if r.status in [
+            "pending", "pending_student_admin", "pending_account_team",
+            "approved", "approved_student_admin", "approved_account_team"
+        ])
         total_withdrawn = total_earned  # Assuming all disbursed = withdrawn
         
         items = []
@@ -270,7 +316,7 @@ class RewardService:
                 user_type="referrer",
                 reward_type="cashback",
                 amount=referral.expected_reward or Decimal("0"),
-                status="pending",
+                status="pending_student_admin",  # Start with student-admin approval
             )
             self.db.add(referrer_reward)
             rewards_created.append(referrer_reward)
@@ -285,7 +331,7 @@ class RewardService:
                 user_type="counselor",
                 reward_type="cashback",
                 amount=counselor_amount,
-                status="pending",
+                status="pending_student_admin",  # Start with student-admin approval
             )
             self.db.add(counselor_reward)
             rewards_created.append(counselor_reward)
@@ -297,12 +343,14 @@ class RewardService:
     
     def _get_reward_stats(self) -> RewardStats:
         """Get reward statistics"""
+        # Include all pending statuses
         pending = self.db.query(func.sum(Reward.amount)).filter(
-            Reward.status == "pending"
+            Reward.status.in_(["pending", "pending_student_admin", "pending_account_team"])
         ).scalar() or Decimal("0")
         
+        # Include all approved statuses
         approved = self.db.query(func.sum(Reward.amount)).filter(
-            Reward.status == "approved"
+            Reward.status.in_(["approved", "approved_student_admin", "approved_account_team"])
         ).scalar() or Decimal("0")
         
         disbursed = self.db.query(func.sum(Reward.amount)).filter(
