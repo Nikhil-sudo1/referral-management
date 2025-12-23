@@ -50,14 +50,23 @@ const StudentAdminLeaderboard = () => {
       if (universityFilter !== 'all') params.university_id = universityFilter;
       
       const response = await leaderboardAPI.getLeaderboard(params);
-      setLeaderboard(response.items || response || []);
+      const data = response.items || response || [];
+      
+      // Sort by total referrals (descending) - ensure proper ranking
+      const sortedData = [...data].sort((a, b) => {
+        const aTotal = a.total_referrals || a.referrals_count || 0;
+        const bTotal = b.total_referrals || b.referrals_count || 0;
+        return bTotal - aTotal;
+      });
+      
+      setLeaderboard(sortedData);
 
       // Fetch universities
       const uniResponse = await universitiesAPI.getUniversities({ limit: 100 });
       setUniversities(uniResponse.items || []);
 
       // Generate mock weekly/monthly performance data
-      generatePerformanceData(response.items || response || []);
+      generatePerformanceData(sortedData);
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
       toast({ title: 'Error', description: 'Failed to load leaderboard', variant: 'destructive' });
@@ -143,8 +152,10 @@ const StudentAdminLeaderboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {leaderboard.slice(0, 3).map((referrer, index) => {
             const RankIcon = rankIcons[index];
-            const position = index === 0 ? 1 : index === 1 ? 0 : 2;
-            const heights = ['h-48', 'h-56', 'h-44'];
+            // Display order: 2nd place (left), 1st place (center), 3rd place (right)
+            const displayOrder = index === 0 ? 2 : index === 1 ? 1 : 3;
+            // Heights: 1st place is tallest (center), 2nd is medium (left), 3rd is shortest (right)
+            const heights = ['h-56', 'h-48', 'h-44']; // index 0=1st, 1=2nd, 2=3rd
             const total = referrer.total_referrals || referrer.referrals_count || 0;
             const tier = referrer.tier || getTier(total);
             
@@ -153,8 +164,9 @@ const StudentAdminLeaderboard = () => {
                 key={referrer.user_id || referrer.id || index}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: position * 0.15 }}
-                className={`order-${position + 1} md:order-${index + 1}`}
+                transition={{ delay: index * 0.15 }}
+                style={{ order: displayOrder }}
+                className="md:order-none"
               >
                 <Card className={`bg-white/5 border-white/10 ${heights[index]} flex flex-col justify-end relative overflow-hidden`}>
                   {index === 0 && (

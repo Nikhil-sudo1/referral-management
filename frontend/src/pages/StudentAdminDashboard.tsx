@@ -38,7 +38,7 @@ const statusColors: Record<string, string> = {
   rejected: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
-// Column definitions
+// Column definitions - University and Program hidden until data is populated on live server
 const allColumns = [
   { key: 'referral_code', label: 'Referral Code', default: true },
   { key: 'referee_name', label: 'Student Name', default: true },
@@ -46,8 +46,8 @@ const allColumns = [
   { key: 'referee_phone', label: 'Student Phone', default: false },
   { key: 'referrer_name', label: 'Referrer Name', default: true },
   { key: 'referrer_email', label: 'Referrer Email', default: false },
-  { key: 'university', label: 'University', default: true },
-  { key: 'program', label: 'Program', default: true },
+  { key: 'university', label: 'University', default: false, hidden: true },
+  { key: 'program', label: 'Program', default: false, hidden: true },
   { key: 'status', label: 'Status', default: true },
   { key: 'submission_date', label: 'Submission Date', default: true },
   { key: 'age', label: 'Age (Days)', default: true },
@@ -355,14 +355,13 @@ const StudentAdminDashboard = () => {
   };
 
   const handleExport = () => {
-    // Export to CSV
-    const headers = visibleColumns.map(key => allColumns.find(c => c.key === key)?.label || key);
+    // Export to CSV (excluding hidden columns)
+    const exportColumns = visibleColumns.filter(key => !allColumns.find(c => c.key === key && c.hidden));
+    const headers = exportColumns.map(key => allColumns.find(c => c.key === key)?.label || key);
     const rows = filteredReferrals.map(r => 
-      visibleColumns.map(key => {
+      exportColumns.map(key => {
         if (key === 'age') return getAge(r.submission_date || r.created_at);
         if (key === 'submission_date') return formatDate(r.submission_date || r.created_at);
-        if (key === 'university') return r.university?.name || '';
-        if (key === 'program') return r.program?.name || '';
         return r[key] || '';
       })
     );
@@ -874,7 +873,7 @@ const StudentAdminDashboard = () => {
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuLabel>Toggle Columns</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      {allColumns.map((column) => (
+                      {allColumns.filter(c => !c.hidden).map((column) => (
                         <DropdownMenuCheckboxItem
                           key={column.key}
                           checked={visibleColumns.includes(column.key)}
@@ -948,12 +947,6 @@ const StudentAdminDashboard = () => {
                           )}
                           {visibleColumns.includes('referrer_email') && (
                             <td className="py-3 px-4 text-white/60">{referral.referrer_email}</td>
-                          )}
-                          {visibleColumns.includes('university') && (
-                            <td className="py-3 px-4 text-white/80">{referral.university?.name || '-'}</td>
-                          )}
-                          {visibleColumns.includes('program') && (
-                            <td className="py-3 px-4 text-white/80">{referral.program?.name || '-'}</td>
                           )}
                           {visibleColumns.includes('status') && (
                             <td className="py-3 px-4">
