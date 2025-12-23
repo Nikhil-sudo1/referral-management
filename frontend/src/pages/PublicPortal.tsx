@@ -305,7 +305,7 @@ const PublicPortal = () => {
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight mb-6">
               <span className="bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text">
-                Transformm Education
+                Transform Education
               </span>
               <span className="block mt-2 bg-gradient-to-r from-primary via-primary to-cyan-500 bg-clip-text text-transparent">
                 Into Income
