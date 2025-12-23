@@ -228,10 +228,20 @@ const Leaderboard = () => {
                       {/* User Info */}
                       <div>
                         <h4 className="font-semibold text-card-foreground flex items-center gap-2">
-                          {entry.user_name}
+                          {entry.user_name || entry.name}
                           {entry.rank === 1 && <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
                         </h4>
-                        <p className="text-sm text-muted-foreground">{entry.user_email}</p>
+                        <div className="flex items-center gap-2">
+                          {(entry.email || entry.user_email) && (
+                            <p className="text-sm text-muted-foreground">{entry.email || entry.user_email}</p>
+                          )}
+                          {entry.referrer_code && (
+                            <>
+                              {(entry.email || entry.user_email) && <span className="text-muted-foreground">•</span>}
+                              <p className="text-sm font-mono text-emerald-500">{entry.referrer_code}</p>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 

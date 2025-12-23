@@ -3,8 +3,11 @@ import apiClient from './client';
 export interface LeaderboardEntry {
   rank: number;
   user_id: string;
-  name: string;
-  email: string;
+  user_name: string;  // Backend returns user_name
+  name?: string;  // Keep for backward compatibility
+  email?: string;  // Optional
+  user_email?: string;  // Backend may return user_email
+  referrer_code?: string;  // Referral code of the referrer
   total_referrals: number;
   total_admissions: number;
   total_rewards: number;

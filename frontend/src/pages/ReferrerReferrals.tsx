@@ -378,87 +378,231 @@ const ReferrerReferrals = () => {
           {selectedActivityReferral && selectedActivityReferral.activity_log && selectedActivityReferral.activity_log.length > 0 ? (
             <ScrollArea className="max-h-[60vh] pr-4">
               <div className="space-y-4">
-                {selectedActivityReferral.activity_log.map((activity, idx) => (
-                  <div 
-                    key={activity.id || idx} 
-                    className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                          <Activity className="w-4 h-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white">{activity.activity?.name || 'Unknown Activity'}</p>
-                          <p className="text-sm text-white/60">{activity.activity_details?.title || 'No details'}</p>
-                        </div>
-                      </div>
-                      <p className="text-xs text-white/40">
-                        {new Date(activity.created_at).toLocaleString('en-IN', {
+                {selectedActivityReferral.activity_log.map((activity, idx) => {
+                  const details: any = activity.activity_details || {};
+                  const activityName = activity.activity?.name || 'Unknown Activity';
+                  const createdDate = new Date(activity.created_at);
+                  
+                  // Helper function to format nested objects
+                  const formatValue = (key: string, value: any): string => {
+                    if (value === null || value === undefined) return '';
+                    if (typeof value === 'object' && value !== null) {
+                      if (value.name) return value.name;
+                      if (value.id && value.name) return `${value.name} (ID: ${value.id})`;
+                      if (value.first_name || value.last_name) {
+                        const name = `${value.first_name || ''} ${value.last_name || ''}`.trim();
+                        return name || 'Unassigned';
+                      }
+                      return JSON.stringify(value);
+                    }
+                    return String(value);
+                  };
+
+                  // Helper to format date-time
+                  const formatDateTime = (dateStr: string, timeStr?: string) => {
+                    if (!dateStr) return '';
+                    try {
+                      if (timeStr) {
+                        const [hours, minutes] = timeStr.split(':');
+                        const date = new Date(dateStr);
+                        date.setHours(parseInt(hours || '0'), parseInt(minutes || '0'));
+                        return date.toLocaleString('en-IN', {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
-                    
-                    {/* Special handling for Change Ownership activity */}
-                    {activity.activity?.name === 'Change Ownership' && activity.activity_details?.old_owner && activity.activity_details?.new_owner && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-white/60 w-20">From:</span>
-                            <span className="text-xs text-white">
-                              {activity.activity_details.old_owner.first_name === 'un-assigned' 
-                                ? 'Unassigned' 
-                                : `${activity.activity_details.old_owner.first_name || ''} ${activity.activity_details.old_owner.last_name || ''}`.trim() || 'Unassigned'}
-                            </span>
+                        });
+                      }
+                      return new Date(dateStr).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+                    } catch {
+                      return dateStr;
+                    }
+                  };
+
+                  return (
+                    <div 
+                      key={activity.id || idx} 
+                      className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                    >
+                      {/* Header */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Activity className="w-5 h-5 text-primary" />
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-white/60 w-20">To:</span>
-                            <span className="text-xs text-white font-medium">
-                              {activity.activity_details.new_owner.first_name} {activity.activity_details.new_owner.last_name || ''}
-                            </span>
-                            {activity.activity_details.new_owner.uuid && (
-                              <span className="text-xs text-white/40">({activity.activity_details.new_owner.uuid.slice(0, 8)}...)</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-white text-base mb-1">{activityName}</p>
+                            {details.title && (
+                              <p className="text-sm text-white/70 mb-2">{details.title}</p>
+                            )}
+                            {details.details && (
+                              <p className="text-sm text-white/80 mb-2">{details.details}</p>
                             )}
                           </div>
                         </div>
+                        <div className="text-right flex-shrink-0 ml-4">
+                          <p className="text-xs text-white/60 font-medium">
+                            {createdDate.toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })}
+                          </p>
+                          <p className="text-xs text-white/50">
+                            {createdDate.toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    
-                    {/* Other activity details */}
-                    {activity.activity_details && 
-                     activity.activity?.name !== 'Change Ownership' && 
-                     Object.keys(activity.activity_details).length > 1 && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
-                        <p className="text-xs text-white/60 mb-2">Details:</p>
-                        <div className="space-y-2">
-                          {Object.entries(activity.activity_details).map(([key, value]) => {
-                            if (key === 'title' || !value) return null;
+
+                      {/* Special handling for Follow-up Created */}
+                      {activityName === 'Follow-up Created' && (
+                        <div className="mt-3 pt-3 border-t border-white/10 space-y-2.5">
+                          {details.details && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">Details:</span>
+                              <span className="text-xs text-white flex-1">{details.details}</span>
+                            </div>
+                          )}
+                          {details['follow up mode'] && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">Follow-up Mode:</span>
+                              <span className="text-xs text-white flex-1">{formatValue('follow up mode', details['follow up mode'])}</span>
+                            </div>
+                          )}
+                          {details['follow up date time'] && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">Follow-up Date:</span>
+                              <span className="text-xs text-white flex-1">
+                                {formatDateTime(details['follow up date time'], details.time)}
+                              </span>
+                            </div>
+                          )}
+                          {details.time && !details['follow up date time'] && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">Time:</span>
+                              <span className="text-xs text-white flex-1">{details.time}</span>
+                            </div>
+                          )}
+                          {details.reminder && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">Reminder:</span>
+                              <span className="text-xs text-white flex-1">{formatValue('reminder', details.reminder)}</span>
+                            </div>
+                          )}
+                          {details['follow status'] && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">Follow Status:</span>
+                              <span className="text-xs text-white flex-1">{formatValue('follow status', details['follow status'])}</span>
+                            </div>
+                          )}
+                          {details.status && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">Status:</span>
+                              <span className="text-xs text-white flex-1">
+                                <Badge variant="outline" className="text-xs border-white/20 text-white/80">
+                                  {details.status}
+                                </Badge>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Special handling for Stage Transfer / Lead status changed */}
+                      {(activityName === 'Stage Transfer' || activityName === 'Lead status changed') && (
+                        <div className="mt-3 pt-3 border-t border-white/10 space-y-2.5">
+                          {details['old stage'] && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">Old Stage:</span>
+                              <span className="text-xs text-white flex-1">
+                                <Badge variant="outline" className="text-xs border-red-500/30 text-red-400">
+                                  {formatValue('old stage', details['old stage'])}
+                                </Badge>
+                              </span>
+                            </div>
+                          )}
+                          {details['new stage'] && (
+                            <div className="flex gap-3">
+                              <span className="text-xs text-white/60 w-28 flex-shrink-0">New Stage:</span>
+                              <span className="text-xs text-white flex-1">
+                                <Badge variant="outline" className="text-xs border-green-500/30 text-green-400">
+                                  {formatValue('new stage', details['new stage'])}
+                                </Badge>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Special handling for Change Ownership */}
+                      {activityName === 'Change Ownership' && details.old_owner && details.new_owner && (
+                        <div className="mt-3 pt-3 border-t border-white/10 space-y-2.5">
+                          <div className="flex gap-3">
+                            <span className="text-xs text-white/60 w-28 flex-shrink-0">From:</span>
+                            <span className="text-xs text-white flex-1">
+                              {details.old_owner.first_name === 'un-assigned' 
+                                ? 'Unassigned' 
+                                : formatValue('old_owner', details.old_owner)}
+                            </span>
+                          </div>
+                          <div className="flex gap-3">
+                            <span className="text-xs text-white/60 w-28 flex-shrink-0">To:</span>
+                            <span className="text-xs text-white font-medium flex-1">
+                              {formatValue('new_owner', details.new_owner)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Generic activity details (for other activities) */}
+                      {activityName !== 'Follow-up Created' && 
+                       activityName !== 'Stage Transfer' && 
+                       activityName !== 'Lead status changed' &&
+                       activityName !== 'Change Ownership' &&
+                       details && 
+                       Object.keys(details).length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                          {Object.entries(details).map(([key, value]) => {
+                            if (key === 'title' || !value || value === null) return null;
+                            if (key === 'details' && activityName !== 'Follow-up Created') return null;
+                            
+                            const displayKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            const displayValue = formatValue(key, value);
+                            
+                            if (!displayValue) return null;
                             
                             return (
-                              <div key={key} className="text-xs">
-                                <span className="text-white/60 capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
-                                <span className="text-white">
-                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                </span>
+                              <div key={key} className="flex gap-3">
+                                <span className="text-xs text-white/60 w-28 flex-shrink-0">{displayKey}:</span>
+                                <span className="text-xs text-white flex-1 break-words">{displayValue}</span>
                               </div>
                             );
                           })}
                         </div>
-                      </div>
-                    )}
-                    
-                    {(activity as any).created_by && (
-                      <div className="mt-2 text-xs text-white/40">
-                        By: {(activity as any).created_by.first_name} {(activity as any).created_by.last_name}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+
+                      {/* Created By */}
+                      {(activity as any).created_by && (
+                        <div className="mt-3 pt-3 border-t border-white/10">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-white/60">Created by:</span>
+                            <span className="text-xs text-white font-medium">
+                              {(activity as any).created_by.first_name} {(activity as any).created_by.last_name || ''}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </ScrollArea>
           ) : (

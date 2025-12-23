@@ -34,9 +34,8 @@ class LeaderboardService:
         current_user_id: Optional[UUID] = None,
     ) -> LeaderboardResponse:
         """
-        Get referrer leaderboard
-        OPTIMIZED: Single query with JOINs and GROUP BY instead of N+1 queries
-        CACHED: Results cached for 60 seconds
+        Get referrer leaderboard using stored procedure
+        Uses get_referrer_leaderboard() stored procedure for optimized query
         
         Args:
             period: all_time, monthly, weekly
@@ -49,6 +48,107 @@ class LeaderboardService:
         if cached_result is not None and current_user_id is None:
             return cached_result
         
+        try:
+            # Call stored procedure
+            from sqlalchemy import text
+            
+            result = self.db.execute(
+                text("""
+                    SELECT 
+                        rank,
+                        referrer_id,
+                        referrer_name,
+                        referrer_code,
+                        total_referrals,
+                        admitted_referrals,
+                        conversion_rate,
+                        referrer_email
+                    FROM get_referrer_leaderboard(:period, :limit, :user_type_id)
+                """),
+                {
+                    "period": period,
+                    "limit": limit,
+                    "user_type_id": 2  # Referral Partner
+                }
+            )
+            
+            # Fetch rewards for each referrer
+            referrer_ids = []
+            leaderboard_entries = []
+            
+            for row in result:
+                referrer_ids.append(row.referrer_id)
+                
+                # Get rewards for this referrer
+                total_rewards = self.db.query(func.sum(Reward.amount)).filter(
+                    Reward.user_id == row.referrer_id,
+                    Reward.status == "disbursed"
+                ).scalar() or Decimal("0")
+                
+                # Determine tier based on referrals
+                tier = "Bronze"
+                if row.total_referrals >= 50:
+                    tier = "Platinum"
+                elif row.total_referrals >= 30:
+                    tier = "Gold"
+                elif row.total_referrals >= 15:
+                    tier = "Silver"
+                
+                leaderboard_entries.append(LeaderboardEntry(
+                    rank=row.rank,
+                    user_id=row.referrer_id,
+                    user_name=row.referrer_name,
+                    referrer_code=row.referrer_code,
+                    avatar_url=None,
+                    total_referrals=row.total_referrals,
+                    total_admissions=row.admitted_referrals,
+                    conversion_rate=float(row.conversion_rate),
+                    total_rewards=total_rewards,
+                    tier=tier,
+                    growth_rate=0.0,  # Would need historical data
+                ))
+            
+            # Get current user rank if provided
+            current_user = None
+            if current_user_id and current_user_id in referrer_ids:
+                for entry in leaderboard_entries:
+                    if entry.user_id == current_user_id:
+                        current_user = CurrentUserRank(
+                            rank=entry.rank,
+                            user_id=entry.user_id,
+                            total_referrals=entry.total_referrals,
+                            total_admissions=entry.total_admissions,
+                        )
+                        break
+            
+            result = LeaderboardResponse(
+                entries=leaderboard_entries,
+                current_user=current_user,
+                period=period,
+                updated_at=datetime.utcnow(),
+            )
+            
+            # Cache the result for 60 seconds (only if no user-specific data requested)
+            if current_user_id is None:
+                set_cached(cache_key, result, ttl=60)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error calling stored procedure get_referrer_leaderboard: {str(e)}")
+            # Fallback to original query if SP doesn't exist
+            logger.warning("Falling back to original query method")
+            return self._get_referrer_leaderboard_fallback(period, limit, current_user_id)
+    
+    def _get_referrer_leaderboard_fallback(
+        self,
+        period: str = "all_time",
+        limit: int = 10,
+        current_user_id: Optional[UUID] = None,
+    ) -> LeaderboardResponse:
+        """
+        Fallback method using direct queries (if stored procedure fails)
+        """
         # Build date filter for period
         date_filter = None
         if period == "monthly":
@@ -57,7 +157,6 @@ class LeaderboardService:
             date_filter = datetime.utcnow() - timedelta(days=7)
         
         # OPTIMIZATION: Single query with LEFT JOINs and GROUP BY
-        # This replaces N*3 queries with a single aggregated query
         referral_subquery = self.db.query(
             Referral.referrer_id,
             func.count(Referral.id).label('total_referrals'),
@@ -82,6 +181,7 @@ class LeaderboardService:
             User.id,
             User.full_name,
             User.email,
+            User.referral_code,
             func.coalesce(referral_subquery.c.total_referrals, 0).label('total_referrals'),
             func.coalesce(referral_subquery.c.total_admissions, 0).label('total_admissions'),
             func.coalesce(reward_subquery.c.total_rewards, 0).label('total_rewards'),
@@ -108,6 +208,7 @@ class LeaderboardService:
             entries.append({
                 "user_id": row.id,
                 "user_name": row.full_name,
+                "referrer_code": row.referral_code,
                 "user_email": row.email,
                 "avatar_url": None,
                 "tier": "Bronze",
@@ -117,24 +218,33 @@ class LeaderboardService:
                 "total_rewards": total_rewards,
             })
         
-        # Sort by conversion rate (primary), then admissions (secondary), then referrals (tertiary)
-        entries.sort(key=lambda x: (-x["conversion_rate"], -x["total_admissions"], -x["total_referrals"]))
+        # Sort by total referrals (primary), then admissions (secondary)
+        entries.sort(key=lambda x: (-x["total_referrals"], -x["total_admissions"]))
         
         # Assign ranks and calculate growth
         leaderboard_entries = []
         for i, entry in enumerate(entries[:limit], 1):
+            # Determine tier
+            tier = "Bronze"
+            if entry["total_referrals"] >= 50:
+                tier = "Platinum"
+            elif entry["total_referrals"] >= 30:
+                tier = "Gold"
+            elif entry["total_referrals"] >= 15:
+                tier = "Silver"
+            
             leaderboard_entries.append(LeaderboardEntry(
                 rank=i,
                 user_id=entry["user_id"],
                 user_name=entry["user_name"],
-                user_email=entry.get("user_email", ""),
+                referrer_code=entry["referrer_code"],
                 avatar_url=None,
                 total_referrals=entry["total_referrals"],
                 total_admissions=entry["total_admissions"],
                 conversion_rate=entry["conversion_rate"],
                 total_rewards=entry["total_rewards"],
-                tier=entry["tier"],
-                growth_rate=0.0,  # Would need historical data
+                tier=tier,
+                growth_rate=0.0,
             ))
         
         # Get current user rank
@@ -156,10 +266,6 @@ class LeaderboardService:
             period=period,
             updated_at=datetime.utcnow(),
         )
-        
-        # Cache the result for 60 seconds (only if no user-specific data requested)
-        if current_user_id is None:
-            set_cached(cache_key, result, ttl=60)
         
         return result
     

@@ -13,6 +13,7 @@ class LeaderboardEntry(BaseModel):
     rank: int
     user_id: UUID
     user_name: str
+    referrer_code: Optional[str] = None  # Referral code of the referrer
     avatar_url: Optional[str] = None
     total_referrals: int
     total_admissions: int
