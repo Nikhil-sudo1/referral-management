@@ -594,8 +594,8 @@ const StudentAdminDashboard = () => {
           </motion.div>
         </div>
 
-        {/* University Distribution */}
-        <motion.div 
+        {/* University Distribution - Hidden until university data is populated on live server */}
+        {/* <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
@@ -625,7 +625,7 @@ const StudentAdminDashboard = () => {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </motion.div>
+        </motion.div> */}
 
         {/* India Regional Analytics Section */}
         <div className="mt-8">
