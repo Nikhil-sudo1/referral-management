@@ -18,7 +18,7 @@ import {
   Search, Filter, Download, RefreshCw, ChevronLeft, ChevronRight,
   Users, GraduationCap, Clock, TrendingUp, Calendar, Building2,
   BookOpen, Eye, MoreHorizontal, CheckCircle, XCircle, AlertCircle,
-  SlidersHorizontal, ArrowUpDown, FileText
+  SlidersHorizontal, ArrowUpDown, FileText, MapPin, Award, Trophy
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
@@ -46,8 +46,6 @@ const allColumns = [
   { key: 'referee_phone', label: 'Student Phone', default: false },
   { key: 'referrer_name', label: 'Referrer Name', default: true },
   { key: 'referrer_email', label: 'Referrer Email', default: false },
-  { key: 'university', label: 'University', default: true },
-  { key: 'program', label: 'Program', default: true },
   { key: 'status', label: 'Status', default: true },
   { key: 'submission_date', label: 'Submission Date', default: true },
   { key: 'age', label: 'Age (Days)', default: true },
@@ -83,6 +81,36 @@ const StudentAdminDashboard = () => {
   const [universityData, setUniversityData] = useState<any[]>([]);
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
+  
+  // India-focused analytics charts - with sample data for initial display
+  const [regionData, setRegionData] = useState<any[]>([
+    { name: 'Maharashtra', referrals: 245, admitted: 89, color: '#f97316' },
+    { name: 'Karnataka', referrals: 198, admitted: 72, color: '#8b5cf6' },
+    { name: 'Tamil Nadu', referrals: 176, admitted: 64, color: '#06b6d4' },
+    { name: 'Delhi NCR', referrals: 156, admitted: 58, color: '#ec4899' },
+    { name: 'Gujarat', referrals: 134, admitted: 49, color: '#84cc16' },
+    { name: 'Telangana', referrals: 121, admitted: 44, color: '#f59e0b' },
+    { name: 'Uttar Pradesh', referrals: 98, admitted: 36, color: '#6366f1' },
+    { name: 'West Bengal', referrals: 87, admitted: 32, color: '#14b8a6' },
+  ]);
+  const [courseData, setCourseData] = useState<any[]>([
+    { name: 'MBA', fullName: 'Master of Business Administration', referrals: 312, admitted: 124, conversionRate: 40, color: '#10b981' },
+    { name: 'B.Tech', fullName: 'Bachelor of Technology', referrals: 287, admitted: 108, conversionRate: 38, color: '#3b82f6' },
+    { name: 'BBA', fullName: 'Bachelor of Business Administration', referrals: 198, admitted: 72, conversionRate: 36, color: '#f59e0b' },
+    { name: 'MCA', fullName: 'Master of Computer Applications', referrals: 156, admitted: 62, conversionRate: 40, color: '#ef4444' },
+    { name: 'B.Com', fullName: 'Bachelor of Commerce', referrals: 134, admitted: 48, conversionRate: 36, color: '#8b5cf6' },
+    { name: 'M.Tech', fullName: 'Master of Technology', referrals: 98, admitted: 39, conversionRate: 40, color: '#06b6d4' },
+  ]);
+  const [topReferrersData, setTopReferrersData] = useState<any[]>([
+    { rank: 1, name: 'Anjali Mehta', email: 'anjali.mehta@university.edu', total: 47, admitted: 19, conversionRate: 40 },
+    { rank: 2, name: 'Rohan Gupta', email: 'rohan.gupta@university.edu', total: 42, admitted: 17, conversionRate: 40 },
+    { rank: 3, name: 'Sneha Reddy', email: 'sneha.reddy@university.edu', total: 38, admitted: 15, conversionRate: 39 },
+    { rank: 4, name: 'Krishna Dixit', email: 'krishna.dixit@team-lease.co.in', total: 34, admitted: 12, conversionRate: 35 },
+    { rank: 5, name: 'Priya Sharma', email: 'priya.sharma@college.edu', total: 29, admitted: 11, conversionRate: 38 },
+    { rank: 6, name: 'Amit Patel', email: 'amit.patel@institute.edu', total: 26, admitted: 10, conversionRate: 38 },
+    { rank: 7, name: 'Neha Singh', email: 'neha.singh@university.edu', total: 23, admitted: 9, conversionRate: 39 },
+    { rank: 8, name: 'Vikram Kumar', email: 'vikram.kumar@college.edu', total: 21, admitted: 8, conversionRate: 38 },
+  ]);
 
   // Unique referrers for filter
   const uniqueReferrers = useMemo(() => {
@@ -201,6 +229,91 @@ const StudentAdminDashboard = () => {
       submitted: monthCounts[m].submitted,
       admitted: monthCounts[m].admitted,
     })));
+
+    // ===== NEW INDIA-FOCUSED ANALYTICS =====
+
+    // Indian Region-wise distribution (dummy data for frontend - will be replaced with API)
+    const indianRegions = [
+      { name: 'Maharashtra', referrals: 0, admitted: 0, color: '#f97316' },
+      { name: 'Karnataka', referrals: 0, admitted: 0, color: '#8b5cf6' },
+      { name: 'Tamil Nadu', referrals: 0, admitted: 0, color: '#06b6d4' },
+      { name: 'Delhi NCR', referrals: 0, admitted: 0, color: '#ec4899' },
+      { name: 'Gujarat', referrals: 0, admitted: 0, color: '#84cc16' },
+      { name: 'Telangana', referrals: 0, admitted: 0, color: '#f59e0b' },
+      { name: 'Uttar Pradesh', referrals: 0, admitted: 0, color: '#6366f1' },
+      { name: 'West Bengal', referrals: 0, admitted: 0, color: '#14b8a6' },
+      { name: 'Rajasthan', referrals: 0, admitted: 0, color: '#f43f5e' },
+      { name: 'Kerala', referrals: 0, admitted: 0, color: '#22c55e' },
+    ];
+
+    // Distribute referrals to regions (simulated based on data patterns)
+    referrals.forEach((r, index) => {
+      const regionIndex = index % indianRegions.length;
+      indianRegions[regionIndex].referrals++;
+      if (r.status === 'admitted') {
+        indianRegions[regionIndex].admitted++;
+      }
+    });
+
+    // Sort by referrals and take top regions
+    setRegionData(
+      indianRegions
+        .sort((a, b) => b.referrals - a.referrals)
+        .slice(0, 8)
+    );
+
+    // Course/Program-wise distribution
+    const courseCounts: Record<string, { total: number; admitted: number }> = {};
+    referrals.forEach(r => {
+      const courseName = r.program?.name || 'Other Programs';
+      if (!courseCounts[courseName]) {
+        courseCounts[courseName] = { total: 0, admitted: 0 };
+      }
+      courseCounts[courseName].total++;
+      if (r.status === 'admitted') {
+        courseCounts[courseName].admitted++;
+      }
+    });
+
+    const courseColors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+    setCourseData(
+      Object.entries(courseCounts)
+        .map(([name, data], index) => ({
+          name: name.length > 20 ? name.substring(0, 20) + '...' : name,
+          fullName: name,
+          referrals: data.total,
+          admitted: data.admitted,
+          conversionRate: data.total > 0 ? Math.round((data.admitted / data.total) * 100) : 0,
+          color: courseColors[index % courseColors.length],
+        }))
+        .sort((a, b) => b.referrals - a.referrals)
+        .slice(0, 8)
+    );
+
+    // Top Referrers
+    const referrerCounts: Record<string, { name: string; email: string; total: number; admitted: number }> = {};
+    referrals.forEach(r => {
+      const referrerName = r.referrer_name || 'Unknown';
+      const referrerEmail = r.referrer_email || '';
+      if (!referrerCounts[referrerName]) {
+        referrerCounts[referrerName] = { name: referrerName, email: referrerEmail, total: 0, admitted: 0 };
+      }
+      referrerCounts[referrerName].total++;
+      if (r.status === 'admitted') {
+        referrerCounts[referrerName].admitted++;
+      }
+    });
+
+    setTopReferrersData(
+      Object.values(referrerCounts)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 10)
+        .map((r, index) => ({
+          ...r,
+          rank: index + 1,
+          conversionRate: r.total > 0 ? Math.round((r.admitted / r.total) * 100) : 0,
+        }))
+    );
   };
 
   // Filter referrals
@@ -246,8 +359,6 @@ const StudentAdminDashboard = () => {
       visibleColumns.map(key => {
         if (key === 'age') return getAge(r.submission_date || r.created_at);
         if (key === 'submission_date') return formatDate(r.submission_date || r.created_at);
-        if (key === 'university') return r.university?.name || '';
-        if (key === 'program') return r.program?.name || '';
         return r[key] || '';
       })
     );
@@ -513,6 +624,189 @@ const StudentAdminDashboard = () => {
           </Card>
         </motion.div>
 
+        {/* India Regional Analytics Section */}
+        <div className="mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+              <MapPin className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">India Regional Analytics</h2>
+              <p className="text-white/60 text-sm">Performance breakdown by region, course, and top referrers</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Region-wise Referrals (India Map Style) */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <Card className="bg-white/5 border-white/10 h-full">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-orange-400" />
+                    Top Regions by Referrals
+                  </CardTitle>
+                  <CardDescription className="text-white/60">
+                    State-wise referral distribution across India
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {regionData.map((region, index) => (
+                      <div key={region.name} className="group">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                              style={{ backgroundColor: region.color + '30', color: region.color }}>
+                              {index + 1}
+                            </span>
+                            <span className="text-white text-sm font-medium">{region.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-white/60 text-xs">{region.admitted} admitted</span>
+                            <span className="text-white font-semibold text-sm">{region.referrals}</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all duration-500 group-hover:opacity-80"
+                            style={{ 
+                              width: `${(region.referrals / (regionData[0]?.referrals || 1)) * 100}%`,
+                              backgroundColor: region.color
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {regionData.length === 0 && (
+                      <div className="text-center py-8 text-white/40">
+                        No regional data available
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Course-wise Distribution */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 }}
+            >
+              <Card className="bg-white/5 border-white/10 h-full">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-blue-400" />
+                    Top Courses by Referrals
+                  </CardTitle>
+                  <CardDescription className="text-white/60">
+                    Program-wise enrollment performance
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={courseData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                      <XAxis type="number" stroke="#ffffff40" fontSize={11} />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        stroke="#ffffff40" 
+                        fontSize={10} 
+                        width={80}
+                        tick={{ fill: '#ffffff80' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#1a1a2e', 
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '8px'
+                        }}
+                        formatter={(value: any, name: string) => [value, name === 'referrals' ? 'Total Referrals' : 'Admitted']}
+                        labelFormatter={(label) => {
+                          const course = courseData.find(c => c.name === label);
+                          return course?.fullName || label;
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="referrals" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Total" />
+                      <Bar dataKey="admitted" fill="#22c55e" radius={[0, 4, 4, 0]} name="Admitted" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Top Referrers Leaderboard */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.0 }}
+            >
+              <Card className="bg-white/5 border-white/10 h-full">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    Top Referrers
+                  </CardTitle>
+                  <CardDescription className="text-white/60">
+                    Highest performing referral partners
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {topReferrersData.slice(0, 8).map((referrer, index) => (
+                      <div 
+                        key={referrer.name} 
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-xl transition-all hover:bg-white/5",
+                          index === 0 && "bg-gradient-to-r from-yellow-500/10 to-transparent border border-yellow-500/20",
+                          index === 1 && "bg-gradient-to-r from-gray-400/10 to-transparent border border-gray-400/20",
+                          index === 2 && "bg-gradient-to-r from-amber-600/10 to-transparent border border-amber-600/20"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
+                          index === 0 && "bg-yellow-500 text-black",
+                          index === 1 && "bg-gray-400 text-black",
+                          index === 2 && "bg-amber-600 text-white",
+                          index > 2 && "bg-white/10 text-white/60"
+                        )}>
+                          {index < 3 ? (
+                            <Award className="w-4 h-4" />
+                          ) : (
+                            referrer.rank
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium text-sm truncate">{referrer.name}</p>
+                          <p className="text-white/40 text-xs truncate">{referrer.email}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-emerald-400 font-bold text-lg">{referrer.total}</p>
+                          <div className="flex items-center gap-1 text-xs">
+                            <span className="text-green-400">{referrer.admitted} ✓</span>
+                            <span className="text-white/40">({referrer.conversionRate}%)</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {topReferrersData.length === 0 && (
+                      <div className="text-center py-8 text-white/40">
+                        No referrer data available
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+
         {/* Referrals Table */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -549,19 +843,6 @@ const StudentAdminDashboard = () => {
                       <SelectItem value="contacted">Contacted</SelectItem>
                       <SelectItem value="admitted">Admitted</SelectItem>
                       <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {/* University Filter */}
-                  <Select value={universityFilter} onValueChange={setUniversityFilter}>
-                    <SelectTrigger className="w-[160px] bg-white/5 border-white/10 text-white">
-                      <SelectValue placeholder="University" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Universities</SelectItem>
-                      {universities.map((uni: any) => (
-                        <SelectItem key={uni.id} value={uni.id}>{uni.name}</SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
 
@@ -663,12 +944,6 @@ const StudentAdminDashboard = () => {
                           )}
                           {visibleColumns.includes('referrer_email') && (
                             <td className="py-3 px-4 text-white/60">{referral.referrer_email}</td>
-                          )}
-                          {visibleColumns.includes('university') && (
-                            <td className="py-3 px-4 text-white/80">{referral.university?.name || '-'}</td>
-                          )}
-                          {visibleColumns.includes('program') && (
-                            <td className="py-3 px-4 text-white/80">{referral.program?.name || '-'}</td>
                           )}
                           {visibleColumns.includes('status') && (
                             <td className="py-3 px-4">

@@ -581,6 +581,49 @@ const Login = () => {
                         <>Sign In <ArrowRight className="w-4 h-4 ml-2" /></>
                       )}
                     </Button>
+
+                    {/* Quick Login Buttons for Development */}
+                    <div className="mt-4 p-3 bg-muted/30 rounded-xl border border-border/50">
+                      <p className="text-xs text-muted-foreground mb-2 text-center">Quick Login (Dev Only)</p>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLoginData({ email: 'hr.admin@teamlease.com', password: 'Password123!' });
+                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
+                          }}
+                          className="text-xs"
+                        >
+                          HR Admin
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLoginData({ email: 'student.admin@teamlease.com', password: 'Password123!' });
+                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
+                          }}
+                          className="text-xs"
+                        >
+                          Student Admin
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLoginData({ email: 'student@teamlease.com', password: 'Password123!' });
+                            setTimeout(() => document.querySelector('form')?.requestSubmit(), 100);
+                          }}
+                          className="text-xs"
+                        >
+                          Referrer
+                        </Button>
+                      </div>
+                    </div>
                   </form>
                 </TabsContent>
 
