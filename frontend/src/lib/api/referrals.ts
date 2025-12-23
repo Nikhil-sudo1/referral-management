@@ -46,6 +46,32 @@ export interface CRMActivityResponse {
   activity_error?: string;
 }
 
+export interface CRMReferralItem {
+  id: string;
+  referral_code: string;
+  referee_name: string;
+  referee_email: string;
+  referee_phone: string;
+  crm_lead_id: number | null;
+  crm_university_id: number | null;
+  crm_course_id: number | null;
+  local_status: string;
+  created_at: string | null;
+  full_name: string;
+  mobile_number: string;
+  email: string;
+  lead_status: { id: number; name: string } | null;
+  lead_sub_status: { id: number; name: string } | null;
+  university_interested: { id: number; name: string; short_name?: string } | null;
+  activity_log: Array<{
+    id: number;
+    lead_id: number;
+    activity: { id: number; name: string };
+    activity_details: { title: string; [key: string]: any };
+    created_at: string;
+  }>;
+}
+
 export interface ReferralCreateRequest {
   referrer_id: string;
   student_name: string;
@@ -148,6 +174,15 @@ export const referralsAPI = {
       page_size: undefined,
     };
     const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<Referral> }>('/referrals/my-referrals', { params: backendParams });
+    return response.data.data;
+  },
+
+  // Get my referrals with CRM data (referrer)
+  getMyReferralsWithCRM: async (params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<CRMReferralItem>> => {
+    const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<CRMReferralItem> }>('/referrals/my-referrals-crm', { params });
     return response.data.data;
   },
 

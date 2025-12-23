@@ -341,43 +341,55 @@ class ReferralService:
         4. Only if CRM succeeds, save referral to database
         5. If CRM fails, raise exception and don't save to DB
         """
-        # Validate university and program
-        university = self.db.query(University).filter(
-            University.id == data.university_id
-        ).first()
+        # CRM-ONLY MODE: Local university/program are optional
+        from types import SimpleNamespace
+        
+        university = None
+        program = None
+        
+        # Try to find local records (optional)
+        if data.university_id:
+            university = self.db.query(University).filter(University.id == data.university_id).first()
         
         if not university:
-            # If CRM university ID is provided, try to find by CRM ID
-            if data.crm_university_id:
-                university = self.db.query(University).filter(
-                    University.crm_university_id == str(data.crm_university_id)
-                ).first()
-            
-            if not university:
-                raise NotFoundException("University not found. Please contact support to add this university.")
+            university = self.db.query(University).filter(
+                University.crm_university_id == str(data.crm_university_id)
+            ).first()
         
-        # Check if university is active
-        if university.status != "active":
-            raise ValidationException("Selected university is not active")
-        
-        program = self.db.query(Program).filter(
-            Program.id == data.program_id,
-            Program.university_id == university.id
-        ).first()
+        if data.program_id:
+            program = self.db.query(Program).filter(Program.id == data.program_id).first()
         
         if not program:
-            # If CRM course ID is provided, try to find by CRM ID
-            if data.crm_course_id:
-                program = self.db.query(Program).filter(
-                    Program.crm_course_id == str(data.crm_course_id),
-                    Program.university_id == university.id
-                ).first()
-            
-            if not program:
-                raise NotFoundException("Program not found for this university. Please contact support to add this program.")
+            program = self.db.query(Program).filter(
+                Program.crm_course_id == str(data.crm_course_id)
+            ).first()
+        
+        # Use CRM-only placeholders if not found locally
+        if not university:
+            logger.info(f"CRM-only mode: No local university for CRM ID {data.crm_university_id}")
+            university = SimpleNamespace(
+                id=None,
+                name=f"CRM University {data.crm_university_id}",
+                code=f"CRM{data.crm_university_id}",
+                crm_university_id=data.crm_university_id,
+                status='active'
+            )
+        
+        if not program:
+            logger.info(f"CRM-only mode: No local program for CRM ID {data.crm_course_id}")
+            program = SimpleNamespace(
+                id=None,
+                name=f"CRM Course {data.crm_course_id}",
+                code=f"CRM{data.crm_course_id}",
+                crm_course_id=data.crm_course_id,
+                reward_amount=5000.00,
+                status='active'
+            )
         
         # Generate referral code
-        referral_code = self._generate_referral_code(university.code, program.code)
+        university_code = getattr(university, 'code', f"CRM{data.crm_university_id}")
+        program_code = getattr(program, 'code', f"CRM{data.crm_course_id}")
+        referral_code = self._generate_referral_code(university_code, program_code)
         
         # Step 1: Call CRM API FIRST before saving to database
         from app.services.crm_service import CRMService

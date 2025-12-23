@@ -8,26 +8,21 @@ import { Input } from '@/components/ui/input';
 import { 
   Users, Gift, TrendingUp, FileText, Clock, CheckCircle, 
   ArrowRight, Plus, Search, Copy, Share2, ChevronRight, 
-  Wallet, Target, Star, Award, XCircle, Phone, Loader2
+  Wallet, Target, Star, Award, XCircle, Phone, Loader2,
+  Activity, Building2, RefreshCw, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { analyticsAPI, referralsAPI } from '@/lib/api';
+import { analyticsAPI, referralsAPI, type CRMReferralItem } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-
-const statusConfig = {
-  submitted: { label: 'Submitted', color: 'bg-info/10 text-info', icon: FileText },
-  assigned: { label: 'Assigned', color: 'bg-warning/10 text-warning', icon: Users },
-  contacted: { label: 'Contacted', color: 'bg-accent/10 text-accent', icon: Phone },
-  admitted: { label: 'Admitted', color: 'bg-success/10 text-success', icon: CheckCircle },
-  rejected: { label: 'Rejected', color: 'bg-destructive/10 text-destructive', icon: XCircle },
-};
 
 const ReferrerDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [myReferrals, setMyReferrals] = useState<any[]>([]);
+  const [isLoadingCRM, setIsLoadingCRM] = useState(false);
+  const [myReferrals, setMyReferrals] = useState<CRMReferralItem[]>([]);
+  const [expandedActivity, setExpandedActivity] = useState<string | null>(null);
   const [referrerData, setReferrerData] = useState({
     name: '',
     email: '',
@@ -48,6 +43,26 @@ const ReferrerDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Fetch CRM referrals data
+  const fetchCRMReferrals = async () => {
+    setIsLoadingCRM(true);
+    try {
+      const response = await referralsAPI.getMyReferralsWithCRM({ page: 1, limit: 50 });
+      if (response?.items) {
+        setMyReferrals(response.items);
+      }
+    } catch (error) {
+      console.error('Error fetching CRM referrals:', error);
+      toast({
+        title: 'Warning',
+        description: 'Could not load CRM data. Showing local data.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingCRM(false);
+    }
+  };
+
   // Fetch data from backend
   useEffect(() => {
     const fetchData = async () => {
@@ -55,20 +70,13 @@ const ReferrerDashboard = () => {
       try {
         console.log('Fetching referrer dashboard data...');
         
-        // Fetch analytics and referrals in parallel
-        const [analyticsData, referralsData] = await Promise.all([
-          analyticsAPI.getMyAnalytics().catch(err => {
-            console.error('Error fetching my analytics:', err);
-            return null;
-          }),
-          referralsAPI.getMyReferrals({ page: 1, limit: 20 }).catch(err => {
-            console.error('Error fetching my referrals:', err);
-            return { items: [] };
-          }),
-        ]);
+        // Fetch analytics
+        const analyticsData = await analyticsAPI.getMyAnalytics().catch(err => {
+          console.error('Error fetching my analytics:', err);
+          return null;
+        });
         
         console.log('My analytics:', analyticsData);
-        console.log('My referrals:', referralsData);
         
         // Get user's actual name from user object
         const userName = user?.full_name || 'Referrer';
@@ -94,22 +102,8 @@ const ReferrerDashboard = () => {
           tier: analyticsData?.tier || 'Bronze',
         });
         
-        // Update referrals list
-        if (referralsData?.items) {
-          const formattedReferrals = referralsData.items.map((r: any) => ({
-            id: r.id,
-            name: r.referee_name || r.refereeName || 'Unknown',
-            email: r.referee_email || r.refereeEmail || '',
-            phone: r.referee_phone || r.refereePhone || '',
-            university: r.university?.name || r.universityName || 'Unknown',
-            program: r.program?.name || r.programName || 'Unknown',
-            status: r.status || 'submitted',
-            date: r.created_at || r.createdAt || new Date().toISOString(),
-            reward: r.expected_reward || r.expectedReward || 0,
-            rewardStatus: r.status === 'admitted' ? 'paid' : 'pending',
-          }));
-          setMyReferrals(formattedReferrals);
-        }
+        // Fetch CRM referrals
+        await fetchCRMReferrals();
         
         console.log('Referrer dashboard data loaded');
       } catch (error) {
@@ -128,9 +122,14 @@ const ReferrerDashboard = () => {
   }, [user]);
 
   const filteredReferrals = myReferrals.filter(r => {
-    const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          r.university.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+    const name = r.full_name || r.referee_name || '';
+    const university = r.university_interested?.name || '';
+    const status = r.lead_status?.name?.toLowerCase() || '';
+    
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          university.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (r.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || status.includes(statusFilter.toLowerCase());
     return matchesSearch && matchesStatus;
   });
 
@@ -143,6 +142,20 @@ const ReferrerDashboard = () => {
     const link = `https://teamlease.edu/refer/${referrerData.referralCode}`;
     navigator.clipboard.writeText(link);
     toast({ title: 'Link Copied!', description: 'Share this link with students' });
+  };
+
+  const toggleActivityExpand = (id: string) => {
+    setExpandedActivity(expandedActivity === id ? null : id);
+  };
+
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status) return 'bg-gray-500/20 text-gray-400';
+    const s = status.toLowerCase();
+    if (s.includes('enrolled') || s.includes('admitted')) return 'bg-green-500/20 text-green-400';
+    if (s.includes('new') || s.includes('untouch')) return 'bg-blue-500/20 text-blue-400';
+    if (s.includes('drop') || s.includes('reject')) return 'bg-red-500/20 text-red-400';
+    if (s.includes('contact') || s.includes('follow')) return 'bg-yellow-500/20 text-yellow-400';
+    return 'bg-purple-500/20 text-purple-400';
   };
 
   if (isLoading) {
@@ -203,9 +216,9 @@ const ReferrerDashboard = () => {
                   <div className="w-11 h-11 rounded-xl gradient-primary flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-300">
                     <Users className="w-5 h-5 text-white" />
                   </div>
-                  <Badge className="bg-success/20 text-success border-0 text-xs">+3 this month</Badge>
+                  <Badge className="bg-success/20 text-success border-0 text-xs">+{myReferrals.length} total</Badge>
                 </div>
-                <p className="text-2xl font-display text-foreground">{referrerData.totalReferrals}</p>
+                <p className="text-2xl font-display text-foreground">{referrerData.totalReferrals || myReferrals.length}</p>
                 <p className="text-sm text-muted-foreground mt-1">Total Referrals</p>
               </div>
             </CardContent>
@@ -259,105 +272,37 @@ const ReferrerDashboard = () => {
           </Card>
         </div>
 
-        {/* Earnings Breakdown */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 card-elevated">
-            <CardHeader className="border-b border-border pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Gift className="w-5 h-5 text-warning" />
-                  Earnings Overview
-                </CardTitle>
-                <Button variant="outline" size="sm">
-                  Withdraw <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-3 gap-6">
-                <div className="text-center p-4 rounded-2xl bg-success/10 border border-success/20">
-                  <p className="text-sm text-muted-foreground mb-1">Withdrawn</p>
-                  <p className="text-2xl font-display text-success">₹{referrerData.withdrawnEarnings.toLocaleString()}</p>
-                </div>
-                <div className="text-center p-4 rounded-2xl bg-warning/10 border border-warning/20">
-                  <p className="text-sm text-muted-foreground mb-1">Pending</p>
-                  <p className="text-2xl font-display text-warning">₹{referrerData.pendingEarnings.toLocaleString()}</p>
-                </div>
-                <div className="text-center p-4 rounded-2xl bg-primary/10 border border-primary/20">
-                  <p className="text-sm text-muted-foreground mb-1">Total</p>
-                  <p className="text-2xl font-display text-primary">₹{referrerData.totalEarnings.toLocaleString()}</p>
-                </div>
-              </div>
-              
-              {/* Progress to next tier */}
-              <div className="mt-6 p-4 rounded-2xl bg-muted/50 border border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-foreground">Progress to Platinum Tier</p>
-                  <p className="text-sm text-muted-foreground">8/10 admissions</p>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full w-4/5 gradient-primary rounded-full" />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">2 more successful admissions to reach Platinum!</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card className="card-elevated">
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="text-lg font-display">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 space-y-3">
-              <Button 
-                className="w-full justify-between gradient-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all h-12"
-                onClick={() => navigate('/referrer/add')}
-              >
-                <span className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add New Referral
-                </span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" className="w-full justify-between h-12" onClick={() => navigate('/referrer/analytics')}>
-                <span className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4" />
-                  View Analytics
-                </span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" className="w-full justify-between h-12" onClick={shareReferralLink}>
-                <span className="flex items-center gap-2">
-                  <Share2 className="w-4 h-4" />
-                  Share Referral Link
-                </span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" className="w-full justify-between h-12" onClick={() => navigate('/referrer/leaderboard')}>
-                <span className="flex items-center gap-2">
-                  <Award className="w-4 h-4" />
-                  View Leaderboard
-                </span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" className="w-full justify-between h-12">
-                <span className="flex items-center gap-2">
-                  <Wallet className="w-4 h-4" />
-                  Withdraw Earnings
-                </span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </CardContent>
-          </Card>
+        {/* Quick Actions Row */}
+        <div className="flex flex-wrap gap-3">
+          <Button 
+            className="gradient-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
+            onClick={() => navigate('/referrer/add')}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add New Referral
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/referrer/analytics')}>
+            <TrendingUp className="w-4 h-4 mr-2" />
+            View Analytics
+          </Button>
+          <Button variant="outline" onClick={shareReferralLink}>
+            <Share2 className="w-4 h-4 mr-2" />
+            Share Link
+          </Button>
+          <Button variant="outline" onClick={fetchCRMReferrals} disabled={isLoadingCRM}>
+            <RefreshCw className={cn("w-4 h-4 mr-2", isLoadingCRM && "animate-spin")} />
+            Refresh CRM Data
+          </Button>
         </div>
 
-        {/* My Referrals Table */}
+        {/* My Referrals Table - CRM Data */}
         <Card className="card-elevated">
           <CardHeader className="border-b border-border pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="text-lg font-display flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
                 My Referrals
+                {isLoadingCRM && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
               </CardTitle>
               <div className="flex items-center gap-3">
                 <div className="relative">
@@ -375,11 +320,10 @@ const ReferrerDashboard = () => {
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <option value="all">All Status</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="assigned">Assigned</option>
+                  <option value="new">New</option>
+                  <option value="enrolled">Enrolled</option>
                   <option value="contacted">Contacted</option>
-                  <option value="admitted">Admitted</option>
-                  <option value="rejected">Rejected</option>
+                  <option value="drop">Dropped</option>
                 </select>
               </div>
             </div>
@@ -388,69 +332,136 @@ const ReferrerDashboard = () => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Student</th>
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">University</th>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Name</th>
+                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Mobile</th>
+                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Email</th>
                     <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Status</th>
-                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Date</th>
-                    <th className="text-right p-4 text-sm font-semibold text-muted-foreground">Reward</th>
+                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Sub Status</th>
+                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">University</th>
+                    <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Activity Log</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredReferrals.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                        No referrals found
+                      <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                        {myReferrals.length === 0 ? (
+                          <div className="space-y-4">
+                            <p>No referrals found</p>
+                            <Button onClick={() => navigate('/referrer/add')} className="gradient-primary text-white">
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Your First Referral
+                            </Button>
+                          </div>
+                        ) : (
+                          'No referrals match your search'
+                        )}
                       </td>
                     </tr>
                   ) : (
-                    filteredReferrals.map((referral) => {
-                      const status = statusConfig[referral.status as keyof typeof statusConfig];
-                      const StatusIcon = status.icon;
-                      return (
-                        <tr key={referral.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-white">
-                                {referral.name.split(' ').map(n => n[0]).join('')}
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">{referral.name}</p>
-                                <p className="text-xs text-muted-foreground">{referral.email}</p>
-                              </div>
+                    filteredReferrals.map((referral) => (
+                      <tr key={referral.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                        {/* Name */}
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-white">
+                              {(referral.full_name || referral.referee_name || 'UN').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                             </div>
-                          </td>
-                          <td className="p-4">
-                            <p className="font-medium text-foreground">{referral.university}</p>
-                            <p className="text-xs text-muted-foreground">{referral.program}</p>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={cn('border-0 font-medium', status.color)}>
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {status.label}
-                            </Badge>
-                          </td>
-                          <td className="p-4 text-sm text-muted-foreground">
-                            {new Date(referral.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </td>
-                          <td className="p-4 text-right">
-                            {referral.rewardStatus === 'paid' ? (
-                              <div>
-                                <p className="font-bold text-success">₹{referral.reward.toLocaleString()}</p>
-                                <p className="text-xs text-success">Paid</p>
-                              </div>
-                            ) : referral.rewardStatus === 'pending' ? (
-                              <div>
-                                <p className="font-bold text-warning">₹{referral.reward.toLocaleString()}</p>
-                                <p className="text-xs text-muted-foreground">Pending</p>
-                              </div>
-                            ) : (
-                              <p className="text-muted-foreground">-</p>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
+                            <div>
+                              <p className="font-medium text-foreground">{referral.full_name || referral.referee_name}</p>
+                              <p className="text-xs text-muted-foreground">ID: {referral.crm_lead_id || 'N/A'}</p>
+                            </div>
+                          </div>
+                        </td>
+                        
+                        {/* Mobile */}
+                        <td className="p-4">
+                          <p className="text-sm text-foreground font-mono">
+                            {referral.mobile_number || referral.referee_phone || '-'}
+                          </p>
+                        </td>
+                        
+                        {/* Email */}
+                        <td className="p-4">
+                          <p className="text-sm text-foreground truncate max-w-[180px]" title={referral.email || referral.referee_email}>
+                            {referral.email || referral.referee_email || '-'}
+                          </p>
+                        </td>
+                        
+                        {/* Status */}
+                        <td className="p-4">
+                          <Badge className={cn('border-0 font-medium', getStatusColor(referral.lead_status?.name))}>
+                            {referral.lead_status?.name || referral.local_status || 'Unknown'}
+                          </Badge>
+                        </td>
+                        
+                        {/* Sub Status */}
+                        <td className="p-4">
+                          <Badge variant="outline" className="text-xs">
+                            {referral.lead_sub_status?.name || '-'}
+                          </Badge>
+                        </td>
+                        
+                        {/* University */}
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium text-foreground truncate max-w-[150px]" title={referral.university_interested?.name}>
+                                {referral.university_interested?.name || 'N/A'}
+                              </p>
+                              {referral.university_interested?.short_name && (
+                                <p className="text-xs text-muted-foreground">{referral.university_interested.short_name}</p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        
+                        {/* Activity Log */}
+                        <td className="p-4">
+                          {referral.activity_log && referral.activity_log.length > 0 ? (
+                            <div className="space-y-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto py-1 px-2 text-xs"
+                                onClick={() => toggleActivityExpand(referral.id)}
+                              >
+                                <Activity className="w-3 h-3 mr-1" />
+                                {referral.activity_log.length} {referral.activity_log.length === 1 ? 'activity' : 'activities'}
+                                {expandedActivity === referral.id ? (
+                                  <ChevronUp className="w-3 h-3 ml-1" />
+                                ) : (
+                                  <ChevronDown className="w-3 h-3 ml-1" />
+                                )}
+                              </Button>
+                              
+                              {expandedActivity === referral.id && (
+                                <div className="mt-2 p-2 bg-muted/50 rounded-lg max-h-40 overflow-y-auto">
+                                  {referral.activity_log.slice(0, 5).map((activity, idx) => (
+                                    <div key={activity.id || idx} className="text-xs py-1 border-b border-border last:border-0">
+                                      <p className="font-medium text-foreground">{activity.activity?.name}</p>
+                                      <p className="text-muted-foreground">{activity.activity_details?.title}</p>
+                                      <p className="text-muted-foreground/70 text-[10px]">
+                                        {new Date(activity.created_at).toLocaleString('en-IN')}
+                                      </p>
+                                    </div>
+                                  ))}
+                                  {referral.activity_log.length > 5 && (
+                                    <p className="text-xs text-muted-foreground pt-1">
+                                      +{referral.activity_log.length - 5} more...
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No activity</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -485,4 +496,3 @@ const ReferrerDashboard = () => {
 };
 
 export default ReferrerDashboard;
-

@@ -173,6 +173,130 @@ async def get_referral_stats(
     )
 
 
+@router.get("/my-referrals-crm", response_model=BaseResponse)
+async def get_my_referrals_with_crm_data(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_referrer_user),
+):
+    """
+    Get current referrer's referrals with CRM data (lead status, sub status, activity, university)
+    Fetches data from CRM API for each referral
+    """
+    import requests
+    from app.config import settings
+    from app.models.referral import Referral
+    
+    try:
+        # Get referrals from DB
+        referrals = db.query(Referral).filter(
+            Referral.referrer_id == current_user.id
+        ).order_by(Referral.created_at.desc()).offset((page - 1) * limit).limit(limit).all()
+        
+        total = db.query(Referral).filter(Referral.referrer_id == current_user.id).count()
+        
+        # CRM headers
+        headers = {
+            "session-token": settings.CRM_SESSION_TOKEN,
+            "Authorization": f"Bearer {settings.CRM_BEARER_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
+        result_items = []
+        
+        for referral in referrals:
+            item = {
+                "id": str(referral.id),
+                "referral_code": referral.referral_code,
+                "referee_name": referral.referee_name,
+                "referee_email": referral.referee_email,
+                "referee_phone": referral.referee_phone,
+                "crm_lead_id": referral.crm_lead_id,
+                "crm_university_id": referral.crm_university_id,
+                "crm_course_id": referral.crm_course_id,
+                "local_status": referral.status,
+                "created_at": referral.created_at.isoformat() if referral.created_at else None,
+                # CRM fields - will be populated if available
+                "full_name": referral.referee_name,
+                "mobile_number": referral.referee_phone,
+                "email": referral.referee_email,
+                "lead_status": None,
+                "lead_sub_status": None,
+                "university_interested": None,
+                "activity_log": [],
+            }
+            
+            # If we have a CRM lead ID, fetch data from CRM
+            if referral.crm_lead_id:
+                try:
+                    # Fetch lead activity from CRM
+                    activity_response = requests.post(
+                        f"{settings.CRM_BASE_URL}/leads/lead_activity",
+                        headers=headers,
+                        json={"id": referral.crm_lead_id},
+                        timeout=10
+                    )
+                    
+                    if activity_response.status_code == 200:
+                        activity_data = activity_response.json()
+                        if isinstance(activity_data, list):
+                            item["activity_log"] = activity_data
+                        
+                except Exception as e:
+                    print(f"Error fetching CRM activity for lead {referral.crm_lead_id}: {e}")
+            
+            result_items.append(item)
+        
+        # If we have CRM lead IDs, also fetch lead list to get status info
+        crm_lead_ids = [r.crm_lead_id for r in referrals if r.crm_lead_id]
+        if crm_lead_ids:
+            try:
+                # The all_lead_list API returns recent leads - we'll match by ID
+                list_response = requests.post(
+                    f"{settings.CRM_BASE_URL}/leads/all_lead_list",
+                    headers=headers,
+                    json={},
+                    timeout=15
+                )
+                
+                if list_response.status_code == 200:
+                    list_data = list_response.json()
+                    leads_list = list_data.get("data", []) if isinstance(list_data, dict) else []
+                    
+                    # Create lookup by ID
+                    leads_by_id = {lead.get("id"): lead for lead in leads_list}
+                    
+                    # Update result items with CRM data
+                    for item in result_items:
+                        if item["crm_lead_id"] and item["crm_lead_id"] in leads_by_id:
+                            crm_lead = leads_by_id[item["crm_lead_id"]]
+                            item["full_name"] = crm_lead.get("full_name", item["full_name"])
+                            item["mobile_number"] = crm_lead.get("mobile_number", item["mobile_number"])
+                            item["email"] = crm_lead.get("email", item["email"])
+                            item["lead_status"] = crm_lead.get("lead_status")
+                            item["lead_sub_status"] = crm_lead.get("lead_sub_status")
+                            item["university_interested"] = crm_lead.get("university_interested")
+                            
+            except Exception as e:
+                print(f"Error fetching CRM lead list: {e}")
+        
+        return BaseResponse(
+            success=True,
+            message="Success",
+            data={
+                "items": result_items,
+                "total": total,
+                "page": page,
+                "page_size": limit,
+                "total_pages": (total + limit - 1) // limit,
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching referrals: {str(e)}")
+
+
 @router.get("/{referral_id}/crm-activity", response_model=BaseResponse)
 async def get_referral_crm_activity(
     referral_id: UUID,
