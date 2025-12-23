@@ -25,10 +25,24 @@ class UserController:
         is_active: Optional[bool] = None,
     ) -> BaseResponse:
         """Get paginated users"""
+        # Convert role string to role_id if provided (for backward compatibility)
+        role_id = None
+        if role:
+            # Try to map role name to role_id
+            # This is a simple mapping - you may need to query the database
+            role_mapping = {
+                "hr_admin": 1,
+                "business_head": 2,
+                "student_admin": 3,
+                "employee": 4,
+                "student": 5,
+            }
+            role_id = role_mapping.get(role.lower())
+        
         result = self.service.get_users(
             page=page,
             limit=limit,
-            role=role,
+            role_id=role_id,
             search=search,
             is_active=is_active,
         )
