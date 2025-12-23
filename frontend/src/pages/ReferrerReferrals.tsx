@@ -6,79 +6,38 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
-  FileText, CheckCircle, XCircle, Phone, Users, Search,
-  Download, Plus, Loader2, RefreshCw
+  FileText, Search, Download, Plus, Loader2, RefreshCw, 
+  Activity, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { referralsAPI } from '@/lib/api';
+import { referralsAPI, type CRMReferralItem } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-interface Referral {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  university: string;
-  program: string;
-  status: string;
-  date: string;
-  reward: number;
-  rewardStatus: string;
-  counselor: string;
-  crm_lead_id?: number;
-  crm_activity?: any;
-}
-
-const statusConfig = {
-  submitted: { label: 'Submitted', color: 'bg-info/10 text-info border-info/20', icon: FileText },
-  assigned: { label: 'Assigned', color: 'bg-warning/10 text-warning border-warning/20', icon: Users },
-  contacted: { label: 'Contacted', color: 'bg-accent/10 text-accent border-accent/20', icon: Phone },
-  admitted: { label: 'Admitted', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle },
-  rejected: { label: 'Rejected', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
-};
 
 const ReferrerReferrals = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [universityFilter, setUniversityFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [myReferrals, setMyReferrals] = useState<Referral[]>([]);
-  const [loadingActivities, setLoadingActivities] = useState<Set<string>>(new Set());
+  const [isLoadingCRM, setIsLoadingCRM] = useState(false);
+  const [myReferrals, setMyReferrals] = useState<CRMReferralItem[]>([]);
+  const [selectedActivityReferral, setSelectedActivityReferral] = useState<CRMReferralItem | null>(null);
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
 
-  // Fetch referrals from API
+  // Fetch referrals with CRM data from API
   const fetchReferrals = async () => {
     setIsLoading(true);
+    setIsLoadingCRM(true);
     try {
-      // Use getMyReferrals which is already filtered by the current user on backend
-      const response = await referralsAPI.getMyReferrals({ page: 1, limit: 100 });
-      console.log('My referrals response:', response);
+      // Use getMyReferralsWithCRM to get CRM data
+      const response = await referralsAPI.getMyReferralsWithCRM({ page: 1, limit: 100 });
+      console.log('My referrals with CRM response:', response);
       
       if (response?.items && Array.isArray(response.items)) {
-        const formattedReferrals = response.items.map((r: any) => ({
-          id: r.id,
-          name: r.referee_name || r.refereeName || 'Unknown',
-          email: r.referee_email || r.refereeEmail || '',
-          phone: r.referee_phone || r.refereePhone || '',
-          university: r.university?.name || r.universityName || 'Unknown',
-          program: r.program?.name || r.programName || 'Unknown',
-          status: r.status || 'submitted',
-          date: r.created_at || r.createdAt || new Date().toISOString(),
-          reward: r.expected_reward || r.expectedReward || 0,
-          rewardStatus: r.status === 'admitted' ? 'paid' : 'pending',
-          counselor: r.counselor?.name || r.counselorName || '-',
-          crm_lead_id: r.crm_lead_id,
-        }));
-        setMyReferrals(formattedReferrals);
-        
-        // Fetch CRM activity for referrals with crm_lead_id
-        formattedReferrals.forEach(async (referral) => {
-          if (referral.crm_lead_id) {
-            fetchCRMActivity(referral.id, referral.crm_lead_id);
-          }
-        });
+        setMyReferrals(response.items);
       } else {
-        // Empty response is valid - user just has no referrals yet
         setMyReferrals([]);
       }
     } catch (error: any) {
@@ -95,55 +54,67 @@ const ReferrerReferrals = () => {
       setMyReferrals([]);
     } finally {
       setIsLoading(false);
+      setIsLoadingCRM(false);
     }
   };
 
-  // Fetch CRM activity for a referral
-  const fetchCRMActivity = async (referralId: string, crmLeadId: number) => {
-    if (loadingActivities.has(referralId)) return;
-    
-    setLoadingActivities(prev => new Set(prev).add(referralId));
-    try {
-      const activityData = await referralsAPI.getCRMActivity(referralId);
-      if (activityData?.activity) {
-        setMyReferrals(prev => prev.map(r => 
-          r.id === referralId 
-            ? { ...r, crm_activity: activityData.activity }
-            : r
-        ));
-      }
-    } catch (error) {
-      console.error(`Error fetching CRM activity for referral ${referralId}:`, error);
-    } finally {
-      setLoadingActivities(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(referralId);
-        return newSet;
-      });
-    }
+  const openActivityModal = (referral: CRMReferralItem) => {
+    setSelectedActivityReferral(referral);
+    setIsActivityModalOpen(true);
+  };
+
+  const closeActivityModal = () => {
+    setIsActivityModalOpen(false);
+    setSelectedActivityReferral(null);
+  };
+
+  const getStatusColor = (status: string | null | undefined) => {
+    if (!status) return 'bg-gray-500/20 text-gray-400 border-gray-500/20';
+    const s = status.toLowerCase();
+    if (s.includes('enrolled') || s.includes('admitted')) return 'bg-green-500/20 text-green-400 border-green-500/20';
+    if (s.includes('new') || s.includes('untouch')) return 'bg-blue-500/20 text-blue-400 border-blue-500/20';
+    if (s.includes('drop') || s.includes('reject')) return 'bg-red-500/20 text-red-400 border-red-500/20';
+    if (s.includes('contact') || s.includes('follow')) return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/20';
+    return 'bg-purple-500/20 text-purple-400 border-purple-500/20';
   };
 
   useEffect(() => {
-    fetchReferrals();
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (isMounted) {
+        await fetchReferrals();
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const filteredReferrals = myReferrals.filter(r => {
-    const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          r.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          r.university.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-    const matchesUniversity = universityFilter === 'all' || r.university === universityFilter;
-    return matchesSearch && matchesStatus && matchesUniversity;
+    const name = r.full_name || r.referee_name || '';
+    const university = r.university_interested?.name || '';
+    const status = r.lead_status?.name?.toLowerCase() || '';
+    
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          university.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (r.email || r.referee_email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || status.includes(statusFilter.toLowerCase());
+    return matchesSearch && matchesStatus;
   });
 
   const stats = {
     total: myReferrals.length,
-    admitted: myReferrals.filter(r => r.status === 'admitted').length,
-    pending: myReferrals.filter(r => ['submitted', 'assigned', 'contacted'].includes(r.status)).length,
-    rejected: myReferrals.filter(r => r.status === 'rejected').length,
+    admitted: myReferrals.filter(r => r.lead_status?.name?.toLowerCase().includes('enrolled')).length,
+    pending: myReferrals.filter(r => {
+      const status = r.lead_status?.name?.toLowerCase() || '';
+      return status.includes('new') || status.includes('untouch') || status.includes('contact');
+    }).length,
+    rejected: myReferrals.filter(r => r.lead_status?.name?.toLowerCase().includes('drop') || r.lead_status?.name?.toLowerCase().includes('reject')).length,
   };
-
-  const universities = Array.from(new Set(myReferrals.map(r => r.university)));
 
   if (isLoading) {
     return (
@@ -176,9 +147,10 @@ const ReferrerReferrals = () => {
               variant="outline"
               onClick={fetchReferrals}
               className="border-white/10 text-white hover:bg-white/5"
+              disabled={isLoadingCRM}
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh
+              <RefreshCw className={cn("w-4 h-4 mr-2", isLoadingCRM && "animate-spin")} />
+              Refresh CRM Data
             </Button>
             <Button 
               className="gradient-primary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
@@ -243,18 +215,6 @@ const ReferrerReferrals = () => {
                 <option value="admitted">Admitted</option>
                 <option value="rejected">Rejected</option>
               </select>
-              {universities.length > 0 && (
-                <select 
-                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
-                  value={universityFilter}
-                  onChange={(e) => setUniversityFilter(e.target.value)}
-                >
-                  <option value="all">All Universities</option>
-                  {universities.map(uni => (
-                    <option key={uni} value={uni}>{uni}</option>
-                  ))}
-                </select>
-              )}
               <Button variant="outline" className="border-white/10 text-white hover:bg-white/5">
                 <Download className="w-4 h-4 mr-2" />
                 Export
@@ -267,7 +227,8 @@ const ReferrerReferrals = () => {
         <Card className="bg-white/5 border-white/10">
           <CardHeader className="border-b border-white/10 pb-4">
             <CardTitle className="text-lg font-display text-white">
-              All Referrals ({filteredReferrals.length})
+              My Referrals ({filteredReferrals.length})
+              {isLoadingCRM && <Loader2 className="w-4 h-4 animate-spin ml-2 inline" />}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -294,102 +255,76 @@ const ReferrerReferrals = () => {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="text-left p-4 text-sm font-semibold text-white/60">Student</th>
-                      <th className="text-left p-4 text-sm font-semibold text-white/60">University</th>
-                      <th className="text-left p-4 text-sm font-semibold text-white/60">Counselor</th>
+                    <tr className="border-b border-white/10 bg-white/5">
+                      <th className="text-left p-4 text-sm font-semibold text-white/60">Name</th>
+                      <th className="text-left p-4 text-sm font-semibold text-white/60">Mobile</th>
+                      <th className="text-left p-4 text-sm font-semibold text-white/60">Email</th>
                       <th className="text-left p-4 text-sm font-semibold text-white/60">Status</th>
-                      <th className="text-left p-4 text-sm font-semibold text-white/60">CRM Activity</th>
-                      <th className="text-left p-4 text-sm font-semibold text-white/60">Date</th>
-                      <th className="text-right p-4 text-sm font-semibold text-white/60">Reward</th>
+                      <th className="text-left p-4 text-sm font-semibold text-white/60">Sub Status</th>
+                      <th className="text-left p-4 text-sm font-semibold text-white/60">Activity Log</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredReferrals.map((referral) => {
-                      const status = statusConfig[referral.status as keyof typeof statusConfig] || statusConfig.submitted;
-                      const StatusIcon = status.icon;
-                      return (
-                        <tr key={referral.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-white">
-                                {referral.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                              </div>
-                              <div>
-                                <p className="font-medium text-white">{referral.name}</p>
-                                <p className="text-xs text-white/60">{referral.email}</p>
-                              </div>
+                    {filteredReferrals.map((referral) => (
+                      <tr key={referral.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        {/* Name */}
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-white">
+                              {(referral.full_name || referral.referee_name || 'UN').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                             </div>
-                          </td>
-                          <td className="p-4">
-                            <p className="font-medium text-white">{referral.university}</p>
-                            <p className="text-xs text-white/60">{referral.program}</p>
-                          </td>
-                          <td className="p-4">
-                            <p className="text-sm text-white">{referral.counselor}</p>
-                          </td>
-                          <td className="p-4">
-                            <Badge className={cn('border font-medium', status.color)}>
-                              <StatusIcon className="w-3 h-3 mr-1" />
-                              {status.label}
-                            </Badge>
-                          </td>
-                          <td className="p-4">
-                            {referral.crm_lead_id ? (
-                              loadingActivities.has(referral.id) ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-white/60" />
-                              ) : referral.crm_activity ? (
-                                <div className="text-xs">
-                                  {Array.isArray(referral.crm_activity) && referral.crm_activity.length > 0 ? (
-                                    <div className="space-y-1">
-                                      <p className="text-white/80">
-                                        {referral.crm_activity.length} {referral.crm_activity.length === 1 ? 'activity' : 'activities'}
-                                      </p>
-                                      {referral.crm_activity[0]?.activity?.name && (
-                                        <p className="text-white/60">
-                                          Latest: {referral.crm_activity[0].activity.name}
-                                        </p>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <p className="text-white/60">No activity</p>
-                                  )}
-                                </div>
-                              ) : (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-xs text-white/60 hover:text-white"
-                                  onClick={() => fetchCRMActivity(referral.id, referral.crm_lead_id!)}
-                                >
-                                  Load Activity
-                                </Button>
-                              )
-                            ) : (
-                              <p className="text-xs text-white/40">Not synced</p>
-                            )}
-                          </td>
-                          <td className="p-4 text-sm text-white/60">
-                            {new Date(referral.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </td>
-                          <td className="p-4 text-right">
-                            {referral.rewardStatus === 'paid' ? (
-                              <div>
-                                <p className="font-bold text-green-400">₹{referral.reward.toLocaleString()}</p>
-                                <p className="text-xs text-green-400">Paid</p>
-                              </div>
-                            ) : referral.reward > 0 ? (
-                              <div>
-                                <p className="font-bold text-yellow-400">₹{referral.reward.toLocaleString()}</p>
-                                <p className="text-xs text-white/60">Pending</p>
-                              </div>
-                            ) : (
-                              <p className="text-white/40">-</p>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <div>
+                              <p className="font-medium text-white">{referral.full_name || referral.referee_name}</p>
+                            </div>
+                          </div>
+                        </td>
+                        
+                        {/* Mobile */}
+                        <td className="p-4">
+                          <p className="text-sm text-white font-mono">
+                            {referral.mobile_number || referral.referee_phone || '-'}
+                          </p>
+                        </td>
+                        
+                        {/* Email */}
+                        <td className="p-4">
+                          <p className="text-sm text-white truncate max-w-[180px]" title={referral.email || referral.referee_email}>
+                            {referral.email || referral.referee_email || '-'}
+                          </p>
+                        </td>
+                        
+                        {/* Status */}
+                        <td className="p-4">
+                          <Badge className={cn('border-0 font-medium', getStatusColor(referral.lead_status?.name))}>
+                            {referral.lead_status?.name || referral.local_status || 'Unknown'}
+                          </Badge>
+                        </td>
+                        
+                        {/* Sub Status */}
+                        <td className="p-4">
+                          <Badge variant="outline" className="text-xs border-white/20 text-white/80">
+                            {referral.lead_sub_status?.name || '-'}
+                          </Badge>
+                        </td>
+                        
+                        {/* Activity Log */}
+                        <td className="p-4">
+                          {referral.activity_log && referral.activity_log.length > 0 ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-auto py-1 px-2 text-xs text-white/80 hover:text-white"
+                              onClick={() => openActivityModal(referral)}
+                            >
+                              <Activity className="w-3 h-3 mr-1" />
+                              {referral.activity_log.length} {referral.activity_log.length === 1 ? 'activity' : 'activities'}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-white/40">No activity</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -397,6 +332,87 @@ const ReferrerReferrals = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Activity Log Modal */}
+      <Dialog open={isActivityModalOpen} onOpenChange={setIsActivityModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] bg-[#1a1a24] border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-display text-white flex items-center gap-2">
+              <Activity className="w-5 h-5" />
+              Activity Log
+              {selectedActivityReferral && (
+                <span className="text-white/60 text-base font-normal">
+                  - {selectedActivityReferral.full_name || selectedActivityReferral.referee_name}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedActivityReferral && selectedActivityReferral.activity_log && selectedActivityReferral.activity_log.length > 0 ? (
+            <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="space-y-4">
+                {selectedActivityReferral.activity_log.map((activity, idx) => (
+                  <div 
+                    key={activity.id || idx} 
+                    className="p-4 bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Activity className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white">{activity.activity?.name || 'Unknown Activity'}</p>
+                          <p className="text-sm text-white/60">{activity.activity_details?.title || 'No details'}</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-white/40">
+                        {new Date(activity.created_at).toLocaleString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                    
+                    {activity.activity_details && Object.keys(activity.activity_details).length > 1 && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <p className="text-xs text-white/60 mb-2">Details:</p>
+                        <div className="space-y-1">
+                          {Object.entries(activity.activity_details).map(([key, value]) => {
+                            if (key === 'title' || !value) return null;
+                            return (
+                              <div key={key} className="text-xs">
+                                <span className="text-white/60 capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
+                                <span className="text-white">
+                                  {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {(activity as any).created_by && (
+                      <div className="mt-2 text-xs text-white/40">
+                        By: {(activity as any).created_by.first_name} {(activity as any).created_by.last_name}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="p-8 text-center text-white/60">
+              <Activity className="w-12 h-12 mx-auto mb-4 text-white/20" />
+              <p>No activity logs available</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </ReferrerLayout>
   );
 };

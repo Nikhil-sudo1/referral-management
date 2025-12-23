@@ -26,7 +26,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
     // If not authenticated, redirect to login
     if (!isAuthenticated || !user) {
-      navigate('/login');
+      if (location.pathname !== '/login') {
+        navigate('/login');
+      }
       return;
     }
 
@@ -48,24 +50,26 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
     // Referrer trying to access admin routes
     if (isReferrer && isOnAdminRoute) {
-      console.log('Referrer on admin route, redirecting to referrer dashboard');
-      if (isEmployeeReferrer) {
-        navigate('/employee');
-      } else {
-        navigate('/referrer/referrals');
+      const targetPath = isEmployeeReferrer ? '/employee' : '/referrer/referrals';
+      if (currentPath !== targetPath) {
+        console.log('Referrer on admin route, redirecting to referrer dashboard');
+        navigate(targetPath);
       }
       return;
     }
 
     // Admin/Manager trying to access referrer routes
     if (isAdmin && isOnReferrerRoute) {
-      console.log('Admin on referrer route, redirecting to admin dashboard');
+      let targetPath = '/dashboard';
       if (isHRAdmin) {
-        navigate('/hr-admin');
+        targetPath = '/hr-admin';
       } else if (isStudentAdmin) {
-        navigate('/student-admin');
-      } else {
-        navigate('/dashboard');
+        targetPath = '/student-admin';
+      }
+      
+      if (currentPath !== targetPath) {
+        console.log('Admin on referrer route, redirecting to admin dashboard');
+        navigate(targetPath);
       }
       return;
     }
