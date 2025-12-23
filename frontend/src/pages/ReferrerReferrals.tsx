@@ -68,14 +68,34 @@ const ReferrerReferrals = () => {
     setSelectedActivityReferral(null);
   };
 
-  const getStatusColor = (status: string | null | undefined) => {
-    if (!status) return 'bg-gray-500/20 text-gray-400 border-gray-500/20';
-    const s = status.toLowerCase();
-    if (s.includes('enrolled') || s.includes('admitted')) return 'bg-green-500/20 text-green-400 border-green-500/20';
-    if (s.includes('new') || s.includes('untouch')) return 'bg-blue-500/20 text-blue-400 border-blue-500/20';
-    if (s.includes('drop') || s.includes('reject')) return 'bg-red-500/20 text-red-400 border-red-500/20';
-    if (s.includes('contact') || s.includes('follow')) return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/20';
-    return 'bg-purple-500/20 text-purple-400 border-purple-500/20';
+  // Status mapping based on CRM lead_status IDs
+  const getStatusCategory = (statusId: number | null | undefined, statusName: string | null | undefined): 'admitted' | 'rejected' | 'pending' => {
+    if (!statusId) return 'pending';
+    
+    // ID 34 = Enrolled -> admitted
+    if (statusId === 34) return 'admitted';
+    
+    // IDs 36-50 = Drop category -> rejected
+    if (statusId >= 36 && statusId <= 50) return 'rejected';
+    
+    // All other statuses = pending
+    return 'pending';
+  };
+
+  const getStatusColor = (statusId: number | null | undefined, statusName: string | null | undefined) => {
+    const category = getStatusCategory(statusId, statusName);
+    
+    if (category === 'admitted') return 'bg-green-500/20 text-green-400 border-green-500/20';
+    if (category === 'rejected') return 'bg-red-500/20 text-red-400 border-red-500/20';
+    return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/20';
+  };
+
+  const getStatusDisplay = (statusId: number | null | undefined, statusName: string | null | undefined): string => {
+    const category = getStatusCategory(statusId, statusName);
+    
+    if (category === 'admitted') return 'Admitted';
+    if (category === 'rejected') return 'Rejected';
+    return 'Pending';
   };
 
   useEffect(() => {
@@ -97,23 +117,20 @@ const ReferrerReferrals = () => {
   const filteredReferrals = myReferrals.filter(r => {
     const name = r.full_name || r.referee_name || '';
     const university = r.university_interested?.name || '';
-    const status = r.lead_status?.name?.toLowerCase() || '';
+    const statusCategory = getStatusCategory(r.lead_status?.id, r.lead_status?.name);
     
     const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           university.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (r.email || r.referee_email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || status.includes(statusFilter.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || statusCategory === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const stats = {
     total: myReferrals.length,
-    admitted: myReferrals.filter(r => r.lead_status?.name?.toLowerCase().includes('enrolled')).length,
-    pending: myReferrals.filter(r => {
-      const status = r.lead_status?.name?.toLowerCase() || '';
-      return status.includes('new') || status.includes('untouch') || status.includes('contact');
-    }).length,
-    rejected: myReferrals.filter(r => r.lead_status?.name?.toLowerCase().includes('drop') || r.lead_status?.name?.toLowerCase().includes('reject')).length,
+    admitted: myReferrals.filter(r => getStatusCategory(r.lead_status?.id, r.lead_status?.name) === 'admitted').length,
+    pending: myReferrals.filter(r => getStatusCategory(r.lead_status?.id, r.lead_status?.name) === 'pending').length,
+    rejected: myReferrals.filter(r => getStatusCategory(r.lead_status?.id, r.lead_status?.name) === 'rejected').length,
   };
 
   if (isLoading) {
@@ -209,9 +226,7 @@ const ReferrerReferrals = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <option value="all">All Status</option>
-                <option value="submitted">Submitted</option>
-                <option value="assigned">Assigned</option>
-                <option value="contacted">Contacted</option>
+                <option value="pending">Pending</option>
                 <option value="admitted">Admitted</option>
                 <option value="rejected">Rejected</option>
               </select>
@@ -295,16 +310,28 @@ const ReferrerReferrals = () => {
                         
                         {/* Status */}
                         <td className="p-4">
-                          <Badge className={cn('border-0 font-medium', getStatusColor(referral.lead_status?.name))}>
-                            {referral.lead_status?.name || referral.local_status || 'Unknown'}
+                          <Badge className={cn('border-0 font-medium', getStatusColor(referral.lead_status?.id, referral.lead_status?.name))}>
+                            {getStatusDisplay(referral.lead_status?.id, referral.lead_status?.name) || referral.local_status || 'Unknown'}
                           </Badge>
+                          {referral.lead_status?.name && (
+                            <p className="text-xs text-white/60 mt-1">{referral.lead_status.name}</p>
+                          )}
                         </td>
                         
                         {/* Sub Status */}
                         <td className="p-4">
-                          <Badge variant="outline" className="text-xs border-white/20 text-white/80">
-                            {referral.lead_sub_status?.name || '-'}
-                          </Badge>
+                          {referral.lead_sub_status?.name ? (
+                            <div>
+                              <Badge variant="outline" className="text-xs border-white/20 text-white/80">
+                                {referral.lead_sub_status.name}
+                              </Badge>
+                              {referral.lead_sub_status.id && (
+                                <p className="text-xs text-white/40 mt-1">ID: {referral.lead_sub_status.id}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-white/40">-</span>
+                          )}
                         </td>
                         
                         {/* Activity Log */}
@@ -377,12 +404,41 @@ const ReferrerReferrals = () => {
                       </p>
                     </div>
                     
-                    {activity.activity_details && Object.keys(activity.activity_details).length > 1 && (
+                    {/* Special handling for Change Ownership activity */}
+                    {activity.activity?.name === 'Change Ownership' && activity.activity_details?.old_owner && activity.activity_details?.new_owner && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-white/60 w-20">From:</span>
+                            <span className="text-xs text-white">
+                              {activity.activity_details.old_owner.first_name === 'un-assigned' 
+                                ? 'Unassigned' 
+                                : `${activity.activity_details.old_owner.first_name || ''} ${activity.activity_details.old_owner.last_name || ''}`.trim() || 'Unassigned'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-white/60 w-20">To:</span>
+                            <span className="text-xs text-white font-medium">
+                              {activity.activity_details.new_owner.first_name} {activity.activity_details.new_owner.last_name || ''}
+                            </span>
+                            {activity.activity_details.new_owner.uuid && (
+                              <span className="text-xs text-white/40">({activity.activity_details.new_owner.uuid.slice(0, 8)}...)</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Other activity details */}
+                    {activity.activity_details && 
+                     activity.activity?.name !== 'Change Ownership' && 
+                     Object.keys(activity.activity_details).length > 1 && (
                       <div className="mt-3 pt-3 border-t border-white/10">
                         <p className="text-xs text-white/60 mb-2">Details:</p>
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           {Object.entries(activity.activity_details).map(([key, value]) => {
                             if (key === 'title' || !value) return null;
+                            
                             return (
                               <div key={key} className="text-xs">
                                 <span className="text-white/60 capitalize">{key.replace(/_/g, ' ')}:</span>{' '}

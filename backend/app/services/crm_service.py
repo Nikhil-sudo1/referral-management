@@ -65,12 +65,18 @@ class CRMService:
             university_name = university.name if hasattr(university, 'name') else f"CRM University {crm_university_id}"
             program_name = program.name if hasattr(program, 'name') else f"CRM Course {crm_course_id}"
             
+            # Validate that CRM IDs are provided (required, no defaults)
+            if not crm_university_id:
+                raise ValueError("crm_university_id is required. Please select a university from the dropdown.")
+            if not crm_course_id:
+                raise ValueError("crm_course_id is required. Please select a course from the dropdown.")
+            
             lead_data = {
                 "full_name": referee_name,
                 "mobile_number": referee_phone,
                 "email": referee_email,
-                "university_interested": crm_university_id if crm_university_id else 3,  # Use provided CRM ID or default
-                "course": crm_course_id if crm_course_id else 4463,  # Use provided CRM ID or default
+                "university_interested": crm_university_id,  # Use selected CRM ID from dropdown
+                "course": crm_course_id,  # Use selected CRM ID from dropdown
                 "lead_channel": settings.CRM_DEFAULT_LEAD_CHANNEL,
                 "source_medium": settings.CRM_DEFAULT_SOURCE_MEDIUM,
                 "lead_owner": settings.CRM_DEFAULT_LEAD_OWNER,  # 8916142a-22b9-4fff-9c81-0fd166d963ce
@@ -91,10 +97,6 @@ class CRMService:
                 "apply_rule": 0,
                 "ctc_annual_package": None,
                 "experience": None,
-                "enrolment_details": {
-                    "enquiryid": None,
-                    "enrollmentno": referral_code
-                },
                 "lead_date": now,
                 "lead_updated_date": now
             }

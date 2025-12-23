@@ -277,7 +277,31 @@ class ReferralService:
         from app.services.crm_service import CRMService
         crm_service = CRMService(self.db)
         
+        # Extract CRM IDs from local university/program records
+        crm_university_id = None
+        crm_course_id = None
+        
+        if hasattr(university, 'crm_university_id') and university.crm_university_id:
+            try:
+                crm_university_id = int(university.crm_university_id)
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid crm_university_id for university {university.id}: {university.crm_university_id}")
+        
+        if hasattr(program, 'crm_course_id') and program.crm_course_id:
+            try:
+                crm_course_id = int(program.crm_course_id)
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid crm_course_id for program {program.id}: {program.crm_course_id}")
+        
+        if not crm_university_id or not crm_course_id:
+            raise ValidationException(
+                f"University or Program missing CRM IDs. "
+                f"University CRM ID: {crm_university_id}, Program CRM ID: {crm_course_id}. "
+                f"Please ensure the selected university and program have valid CRM IDs."
+            )
+        
         logger.info(f"Attempting CRM lead creation for referral: {referral_code}")
+        logger.info(f"Using CRM IDs - University: {crm_university_id}, Course: {crm_course_id}")
         
         crm_success, crm_lead_id, crm_error = crm_service.create_lead_sync(
             referee_name=data.referee_name,
@@ -287,7 +311,9 @@ class ReferralService:
             referrer_email=referrer_email,
             university=university,
             program=program,
-            referral_code=referral_code
+            referral_code=referral_code,
+            crm_university_id=crm_university_id,
+            crm_course_id=crm_course_id
         )
         
         # Step 2: If CRM fails, raise exception and don't save to DB
@@ -318,6 +344,8 @@ class ReferralService:
             utm_medium=data.utm_medium,
             # Store CRM data
             crm_lead_id=crm_lead_id,
+            crm_university_id=str(crm_university_id),
+            crm_course_id=str(crm_course_id),
             crm_synced_at=datetime.utcnow(),
             crm_sync_error=None,
         )
