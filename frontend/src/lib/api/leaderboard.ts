@@ -14,6 +14,7 @@ export interface LeaderboardEntry {
   conversion_rate: number;
   tier: string;
   avatar_url?: string;
+  growth_rate?: number;  // Growth rate percentage
 }
 
 export interface MyRankResponse {
@@ -78,9 +79,8 @@ export const leaderboardAPI = {
 
   // Get my rank
   getMyRank: async (type: 'referrer' | 'counselor' = 'referrer'): Promise<MyRankResponse> => {
-    const response = await apiClient.get<{ success: boolean; data: MyRankResponse }>('/leaderboard/my-rank', {
-      params: { type },
-    });
+    // Backend doesn't accept type parameter, it determines from user's role
+    const response = await apiClient.get<{ success: boolean; data: MyRankResponse }>('/leaderboard/my-rank');
     return response.data.data;
   },
 };

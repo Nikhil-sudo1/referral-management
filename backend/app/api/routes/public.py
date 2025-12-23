@@ -32,9 +32,9 @@ async def get_public_stats(db: Session = Depends(get_db)):
     logger.info("Public stats: cache miss, fetching from database")
     
     try:
-        # Total active referrers
+        # Total active referrers (user_type_id=2 for Referral Partners)
         total_referrers = db.query(func.count(User.id)).filter(
-            User.role == "referrer",
+            User.user_type_id == 2,
             User.is_active == True
         ).scalar() or 0
         

@@ -24,28 +24,42 @@ export const notificationsAPI = {
   getNotifications: async (params?: {
     page?: number;
     page_size?: number;
+    limit?: number;
     is_read?: boolean;
   }): Promise<PaginatedResponse<Notification>> => {
-    const response = await apiClient.get<PaginatedResponse<Notification>>('/notifications', { params });
-    return response.data;
+    // Backend uses 'limit' not 'page_size'
+    const backendParams = {
+      ...params,
+      limit: params?.page_size || params?.limit || 20,
+      page_size: undefined, // Remove page_size
+    };
+    const response = await apiClient.get<{ success: boolean; data: PaginatedResponse<Notification> }>('/notifications', { params: backendParams });
+    const data = response.data.data;
+    // Map backend response format to frontend expected format
+    return {
+      items: data.items,
+      total: data.total,
+      page: data.page,
+      page_size: data.limit || data.page_size || 20,
+      total_pages: data.pages || data.total_pages || 1,
+    };
   },
 
   // Get unread count
   getUnreadCount: async (): Promise<{ count: number }> => {
-    const response = await apiClient.get<{ count: number }>('/notifications/unread-count');
-    return response.data;
+    const response = await apiClient.get<{ success: boolean; data: { count: number } }>('/notifications/unread-count');
+    return response.data.data;
   },
 
   // Mark notification as read
-  markAsRead: async (id: string): Promise<Notification> => {
-    const response = await apiClient.patch<Notification>(`/notifications/${id}/read`);
-    return response.data;
+  markAsRead: async (id: string): Promise<void> => {
+    await apiClient.patch<{ success: boolean; message: string }>(`/notifications/${id}/read`);
   },
 
   // Mark all notifications as read
   markAllAsRead: async (): Promise<{ message: string }> => {
-    const response = await apiClient.patch<{ message: string }>('/notifications/read-all');
-    return response.data;
+    const response = await apiClient.patch<{ success: boolean; message: string }>('/notifications/read-all');
+    return { message: response.data.message };
   },
 
   // Delete notification

@@ -98,14 +98,17 @@ export const rewardsAPI = {
   },
 
   // Approve reward
-  approveReward: async (id: string): Promise<Reward> => {
-    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/approve`);
+  approveReward: async (id: string, notes?: string): Promise<Reward> => {
+    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/approve`, { notes });
     return response.data.data;
   },
 
   // Disburse reward
-  disburseReward: async (id: string): Promise<Reward> => {
-    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/disburse`);
+  disburseReward: async (id: string, disbursementMethod: string, transactionReference?: string): Promise<Reward> => {
+    const response = await apiClient.patch<{ success: boolean; data: Reward }>(`/rewards/${id}/disburse`, {
+      disbursement_method: disbursementMethod,
+      transaction_reference: transactionReference,
+    });
     return response.data.data;
   },
 
